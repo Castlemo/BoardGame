@@ -1,0 +1,10 @@
+{
+  "salary": 300000,
+  "bail": 200000,
+  "islandMaxTurns": 3,
+  "tollMultiplierByLevel": [1.0, 1.5, 2.5, 4.0],
+  "colorMonopolyMultiplier": 2.0,
+  "doubleExtraTurn": true,
+  "tripleDoubleSendsToIsland": true,
+  "chanceReward": 100000
+}
