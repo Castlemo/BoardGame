@@ -141,17 +141,17 @@ public class GaugePanel extends JPanel {
         FontMetrics fm = g.getFontMetrics();
 
         // S1 라벨
-        String label1 = "2~3";
+        String label1 = "2~5";
         int label1Width = fm.stringWidth(label1);
         g.drawString(label1, x + section1Center - label1Width / 2, y + height / 2 + 5);
 
         // S2 라벨
-        String label2 = "3~5";
+        String label2 = "6~9";
         int label2Width = fm.stringWidth(label2);
         g.drawString(label2, x + section2Center - label2Width / 2, y + height / 2 + 5);
 
         // S3 라벨
-        String label3 = "5~6";
+        String label3 = "10~12";
         int label3Width = fm.stringWidth(label3);
         g.drawString(label3, x + section3Center - label3Width / 2, y + height / 2 + 5);
     }

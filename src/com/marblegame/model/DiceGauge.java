@@ -86,54 +86,42 @@ public class DiceGauge {
     /**
      * 구간별 편향 확률로 2D6 주사위 굴리기
      * @param section 구간 (1, 2, 3)
-     * @return 주사위 합
+     * @return 주사위 합 (2~12)
      */
     private int rollBiased(int section) {
-        int d1, d2;
-
         if (section == 1) {
-            // S1: 2~3이 60% 확률
+            // S1: 2~5가 60% 확률
             if (Math.random() < BIAS) {
-                // 2~3 범위: (1,1), (1,2), (2,1) 중 선택
-                double r = Math.random();
-                if (r < 0.33) {
-                    d1 = 1; d2 = 1; // 합 2
-                } else if (r < 0.67) {
-                    d1 = 1; d2 = 2; // 합 3
-                } else {
-                    d1 = 2; d2 = 1; // 합 3
-                }
+                int sum = 2 + (int)(Math.random() * 4); // 2, 3, 4, 5 중 선택
+                return sum;
             } else {
-                // 나머지 40%: 4~12 균등 분배
-                d1 = rollDiceForNonBiased(4, 12);
-                d2 = 0; // d1에 이미 합이 포함됨
-                return d1;
+                // 나머지 40%: 6~12 균등 분배
+                int sum = 6 + (int)(Math.random() * 7); // 6, 7, 8, 9, 10, 11, 12 중 선택
+                return sum;
             }
         } else if (section == 2) {
-            // S2: 3~5가 60% 확률
+            // S2: 6~9가 60% 확률
             if (Math.random() < BIAS) {
-                int sum = 3 + (int)(Math.random() * 3); // 3, 4, 5 중 선택
-                return rollDiceForSum(sum);
+                int sum = 6 + (int)(Math.random() * 4); // 6, 7, 8, 9 중 선택
+                return sum;
             } else {
-                // 나머지 40%: 2, 6~12 균등 분배
-                int[] others = {2, 6, 7, 8, 9, 10, 11, 12};
+                // 나머지 40%: 2~5, 10~12 균등 분배
+                // 2~5: 4개, 10~12: 3개 = 총 7개
+                int[] others = {2, 3, 4, 5, 10, 11, 12};
                 int sum = others[(int)(Math.random() * others.length)];
-                return rollDiceForSum(sum);
+                return sum;
             }
         } else {
-            // S3: 5~6이 60% 확률
+            // S3: 10~12가 60% 확률
             if (Math.random() < BIAS) {
-                int sum = 5 + (int)(Math.random() * 2); // 5, 6 중 선택
-                return rollDiceForSum(sum);
+                int sum = 10 + (int)(Math.random() * 3); // 10, 11, 12 중 선택
+                return sum;
             } else {
-                // 나머지 40%: 2~4, 7~12 균등 분배
-                int[] others = {2, 3, 4, 7, 8, 9, 10, 11, 12};
-                int sum = others[(int)(Math.random() * others.length)];
-                return rollDiceForSum(sum);
+                // 나머지 40%: 2~9 균등 분배
+                int sum = 2 + (int)(Math.random() * 8); // 2, 3, 4, 5, 6, 7, 8, 9 중 선택
+                return sum;
             }
         }
-
-        return d1 + d2;
     }
 
     /**

@@ -83,15 +83,15 @@ public class GameUI {
             public void mousePressed(MouseEvent e) {
                 if (diceButton.isEnabled()) {
                     // 게이지 시작
-                    frame.getControlPanel().getDiceGauge().start();
-                    frame.getControlPanel().startGaugeAnimation();
+                    frame.getActionPanel().getDiceGauge().start();
+                    frame.getActionPanel().startGaugeAnimation();
                     log("🎯 게이지 타이밍을 잡으세요!");
                 }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (diceButton.isEnabled() && frame.getControlPanel().getDiceGauge().isRunning()) {
+                if (diceButton.isEnabled() && frame.getActionPanel().getDiceGauge().isRunning()) {
                     // 게이지 정지 및 주사위 굴리기
                     rollDiceWithGauge();
                 }
@@ -145,18 +145,44 @@ public class GameUI {
 
         if (state == GameState.WAITING_FOR_ROLL) {
             // 게이지 정지 및 결과 생성
-            int result = frame.getControlPanel().getDiceGauge().stop();
-            frame.getControlPanel().stopGaugeAnimation();
+            int result = frame.getActionPanel().getDiceGauge().stop();
+            frame.getActionPanel().stopGaugeAnimation();
 
-            int section = frame.getControlPanel().getDiceGauge().getCurrentSection();
+            int section = frame.getActionPanel().getDiceGauge().getCurrentSection();
             String sectionName = getSectionName(section);
 
-            log("🎯 구간: " + sectionName + " → 주사위 결과: " + result);
+            log("🎯 구간: " + sectionName);
 
-            movePlayer(result);
+            // 주사위 2개로 분할 (2~12 범위를 2D6로 변환)
+            int tempD1, tempD2;
+            if (result <= 7) {
+                // 2~7: d1 = 1~6, d2 = result - d1
+                tempD1 = 1 + (int)(Math.random() * Math.min(6, result - 1));
+                tempD2 = result - tempD1;
+                if (tempD2 > 6) {
+                    tempD1 = result - 6;
+                    tempD2 = 6;
+                }
+            } else {
+                // 8~12: d1 = result - 6 ~ 6
+                tempD1 = Math.max(result - 6, 1 + (int)(Math.random() * 6));
+                tempD2 = result - tempD1;
+                if (tempD1 > 6) tempD1 = 6;
+                if (tempD2 > 6) tempD2 = 6;
+            }
+
+            // final 변수로 복사 (람다 사용을 위해)
+            final int finalD1 = tempD1;
+            final int finalD2 = tempD2;
+            final int finalResult = result;
+
+            // 주사위 애니메이션 시작
+            frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
+                log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
+                movePlayer(finalResult);
+                updateDisplay();
+            });
         }
-
-        updateDisplay();
     }
 
     /**
@@ -164,9 +190,9 @@ public class GameUI {
      */
     private String getSectionName(int section) {
         switch (section) {
-            case 1: return "S1 (2~3 우대)";
-            case 2: return "S2 (3~5 우대)";
-            case 3: return "S3 (5~6 우대)";
+            case 1: return "S1 (2~5 우대)";
+            case 2: return "S2 (6~9 우대)";
+            case 3: return "S3 (10~12 우대)";
             default: return "Unknown";
         }
     }

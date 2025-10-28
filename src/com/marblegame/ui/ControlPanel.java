@@ -33,48 +33,24 @@ public class ControlPanel extends JPanel {
     private JPanel buttonContainer;
     private JPanel logPanel;
 
-    // 주사위 게이지
-    private DiceGauge diceGauge;
-    private GaugePanel gaugePanel;
-
     public ControlPanel() {
         setLayout(new BorderLayout(15, 15));
-        setPreferredSize(new Dimension(1000, 310)); // 게이지 공간 추가
+        setPreferredSize(new Dimension(1000, 250)); // 높이 축소
         setBackground(new Color(44, 62, 80));
         setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        // 게이지 초기화
-        diceGauge = new DiceGauge();
 
         initComponents();
     }
 
     private void initComponents() {
-        // 전체 레이아웃
-        JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
-        mainPanel.setBackground(new Color(44, 62, 80));
-
         // 로그 영역 (좌측)
         logPanel = createLogPanel();
 
         // 컨트롤 버튼 패널 (우측) - 동적으로 변경 가능하게 생성
         JPanel controlPanel = createControlPanelContainer();
 
-        mainPanel.add(logPanel, BorderLayout.CENTER);
-        mainPanel.add(controlPanel, BorderLayout.EAST);
-
-        // 게이지 패널 (하단)
-        gaugePanel = new GaugePanel(diceGauge);
-        JPanel gaugeContainer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        gaugeContainer.setBackground(new Color(44, 62, 80));
-        gaugeContainer.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(52, 152, 219), 2),
-            new EmptyBorder(5, 5, 5, 5)
-        ));
-        gaugeContainer.add(gaugePanel);
-
-        add(mainPanel, BorderLayout.CENTER);
-        add(gaugeContainer, BorderLayout.SOUTH);
+        add(logPanel, BorderLayout.CENTER);
+        add(controlPanel, BorderLayout.EAST);
 
         // 버튼 생성 (초기화만, 화면에는 추가하지 않음)
         rollDiceButton = createInteractiveButton("🎲 주사위 굴리기", rollDiceColor);
@@ -283,27 +259,6 @@ public class ControlPanel extends JPanel {
 
     public void setEscapeListener(ActionListener listener) {
         escapeButton.addActionListener(listener);
-    }
-
-    /**
-     * 주사위 게이지 접근자
-     */
-    public DiceGauge getDiceGauge() {
-        return diceGauge;
-    }
-
-    /**
-     * 게이지 애니메이션 시작
-     */
-    public void startGaugeAnimation() {
-        gaugePanel.startAnimation();
-    }
-
-    /**
-     * 게이지 애니메이션 정지
-     */
-    public void stopGaugeAnimation() {
-        gaugePanel.stopAnimation();
     }
 
     /**
