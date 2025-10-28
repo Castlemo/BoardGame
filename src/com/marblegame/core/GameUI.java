@@ -3,6 +3,8 @@ package com.marblegame.core;
 import com.marblegame.model.*;
 import com.marblegame.ui.*;
 import javax.swing.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 /**
  * UI 버전 게임 컨트롤러
@@ -51,8 +53,8 @@ public class GameUI {
     }
 
     private void setupEventHandlers() {
-        // 주사위 굴리기
-        frame.getControlPanel().setRollDiceListener(e -> rollDice());
+        // 주사위 굴리기 - press-and-hold 이벤트
+        setupDiceButtonPressAndHold();
 
         // 매입
         frame.getControlPanel().setPurchaseListener(e -> purchaseCity());
@@ -68,6 +70,33 @@ public class GameUI {
 
         // 보석금 탈출
         frame.getControlPanel().setEscapeListener(e -> escapeWithBail());
+    }
+
+    /**
+     * 주사위 버튼에 press-and-hold 이벤트 설정
+     */
+    private void setupDiceButtonPressAndHold() {
+        JButton diceButton = frame.getControlPanel().getRollDiceButton();
+
+        diceButton.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (diceButton.isEnabled()) {
+                    // 게이지 시작
+                    frame.getControlPanel().getDiceGauge().start();
+                    frame.getControlPanel().startGaugeAnimation();
+                    log("🎯 게이지 타이밍을 잡으세요!");
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (diceButton.isEnabled() && frame.getControlPanel().getDiceGauge().isRunning()) {
+                    // 게이지 정지 및 주사위 굴리기
+                    rollDiceWithGauge();
+                }
+            }
+        });
     }
 
     private void startTurn() {
@@ -106,6 +135,40 @@ public class GameUI {
         }
 
         updateDisplay();
+    }
+
+    /**
+     * 게이지 기반 주사위 굴리기
+     */
+    private void rollDiceWithGauge() {
+        Player player = players[currentPlayerIndex];
+
+        if (state == GameState.WAITING_FOR_ROLL) {
+            // 게이지 정지 및 결과 생성
+            int result = frame.getControlPanel().getDiceGauge().stop();
+            frame.getControlPanel().stopGaugeAnimation();
+
+            int section = frame.getControlPanel().getDiceGauge().getCurrentSection();
+            String sectionName = getSectionName(section);
+
+            log("🎯 구간: " + sectionName + " → 주사위 결과: " + result);
+
+            movePlayer(result);
+        }
+
+        updateDisplay();
+    }
+
+    /**
+     * 구간 이름 반환
+     */
+    private String getSectionName(int section) {
+        switch (section) {
+            case 1: return "S1 (2~3 우대)";
+            case 2: return "S2 (3~5 우대)";
+            case 3: return "S3 (5~6 우대)";
+            default: return "Unknown";
+        }
     }
 
     private void rollDice() {
