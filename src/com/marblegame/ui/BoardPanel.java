@@ -7,11 +7,11 @@ import java.util.List;
 
 /**
  * 게임 보드를 그래픽으로 렌더링하는 패널
- * 28칸을 정사각형 형태로 배치
+ * 44칸을 정사각형 형태로 배치
  */
 public class BoardPanel extends JPanel {
-    private static final int TILE_SIZE = 90;
-    private static final int BOARD_SIZE = 8; // 한 변에 8칸
+    private static final int TILE_SIZE = 60;
+    private static final int BOARD_SIZE = 12; // 한 변에 12칸
     private static final Color[] PLAYER_COLORS = {
         new Color(231, 76, 60),   // Red
         new Color(52, 152, 219),  // Blue
@@ -41,26 +41,31 @@ public class BoardPanel extends JPanel {
     }
 
     private void drawBoard(Graphics2D g) {
-        // 상단 (0-7)
-        for (int i = 0; i < 8; i++) {
-            drawTile(g, i, i * TILE_SIZE, 0);
+        // 44칸 보드: 12x12 그리드
+        // 반시계 방향: 출발(우하) → 무인도(좌하) → 복지기금(좌상) → 전국철도(우상) → 출발
+
+        // 하단 (우→좌): 0(출발), 1-10, 11(무인도) = 12칸
+        for (int i = 0; i <= 11; i++) {
+            int x = (11 - i) * TILE_SIZE;
+            drawTile(g, i, x, 11 * TILE_SIZE);
         }
 
-        // 우측 (8-13)
-        for (int i = 8; i <= 13; i++) {
-            drawTile(g, i, 7 * TILE_SIZE, (i - 7) * TILE_SIZE);
-        }
-
-        // 하단 (14-20)
-        for (int i = 14; i <= 20; i++) {
-            int x = (7 - (i - 14)) * TILE_SIZE;
-            drawTile(g, i, x, 7 * TILE_SIZE);
-        }
-
-        // 좌측 (21-27)
-        for (int i = 21; i <= 27; i++) {
-            int y = (7 - (i - 21)) * TILE_SIZE;
+        // 좌측 (하→상): 12-21, 22(복지기금) = 11칸 (11번 무인도는 이미 그려짐)
+        for (int i = 12; i <= 22; i++) {
+            int y = (11 - (i - 11)) * TILE_SIZE;
             drawTile(g, i, 0, y);
+        }
+
+        // 상단 (좌→우): 23-32, 33(전국철도) = 11칸 (22번 복지기금은 이미 그려짐)
+        for (int i = 23; i <= 33; i++) {
+            int x = (i - 22) * TILE_SIZE;
+            drawTile(g, i, x, 0);
+        }
+
+        // 우측 (상→하): 34-43 = 10칸 (33번 전국철도는 이미 그려짐, 0번 출발로 순환)
+        for (int i = 34; i <= 43; i++) {
+            int y = (i - 33) * TILE_SIZE;
+            drawTile(g, i, 11 * TILE_SIZE, y);
         }
 
         // 중앙 로고
@@ -92,41 +97,73 @@ public class BoardPanel extends JPanel {
 
                 // 큰 빨간 X 표시
                 g.setColor(new Color(192, 57, 43));
-                g.setStroke(new BasicStroke(8));
-                g.drawLine(x + 15, y + 15, x + TILE_SIZE - 15, y + TILE_SIZE - 15);
-                g.drawLine(x + 15, y + TILE_SIZE - 15, x + TILE_SIZE - 15, y + 15);
+                g.setStroke(new BasicStroke(6));
+                g.drawLine(x + 12, y + 12, x + TILE_SIZE - 12, y + TILE_SIZE - 12);
+                g.drawLine(x + 12, y + TILE_SIZE - 12, x + TILE_SIZE - 12, y + 12);
 
                 // 삭제됨 텍스트
                 g.setColor(new Color(236, 240, 241));
-                g.setFont(new Font("맑은 고딕", Font.BOLD, 10));
+                g.setFont(new Font("맑은 고딕", Font.BOLD, 9));
                 String deletedText = "삭제됨";
                 FontMetrics fm = g.getFontMetrics();
                 int textWidth = fm.stringWidth(deletedText);
-                g.drawString(deletedText, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE / 2 + 20);
+                g.drawString(deletedText, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE / 2 + 15);
                 return; // 더 이상 그리지 않음
             }
 
             // 컬러 바 (상단)
             g.setColor(getColorGroupColor(city.colorGroup));
-            g.fillRoundRect(x + 4, y + 4, TILE_SIZE - 8, 12, 5, 5);
+            g.fillRoundRect(x + 4, y + 4, TILE_SIZE - 8, 10, 5, 5);
 
             if (city.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)
                 g.setColor(PLAYER_COLORS[city.owner]);
-                g.fillOval(x + 8, y + 20, 20, 20);
+                g.fillOval(x + 6, y + 16, 16, 16);
 
                 g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 12));
-                g.drawString(String.valueOf((char)('A' + city.owner)), x + 14, y + 34);
+                g.setFont(new Font("Arial", Font.BOLD, 10));
+                g.drawString(String.valueOf((char)('A' + city.owner)), x + 11, y + 27);
 
                 // 레벨 표시 (별)
                 if (city.level > 0) {
                     g.setColor(new Color(241, 196, 15)); // 금색
-                    g.setFont(new Font("Arial", Font.BOLD, 10));
+                    g.setFont(new Font("Arial", Font.BOLD, 9));
                     for (int i = 0; i < city.level; i++) {
-                        g.drawString("★", x + 32 + i * 12, y + 34);
+                        g.drawString("★", x + 24 + i * 10, y + 27);
                     }
                 }
+            }
+        } else if (tile instanceof Palace) {
+            // 궁(관광지)인 경우 소유자 표시
+            Palace palace = (Palace) tile;
+
+            // 삭제된 칸인 경우 X 표시
+            if (palace.isDeleted) {
+                g.setColor(new Color(44, 62, 80, 200));
+                g.fillRoundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10, 10);
+
+                g.setColor(new Color(192, 57, 43));
+                g.setStroke(new BasicStroke(6));
+                g.drawLine(x + 12, y + 12, x + TILE_SIZE - 12, y + TILE_SIZE - 12);
+                g.drawLine(x + 12, y + TILE_SIZE - 12, x + TILE_SIZE - 12, y + 12);
+
+                g.setColor(new Color(236, 240, 241));
+                g.setFont(new Font("맑은 고딕", Font.BOLD, 9));
+                String deletedText = "삭제됨";
+                FontMetrics fm = g.getFontMetrics();
+                int textWidth = fm.stringWidth(deletedText);
+                g.drawString(deletedText, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE / 2 + 15);
+                return;
+            }
+
+            if (palace.isOwned()) {
+                // 소유자 표시 (좌측 상단 원)
+                g.setColor(PLAYER_COLORS[palace.owner]);
+                g.fillOval(x + 6, y + 16, 16, 16);
+
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Arial", Font.BOLD, 10));
+                g.drawString(String.valueOf((char)('A' + palace.owner)), x + 11, y + 27);
             }
         }
 
@@ -148,7 +185,7 @@ public class BoardPanel extends JPanel {
     }
 
     private void drawTileIcon(Graphics2D g, Tile tile, int x, int y) {
-        g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+        g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
         String icon = "";
 
         switch (tile.type) {
@@ -161,10 +198,19 @@ public class BoardPanel extends JPanel {
             case CHANCE:
                 icon = "🎁";
                 break;
+            case PALACE:
+                icon = "🏛";
+                break;
+            case WELFARE:
+                icon = "💰";
+                break;
+            case RAILROAD:
+                icon = "🚆";
+                break;
         }
 
         if (!icon.isEmpty()) {
-            g.drawString(icon, x + TILE_SIZE/2 - 12, y + TILE_SIZE/2 + 8);
+            g.drawString(icon, x + TILE_SIZE/2 - 10, y + TILE_SIZE/2 + 7);
         }
     }
 
@@ -176,6 +222,12 @@ public class BoardPanel extends JPanel {
                 return new Color(52, 73, 94); // 어두운 파랑
             case CHANCE:
                 return new Color(142, 68, 173); // 보라색
+            case PALACE:
+                return new Color(155, 89, 182); // 자주색 (궁)
+            case WELFARE:
+                return new Color(52, 152, 219); // 밝은 파랑 (복지기금)
+            case RAILROAD:
+                return new Color(22, 160, 133); // 청록색 (철도)
             case CITY:
                 return new Color(52, 73, 94); // 기본 어두운 파랑
         }
@@ -201,9 +253,9 @@ public class BoardPanel extends JPanel {
 
             Point pos = getTilePosition(player.pos);
 
-            // 플레이어 위치 조정
-            int offsetX = (i % 2) * 25 + 5;
-            int offsetY = (i / 2) * 30 + 40;
+            // 플레이어 위치 조정 (타일 크기 60px에 맞게)
+            int offsetX = (i % 2) * 20 + 5;
+            int offsetY = (i / 2) * 25 + 35;
 
             drawPlayerIcon(g, pos.x + offsetX, pos.y + offsetY, PLAYER_COLORS[i], (char)('A' + i));
         }
@@ -260,29 +312,34 @@ public class BoardPanel extends JPanel {
     }
 
     private Point getTilePosition(int tileIndex) {
-        // 상단 (0-7)
-        if (tileIndex < 8) {
-            return new Point(tileIndex * TILE_SIZE, 0);
+        // 44칸 보드 위치 계산
+        // 하단 (우→좌): 0-11
+        if (tileIndex <= 11) {
+            int x = (11 - tileIndex) * TILE_SIZE;
+            return new Point(x, 11 * TILE_SIZE);
         }
-        // 우측 (8-13)
-        else if (tileIndex <= 13) {
-            return new Point(7 * TILE_SIZE, (tileIndex - 7) * TILE_SIZE);
+        // 좌측 (하→상): 12-22
+        else if (tileIndex <= 22) {
+            int y = (11 - (tileIndex - 11)) * TILE_SIZE;
+            return new Point(0, y);
         }
-        // 하단 (14-20)
-        else if (tileIndex <= 20) {
-            return new Point((7 - (tileIndex - 14)) * TILE_SIZE, 7 * TILE_SIZE);
+        // 상단 (좌→우): 23-33
+        else if (tileIndex <= 33) {
+            int x = (tileIndex - 22) * TILE_SIZE;
+            return new Point(x, 0);
         }
-        // 좌측 (21-27)
+        // 우측 (상→하): 34-43
         else {
-            return new Point(0, (7 - (tileIndex - 21)) * TILE_SIZE);
+            int y = (tileIndex - 33) * TILE_SIZE;
+            return new Point(11 * TILE_SIZE, y);
         }
     }
 
     private void drawCenterLogo(Graphics2D g) {
         int centerX = TILE_SIZE * 2;
         int centerY = TILE_SIZE * 2;
-        int centerW = TILE_SIZE * 4;
-        int centerH = TILE_SIZE * 4;
+        int centerW = TILE_SIZE * 8;
+        int centerH = TILE_SIZE * 8;
 
         // 배경
         g.setColor(new Color(236, 240, 241));
@@ -294,19 +351,26 @@ public class BoardPanel extends JPanel {
             centerX, centerY + centerH, new Color(41, 128, 185)
         );
         g.setPaint(gradient);
-        g.fillRoundRect(centerX + 20, centerY + 20, centerW - 40, centerH - 40, 15, 15);
+        g.fillRoundRect(centerX + 15, centerY + 15, centerW - 30, centerH - 30, 15, 15);
 
         // 타이틀
         g.setColor(Color.WHITE);
-        g.setFont(new Font("맑은 고딕", Font.BOLD, 32));
-        g.drawString("모두의", centerX + 85, centerY + 130);
-        g.setFont(new Font("맑은 고딕", Font.BOLD, 40));
-        g.drawString("마블", centerX + 95, centerY + 180);
+        g.setFont(new Font("맑은 고딕", Font.BOLD, 48));
+        String title1 = "모두의";
+        FontMetrics fm1 = g.getFontMetrics();
+        int x1 = centerX + (centerW - fm1.stringWidth(title1)) / 2;
+        g.drawString(title1, x1, centerY + centerH / 2 - 20);
+
+        g.setFont(new Font("맑은 고딕", Font.BOLD, 56));
+        String title2 = "마블";
+        FontMetrics fm2 = g.getFontMetrics();
+        int x2 = centerX + (centerW - fm2.stringWidth(title2)) / 2;
+        g.drawString(title2, x2, centerY + centerH / 2 + 40);
 
         // 버전
         g.setFont(new Font("Arial", Font.PLAIN, 14));
         g.setColor(new Color(236, 240, 241));
-        g.drawString("v2.0", centerX + centerW - 60, centerY + centerH - 30);
+        g.drawString("v2.0", centerX + centerW - 50, centerY + centerH - 20);
     }
 
     public void updateBoard() {
