@@ -50,7 +50,7 @@ public class InfoPanel extends JPanel {
     private JPanel createTurnPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setMaximumSize(new Dimension(250, 80));
+        panel.setMaximumSize(new Dimension(250, 85));
         panel.setBackground(new Color(52, 73, 94));
         panel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(new Color(41, 128, 185), 2),
@@ -78,7 +78,7 @@ public class InfoPanel extends JPanel {
         Player player = players.get(index);
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout(10, 5));
-        panel.setMaximumSize(new Dimension(250, 120));
+        panel.setMaximumSize(new Dimension(250, 105));
         panel.setBackground(new Color(52, 73, 94));
         panel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(PLAYER_COLORS[index], 3),

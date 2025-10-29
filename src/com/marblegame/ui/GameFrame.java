@@ -71,18 +71,13 @@ public class GameFrame extends JFrame {
         rightPanel.setBackground(new Color(44, 62, 80));
         rightPanel.setPreferredSize(new Dimension(320, 0));
 
-        // 정보 패널 (우측 상단) - 스크롤 가능
+        // 정보 패널 (우측 상단)
         infoPanel = new InfoPanel(players);
-        JScrollPane infoScrollPane = new JScrollPane(infoPanel);
-        infoScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        infoScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        infoScrollPane.setBorder(null);
-        infoScrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         // 액션 패널 (우측 하단) - 고정
         actionPanel = new ActionPanel();
 
-        rightPanel.add(infoScrollPane, BorderLayout.CENTER);
+        rightPanel.add(infoPanel, BorderLayout.CENTER);
         rightPanel.add(actionPanel, BorderLayout.SOUTH);
 
         // 컨트롤 패널 (하단) - 스크롤 가능

@@ -26,8 +26,9 @@ public class DiceAnimationPanel extends JPanel {
     private static final Color DICE_BORDER = new Color(189, 195, 199);
 
     public DiceAnimationPanel() {
-        setPreferredSize(new Dimension(150, 80));
+        setPreferredSize(new Dimension(150, 90));
         setBackground(new Color(44, 62, 80));
+        setOpaque(false);
     }
 
     /**

@@ -15,10 +15,10 @@ public class ActionPanel extends JPanel {
     private DiceAnimationPanel diceAnimationPanel;
 
     public ActionPanel() {
-        setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout(0, 0));
         setBackground(new Color(44, 62, 80));
-        setPreferredSize(new Dimension(300, 200));
-        setBorder(new EmptyBorder(10, 10, 10, 10));
+        setPreferredSize(new Dimension(300, 280));
+        setBorder(new EmptyBorder(8, 8, 8, 8));
 
         // 게이지 초기화
         diceGauge = new DiceGauge();
@@ -27,46 +27,66 @@ public class ActionPanel extends JPanel {
     }
 
     private void initComponents() {
-        // 전체를 세로로 배치
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBackground(new Color(44, 62, 80));
+        // 메인 컨테이너 - 그라데이션 배경과 라운드 모서리
+        JPanel container = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 제목
-        JLabel titleLabel = new JLabel("🎯 주사위 컨트롤");
-        titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 14));
+                // 그라데이션 배경
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, new Color(52, 73, 94),
+                    0, getHeight(), new Color(44, 62, 80)
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+
+                // 외곽선
+                g2d.setColor(new Color(149, 165, 166));
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 15, 15);
+            }
+        };
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setOpaque(false);
+        container.setBorder(new EmptyBorder(12, 12, 12, 12));
+
+        // 제목 - 더 큰 폰트와 아이콘
+        JLabel titleLabel = new JLabel("🎲 주사위 컨트롤");
+        titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
         titleLabel.setForeground(new Color(236, 240, 241));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mainPanel.add(titleLabel);
-        mainPanel.add(Box.createVerticalStrut(10));
+        container.add(titleLabel);
+
+        // 구분선
+        JSeparator separator = new JSeparator();
+        separator.setForeground(new Color(149, 165, 166, 100));
+        separator.setMaximumSize(new Dimension(260, 1));
+        container.add(Box.createVerticalStrut(8));
+        container.add(separator);
+        container.add(Box.createVerticalStrut(12));
 
         // 주사위 애니메이션 패널
         diceAnimationPanel = new DiceAnimationPanel();
-        JPanel diceContainer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        diceContainer.setBackground(new Color(44, 62, 80));
-        diceContainer.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(231, 76, 60), 2),
-            new EmptyBorder(5, 5, 5, 5)
-        ));
+        JPanel diceContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        diceContainer.setOpaque(false);
         diceContainer.add(diceAnimationPanel);
-        diceContainer.setMaximumSize(new Dimension(280, 100));
-        mainPanel.add(diceContainer);
+        container.add(diceContainer);
 
-        mainPanel.add(Box.createVerticalStrut(10));
+        container.add(Box.createVerticalStrut(15));
 
         // 게이지 패널
         gaugePanel = new GaugePanel(diceGauge);
-        JPanel gaugeContainer = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        gaugeContainer.setBackground(new Color(44, 62, 80));
-        gaugeContainer.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(52, 152, 219), 2),
-            new EmptyBorder(5, 5, 5, 5)
-        ));
+        JPanel gaugeContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        gaugeContainer.setOpaque(false);
         gaugeContainer.add(gaugePanel);
-        gaugeContainer.setMaximumSize(new Dimension(280, 80));
-        mainPanel.add(gaugeContainer);
+        container.add(gaugeContainer);
 
-        add(mainPanel, BorderLayout.CENTER);
+        container.add(Box.createVerticalStrut(10));
+
+        add(container, BorderLayout.CENTER);
     }
 
     /**

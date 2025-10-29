@@ -92,6 +92,30 @@ public class RuleEngine {
     }
 
     /**
+     * 궁(Palace) 매입 처리
+     */
+    public boolean purchasePalace(Player player, Palace palace, int playerIndex) {
+        if (palace.isOwned()) {
+            return false;
+        }
+
+        if (!player.canAfford(palace.price)) {
+            return false;
+        }
+
+        player.pay(palace.price);
+        palace.owner = playerIndex;
+        return true;
+    }
+
+    /**
+     * 궁(Palace) 통행료 계산 (고정 금액)
+     */
+    public int calculatePalaceToll(Palace palace) {
+        return palace.toll;
+    }
+
+    /**
      * 도시 업그레이드 처리
      */
     public boolean upgradeCity(Player player, City city) {

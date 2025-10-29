@@ -241,6 +241,10 @@ public class GameUI {
                 handleCityTile((City) currentTile);
                 break;
 
+            case PALACE:
+                handlePalaceTile((Palace) currentTile);
+                break;
+
             case ISLAND:
                 log("무인도에 도착했습니다!");
                 player.jailTurns = 2; // 2턴 갇힘
@@ -251,6 +255,16 @@ public class GameUI {
             case CHANCE:
                 ruleEngine.processChance(player);
                 log("찬스 카드! " + String.format("%,d", ruleEngine.getChanceReward()) + "원을 받았습니다!");
+                endTurn();
+                break;
+
+            case WELFARE:
+                log("사회복지기금에 도착했습니다! (기능 미구현)");
+                endTurn();
+                break;
+
+            case RAILROAD:
+                log("전국철도에 도착했습니다! (기능 미구현)");
                 endTurn();
                 break;
         }
@@ -303,14 +317,55 @@ public class GameUI {
         }
     }
 
+    private void handlePalaceTile(Palace palace) {
+        Player player = players[currentPlayerIndex];
+
+        if (!palace.isOwned()) {
+            // 미소유 궁
+            log(palace.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", palace.price) + "원)");
+            log("(관광지는 업그레이드가 불가능합니다)");
+            state = GameState.WAITING_FOR_ACTION;
+            frame.getControlPanel().setButtonsEnabled(false, true, false, false, true, false);
+        } else if (palace.owner == currentPlayerIndex) {
+            // 본인 소유 궁
+            log(palace.name + "은(는) 본인 소유 관광지입니다.");
+            log("(관광지는 업그레이드가 불가능합니다)");
+            endTurn();
+        } else {
+            // 타인 소유 궁
+            Player owner = players[palace.owner];
+            int toll = ruleEngine.calculatePalaceToll(palace);
+
+            log(palace.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+            log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+
+            ruleEngine.payToll(player, owner, toll);
+
+            if (player.bankrupt) {
+                log(player.name + "이(가) 파산했습니다!");
+            }
+
+            endTurn();
+        }
+    }
+
     private void purchaseCity() {
         Player player = players[currentPlayerIndex];
-        City city = (City) currentTile;
 
-        if (ruleEngine.purchaseCity(player, city, currentPlayerIndex)) {
-            log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
-        } else {
-            log("자금이 부족하여 매입할 수 없습니다.");
+        if (currentTile instanceof City) {
+            City city = (City) currentTile;
+            if (ruleEngine.purchaseCity(player, city, currentPlayerIndex)) {
+                log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
+            } else {
+                log("자금이 부족하여 매입할 수 없습니다.");
+            }
+        } else if (currentTile instanceof Palace) {
+            Palace palace = (Palace) currentTile;
+            if (ruleEngine.purchasePalace(player, palace, currentPlayerIndex)) {
+                log(player.name + "이(가) " + palace.name + "을(를) " + String.format("%,d", palace.price) + "원에 매입했습니다!");
+            } else {
+                log("자금이 부족하여 매입할 수 없습니다.");
+            }
         }
 
         endTurn();
