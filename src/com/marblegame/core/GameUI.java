@@ -234,18 +234,22 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
+                frame.getBoardPanel().showNotification("출발", "통과!", new java.awt.Color(46, 204, 113));
                 endTurn();
                 break;
 
             case CITY:
+                frame.getBoardPanel().showNotification(currentTile.name, "도착!", java.awt.Color.WHITE);
                 handleCityTile((City) currentTile);
                 break;
 
             case PALACE:
+                frame.getBoardPanel().showNotification(currentTile.name, "도착!", new java.awt.Color(155, 89, 182));
                 handlePalaceTile((Palace) currentTile);
                 break;
 
             case ISLAND:
+                frame.getBoardPanel().showNotification("무인도", "갇힘!", new java.awt.Color(127, 140, 141));
                 log("무인도에 도착했습니다!");
                 player.jailTurns = 2; // 2턴 갇힘
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
@@ -254,16 +258,19 @@ public class GameUI {
 
             case CHANCE:
                 ruleEngine.processChance(player);
+                frame.getBoardPanel().showNotification("찬스", "보너스!", new java.awt.Color(241, 196, 15));
                 log("찬스 카드! " + String.format("%,d", ruleEngine.getChanceReward()) + "원을 받았습니다!");
                 endTurn();
                 break;
 
             case WELFARE:
+                frame.getBoardPanel().showNotification("사회복지기금", "도착!", new java.awt.Color(52, 152, 219));
                 log("사회복지기금에 도착했습니다! (기능 미구현)");
                 endTurn();
                 break;
 
             case RAILROAD:
+                frame.getBoardPanel().showNotification("전국철도", "도착!", new java.awt.Color(22, 160, 133));
                 log("전국철도에 도착했습니다! (기능 미구현)");
                 endTurn();
                 break;
@@ -300,6 +307,9 @@ public class GameUI {
 
             log(city.name + "은(는) " + owner.name + "의 소유입니다. (레벨: " + city.level + ")");
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+
+            // 통행료 지불 알림
+            frame.getBoardPanel().showNotification("통행료", String.format("%,d원 지불", toll), new java.awt.Color(231, 76, 60));
 
             ruleEngine.payToll(player, owner, toll);
 
@@ -339,6 +349,9 @@ public class GameUI {
             log(palace.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
+            // 통행료 지불 알림
+            frame.getBoardPanel().showNotification("통행료", String.format("%,d원 지불", toll), new java.awt.Color(231, 76, 60));
+
             ruleEngine.payToll(player, owner, toll);
 
             if (player.bankrupt) {
@@ -356,6 +369,7 @@ public class GameUI {
             City city = (City) currentTile;
             if (ruleEngine.purchaseCity(player, city, currentPlayerIndex)) {
                 log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
+                frame.getBoardPanel().showNotification(city.name, "구매 완료!", new java.awt.Color(46, 204, 113));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -363,6 +377,7 @@ public class GameUI {
             Palace palace = (Palace) currentTile;
             if (ruleEngine.purchasePalace(player, palace, currentPlayerIndex)) {
                 log(player.name + "이(가) " + palace.name + "을(를) " + String.format("%,d", palace.price) + "원에 매입했습니다!");
+                frame.getBoardPanel().showNotification(palace.name, "구매 완료!", new java.awt.Color(155, 89, 182));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -377,6 +392,7 @@ public class GameUI {
 
         if (ruleEngine.upgradeCity(player, city)) {
             log(city.name + "을(를) 레벨 " + city.level + "로 업그레이드했습니다!");
+            frame.getBoardPanel().showNotification(city.name, "레벨 " + city.level + " 업그레이드!", new java.awt.Color(52, 152, 219));
         } else {
             log("자금이 부족하여 업그레이드할 수 없습니다.");
         }
@@ -395,6 +411,7 @@ public class GameUI {
             log(buyer.name + "이(가) " + seller.name + "으로부터 " + city.name + "을(를) " +
                 String.format("%,d", takeoverCost) + "원에 인수했습니다!");
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
+            frame.getBoardPanel().showNotification(city.name, "인수 완료!", new java.awt.Color(230, 126, 34));
         } else {
             log("자금이 부족하여 인수할 수 없습니다.");
         }

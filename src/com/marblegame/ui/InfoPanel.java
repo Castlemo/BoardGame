@@ -78,7 +78,7 @@ public class InfoPanel extends JPanel {
         Player player = players.get(index);
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout(10, 5));
-        panel.setMaximumSize(new Dimension(250, 105));
+        panel.setMaximumSize(new Dimension(250, 120));
         panel.setBackground(new Color(52, 73, 94));
         panel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(PLAYER_COLORS[index], 3),

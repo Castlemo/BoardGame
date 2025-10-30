@@ -3,6 +3,8 @@ package com.marblegame.ui;
 import com.marblegame.model.*;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.List;
 
 /**
@@ -21,6 +23,13 @@ public class BoardPanel extends JPanel {
 
     private Board board;
     private List<Player> players;
+
+    // 알림 시스템
+    private String notificationMessage = null;
+    private String notificationSubtext = null;
+    private Color notificationColor = Color.WHITE;
+    private float notificationAlpha = 0.0f;
+    private Timer fadeTimer = null;
 
     public BoardPanel(Board board, List<Player> players) {
         this.board = board;
@@ -345,35 +354,135 @@ public class BoardPanel extends JPanel {
         g.setColor(new Color(236, 240, 241));
         g.fillRoundRect(centerX, centerY, centerW, centerH, 20, 20);
 
-        // 그라데이션 효과
+        // 알림이 있으면 알림 표시
+        if (notificationMessage != null && notificationAlpha > 0) {
+            drawNotification(g, centerX, centerY, centerW, centerH);
+        } else {
+            // 기본 로고 표시
+            // 그라데이션 효과
+            GradientPaint gradient = new GradientPaint(
+                centerX, centerY, new Color(52, 152, 219),
+                centerX, centerY + centerH, new Color(41, 128, 185)
+            );
+            g.setPaint(gradient);
+            g.fillRoundRect(centerX + 15, centerY + 15, centerW - 30, centerH - 30, 15, 15);
+
+            // 타이틀
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("맑은 고딕", Font.BOLD, 48));
+            String title1 = "한성대";
+            FontMetrics fm1 = g.getFontMetrics();
+            int x1 = centerX + (centerW - fm1.stringWidth(title1)) / 2;
+            g.drawString(title1, x1, centerY + centerH / 2 - 20);
+
+            g.setFont(new Font("맑은 고딕", Font.BOLD, 40));
+            String title2 = "객지2";
+            FontMetrics fm2 = g.getFontMetrics();
+            int x2 = centerX + (centerW - fm2.stringWidth(title2)) / 2;
+            g.drawString(title2, x2, centerY + centerH / 2 + 40);
+
+            // 버전
+            g.setFont(new Font("Arial", Font.PLAIN, 14));
+            g.setColor(new Color(236, 240, 241));
+            g.drawString("v2.0", centerX + centerW - 50, centerY + centerH - 20);
+        }
+    }
+
+    private void drawNotification(Graphics2D g, int centerX, int centerY, int centerW, int centerH) {
+        // 투명도가 적용된 그라데이션 배경
+        Composite originalComposite = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, notificationAlpha));
+
         GradientPaint gradient = new GradientPaint(
-            centerX, centerY, new Color(52, 152, 219),
-            centerX, centerY + centerH, new Color(41, 128, 185)
+            centerX, centerY, new Color(44, 62, 80),
+            centerX, centerY + centerH, new Color(52, 73, 94)
         );
         g.setPaint(gradient);
         g.fillRoundRect(centerX + 15, centerY + 15, centerW - 30, centerH - 30, 15, 15);
 
-        // 타이틀
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("맑은 고딕", Font.BOLD, 48));
-        String title1 = "모두의";
-        FontMetrics fm1 = g.getFontMetrics();
-        int x1 = centerX + (centerW - fm1.stringWidth(title1)) / 2;
-        g.drawString(title1, x1, centerY + centerH / 2 - 20);
-
+        // 메인 메시지
+        g.setColor(notificationColor);
         g.setFont(new Font("맑은 고딕", Font.BOLD, 56));
-        String title2 = "마블";
-        FontMetrics fm2 = g.getFontMetrics();
-        int x2 = centerX + (centerW - fm2.stringWidth(title2)) / 2;
-        g.drawString(title2, x2, centerY + centerH / 2 + 40);
+        FontMetrics fm1 = g.getFontMetrics();
+        int msgWidth = fm1.stringWidth(notificationMessage);
+        int msgX = centerX + (centerW - msgWidth) / 2;
+        int msgY = centerY + centerH / 2;
 
-        // 버전
-        g.setFont(new Font("Arial", Font.PLAIN, 14));
-        g.setColor(new Color(236, 240, 241));
-        g.drawString("v2.0", centerX + centerW - 50, centerY + centerH - 20);
+        // 서브텍스트가 있으면 메인 메시지를 위로 올림
+        if (notificationSubtext != null) {
+            msgY -= 30;
+        }
+
+        g.drawString(notificationMessage, msgX, msgY);
+
+        // 서브텍스트
+        if (notificationSubtext != null) {
+            g.setFont(new Font("맑은 고딕", Font.BOLD, 40));
+            FontMetrics fm2 = g.getFontMetrics();
+            int subWidth = fm2.stringWidth(notificationSubtext);
+            int subX = centerX + (centerW - subWidth) / 2;
+            int subY = msgY + 60;
+            g.drawString(notificationSubtext, subX, subY);
+        }
+
+        g.setComposite(originalComposite);
     }
 
     public void updateBoard() {
         repaint();
+    }
+
+    /**
+     * 중앙 영역에 알림 표시 (페이드 인/아웃 효과)
+     * @param message 메인 메시지
+     * @param subtext 서브텍스트 (null 가능)
+     * @param color 메시지 색상
+     */
+    public void showNotification(String message, String subtext, Color color) {
+        // 기존 타이머가 있으면 중지
+        if (fadeTimer != null && fadeTimer.isRunning()) {
+            fadeTimer.stop();
+        }
+
+        this.notificationMessage = message;
+        this.notificationSubtext = subtext;
+        this.notificationColor = color;
+        this.notificationAlpha = 0.0f;
+
+        // 페이드 효과 타이머
+        final int FADE_IN_DURATION = 200;  // 0.2초
+        final int DISPLAY_DURATION = 800; // 0.8초 유지
+        final int FADE_OUT_DURATION = 200; // 0.2초
+        final int TOTAL_DURATION = FADE_IN_DURATION + DISPLAY_DURATION + FADE_OUT_DURATION;
+
+        final long startTime = System.currentTimeMillis();
+
+        fadeTimer = new Timer(16, new ActionListener() { // ~60 FPS
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                long elapsed = System.currentTimeMillis() - startTime;
+
+                if (elapsed < FADE_IN_DURATION) {
+                    // 페이드 인
+                    notificationAlpha = (float) elapsed / FADE_IN_DURATION;
+                } else if (elapsed < FADE_IN_DURATION + DISPLAY_DURATION) {
+                    // 유지
+                    notificationAlpha = 1.0f;
+                } else if (elapsed < TOTAL_DURATION) {
+                    // 페이드 아웃
+                    float fadeOutProgress = (float) (elapsed - FADE_IN_DURATION - DISPLAY_DURATION) / FADE_OUT_DURATION;
+                    notificationAlpha = 1.0f - fadeOutProgress;
+                } else {
+                    // 종료
+                    notificationAlpha = 0.0f;
+                    notificationMessage = null;
+                    notificationSubtext = null;
+                    fadeTimer.stop();
+                }
+
+                repaint();
+            }
+        });
+        fadeTimer.start();
     }
 }
