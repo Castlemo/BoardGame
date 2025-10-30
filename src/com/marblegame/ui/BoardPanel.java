@@ -5,7 +5,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 게임 보드를 그래픽으로 렌더링하는 패널
@@ -31,11 +34,28 @@ public class BoardPanel extends JPanel {
     private float notificationAlpha = 0.0f;
     private Timer fadeTimer = null;
 
+    // 타일 클릭 리스너
+    private Consumer<Integer> tileClickListener = null;
+    private boolean tileClickEnabled = false;
+
     public BoardPanel(Board board, List<Player> players) {
         this.board = board;
         this.players = players;
         setPreferredSize(new Dimension(TILE_SIZE * BOARD_SIZE, TILE_SIZE * BOARD_SIZE));
         setBackground(new Color(44, 62, 80)); // 다크 네이비
+
+        // 마우스 클릭 리스너 추가
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (tileClickEnabled && tileClickListener != null) {
+                    int tileIndex = getTileIndexAt(e.getX(), e.getY());
+                    if (tileIndex >= 0) {
+                        tileClickListener.accept(tileIndex);
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -484,5 +504,52 @@ public class BoardPanel extends JPanel {
             }
         });
         fadeTimer.start();
+    }
+
+    /**
+     * 타일 클릭 리스너 설정
+     */
+    public void setTileClickListener(Consumer<Integer> listener) {
+        this.tileClickListener = listener;
+    }
+
+    /**
+     * 타일 클릭 활성화/비활성화
+     */
+    public void setTileClickEnabled(boolean enabled) {
+        this.tileClickEnabled = enabled;
+        if (enabled) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        } else {
+            setCursor(Cursor.getDefaultCursor());
+        }
+        repaint();
+    }
+
+    /**
+     * 마우스 좌표로부터 타일 인덱스 계산
+     * @return 타일 인덱스 (0-43), 타일이 아닌 영역을 클릭하면 -1 반환
+     */
+    private int getTileIndexAt(int mouseX, int mouseY) {
+        // 중앙 영역 클릭은 무시
+        int centerX = TILE_SIZE * 2;
+        int centerY = TILE_SIZE * 2;
+        int centerW = TILE_SIZE * 8;
+        int centerH = TILE_SIZE * 8;
+        if (mouseX >= centerX && mouseX < centerX + centerW &&
+            mouseY >= centerY && mouseY < centerY + centerH) {
+            return -1;
+        }
+
+        // 44개 타일의 위치를 확인
+        for (int i = 0; i < 44; i++) {
+            Point pos = getTilePosition(i);
+            if (mouseX >= pos.x && mouseX < pos.x + TILE_SIZE &&
+                mouseY >= pos.y && mouseY < pos.y + TILE_SIZE) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }

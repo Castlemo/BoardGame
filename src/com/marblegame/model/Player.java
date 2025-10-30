@@ -10,6 +10,7 @@ public class Player {
     public int pos = 0;
     public int jailTurns = 0;
     public boolean bankrupt = false;
+    public boolean hasRailroadTicket = false; // 전국철도 티켓 (다음 턴에 원하는 칸 선택 가능)
 
     public Player(String name, int cash) {
         this.name = name;

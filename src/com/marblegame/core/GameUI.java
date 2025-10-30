@@ -24,6 +24,7 @@ public class GameUI {
         WAITING_FOR_ROLL,
         WAITING_FOR_ACTION,
         WAITING_FOR_JAIL_CHOICE,
+        WAITING_FOR_RAILROAD_SELECTION,
         GAME_OVER
     }
 
@@ -70,6 +71,9 @@ public class GameUI {
 
         // 보석금 탈출
         frame.getControlPanel().setEscapeListener(e -> escapeWithBail());
+
+        // 보드 타일 클릭 (전국철도 선택용)
+        frame.getBoardPanel().setTileClickListener(tileIndex -> onTileSelected(tileIndex));
     }
 
     /**
@@ -126,11 +130,20 @@ public class GameUI {
         if (player.isInJail()) {
             state = GameState.WAITING_FOR_JAIL_CHOICE;
             frame.getControlPanel().setButtonsEnabled(false, false, false, false, true, true);
+            frame.getBoardPanel().setTileClickEnabled(false);
             log("무인도에 갇혀있습니다. (남은 턴: " + player.jailTurns + ")");
             log("💰 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
+        } else if (player.hasRailroadTicket) {
+            state = GameState.WAITING_FOR_RAILROAD_SELECTION;
+            frame.getControlPanel().setButtonsEnabled(false, false, false, false, false, false);
+            frame.getBoardPanel().setTileClickEnabled(true);
+            log("🚆 전국철도 티켓이 있습니다!");
+            log("보드에서 원하는 칸을 클릭하세요.");
+            frame.getBoardPanel().showNotification("칸 선택", "클릭하세요!", new java.awt.Color(22, 160, 133));
         } else {
             state = GameState.WAITING_FOR_ROLL;
             frame.getControlPanel().setButtonsEnabled(true, false, false, false, false, false);
+            frame.getBoardPanel().setTileClickEnabled(false);
             log("주사위를 굴려주세요.");
         }
 
@@ -271,7 +284,9 @@ public class GameUI {
 
             case RAILROAD:
                 frame.getBoardPanel().showNotification("전국철도", "도착!", new java.awt.Color(22, 160, 133));
-                log("전국철도에 도착했습니다! (기능 미구현)");
+                log("전국철도에 도착했습니다!");
+                log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
+                player.hasRailroadTicket = true;
                 endTurn();
                 break;
         }
@@ -448,6 +463,33 @@ public class GameUI {
         } else {
             log("보석금이 부족합니다.");
         }
+    }
+
+    /**
+     * 타일 선택 이벤트 (전국철도 티켓 사용)
+     */
+    private void onTileSelected(int tileIndex) {
+        // 전국철도 선택 상태가 아니면 무시
+        if (state != GameState.WAITING_FOR_RAILROAD_SELECTION) {
+            return;
+        }
+
+        Player player = players[currentPlayerIndex];
+        Tile selectedTile = board.getTile(tileIndex);
+
+        log(player.name + "이(가) " + selectedTile.name + " (칸 " + tileIndex + ")을(를) 선택했습니다!");
+
+        // 선택한 칸으로 이동
+        player.pos = tileIndex;
+        player.hasRailroadTicket = false; // 티켓 사용
+        currentTile = selectedTile;
+
+        // 타일 클릭 비활성화
+        frame.getBoardPanel().setTileClickEnabled(false);
+
+        // 선택한 타일 처리
+        log("선택한 칸에서 이벤트를 처리합니다.");
+        handleTileLanding();
     }
 
     private void endTurn() {
