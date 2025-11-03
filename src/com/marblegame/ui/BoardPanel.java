@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  * 44칸을 정사각형 형태로 배치
  */
 public class BoardPanel extends JPanel {
-    private static final int TILE_SIZE = 60;
+    private static final int BASE_TILE_SIZE = 60;
     private static final int BOARD_SIZE = 12; // 한 변에 12칸
     private static final Color[] PLAYER_COLORS = {
         new Color(231, 76, 60),   // Red
@@ -23,6 +23,7 @@ public class BoardPanel extends JPanel {
         new Color(46, 204, 113),  // Green
         new Color(230, 126, 34)   // Orange
     };
+    private static final int BASE_BOARD_SIZE = BASE_TILE_SIZE * BOARD_SIZE;
 
     private Board board;
     private List<Player> players;
@@ -38,10 +39,14 @@ public class BoardPanel extends JPanel {
     private Consumer<Integer> tileClickListener = null;
     private boolean tileClickEnabled = false;
 
+    private double scaleFactor = 1.0;
+    private int translateX = 0;
+    private int translateY = 0;
+
     public BoardPanel(Board board, List<Player> players) {
         this.board = board;
         this.players = players;
-        setPreferredSize(new Dimension(TILE_SIZE * BOARD_SIZE, TILE_SIZE * BOARD_SIZE));
+        setPreferredSize(new Dimension(BASE_BOARD_SIZE, BASE_BOARD_SIZE));
         setBackground(new Color(44, 62, 80)); // 다크 네이비
 
         // 마우스 클릭 리스너 추가
@@ -61,12 +66,50 @@ public class BoardPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        Graphics2D g2d = (Graphics2D) g;
+        Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
+        updateTransform();
+
+        g2d.translate(translateX, translateY);
+        g2d.scale(scaleFactor, scaleFactor);
+
         drawBoard(g2d);
         drawPlayers(g2d);
+
+        g2d.dispose();
+    }
+
+    private void updateTransform() {
+        double boardPixels = BASE_BOARD_SIZE;
+        if (boardPixels <= 0) {
+            scaleFactor = 1.0;
+            translateX = 0;
+            translateY = 0;
+            return;
+        }
+
+        double availableWidth = getWidth();
+        double availableHeight = getHeight();
+
+        if (availableWidth <= 0 || availableHeight <= 0) {
+            scaleFactor = 1.0;
+            translateX = 0;
+            translateY = 0;
+            return;
+        }
+
+        scaleFactor = Math.min(availableWidth / boardPixels, availableHeight / boardPixels);
+        if (scaleFactor <= 0) {
+            scaleFactor = 1.0;
+        }
+
+        double scaledWidth = boardPixels * scaleFactor;
+        double scaledHeight = boardPixels * scaleFactor;
+
+        translateX = (int) Math.round((availableWidth - scaledWidth) / 2.0);
+        translateY = (int) Math.round((availableHeight - scaledHeight) / 2.0);
     }
 
     private void drawBoard(Graphics2D g) {
@@ -75,26 +118,26 @@ public class BoardPanel extends JPanel {
 
         // 하단 (우→좌): 0(출발), 1-10, 11(무인도) = 12칸
         for (int i = 0; i <= 11; i++) {
-            int x = (11 - i) * TILE_SIZE;
-            drawTile(g, i, x, 11 * TILE_SIZE);
+            int x = (11 - i) * BASE_TILE_SIZE;
+            drawTile(g, i, x, 11 * BASE_TILE_SIZE);
         }
 
         // 좌측 (하→상): 12-21, 22(복지기금) = 11칸 (11번 무인도는 이미 그려짐)
         for (int i = 12; i <= 22; i++) {
-            int y = (11 - (i - 11)) * TILE_SIZE;
+            int y = (11 - (i - 11)) * BASE_TILE_SIZE;
             drawTile(g, i, 0, y);
         }
 
         // 상단 (좌→우): 23-32, 33(전국철도) = 11칸 (22번 복지기금은 이미 그려짐)
         for (int i = 23; i <= 33; i++) {
-            int x = (i - 22) * TILE_SIZE;
+            int x = (i - 22) * BASE_TILE_SIZE;
             drawTile(g, i, x, 0);
         }
 
         // 우측 (상→하): 34-43 = 10칸 (33번 전국철도는 이미 그려짐, 0번 출발로 순환)
         for (int i = 34; i <= 43; i++) {
-            int y = (i - 33) * TILE_SIZE;
-            drawTile(g, i, 11 * TILE_SIZE, y);
+            int y = (i - 33) * BASE_TILE_SIZE;
+            drawTile(g, i, 11 * BASE_TILE_SIZE, y);
         }
 
         // 중앙 로고
@@ -107,12 +150,12 @@ public class BoardPanel extends JPanel {
         // 타일 배경
         Color bgColor = getTileColor(tile);
         g.setColor(bgColor);
-        g.fillRoundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10, 10);
+        g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
         // 타일 테두리
         g.setColor(new Color(236, 240, 241));
         g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10, 10);
+        g.drawRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
         // 도시인 경우 소유자 및 레벨 표시
         if (tile instanceof City) {
@@ -122,13 +165,13 @@ public class BoardPanel extends JPanel {
             if (city.isDeleted) {
                 // 반투명한 배경
                 g.setColor(new Color(44, 62, 80, 200));
-                g.fillRoundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10, 10);
+                g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
                 // 큰 빨간 X 표시
                 g.setColor(new Color(192, 57, 43));
                 g.setStroke(new BasicStroke(6));
-                g.drawLine(x + 12, y + 12, x + TILE_SIZE - 12, y + TILE_SIZE - 12);
-                g.drawLine(x + 12, y + TILE_SIZE - 12, x + TILE_SIZE - 12, y + 12);
+                g.drawLine(x + 12, y + 12, x + BASE_TILE_SIZE - 12, y + BASE_TILE_SIZE - 12);
+                g.drawLine(x + 12, y + BASE_TILE_SIZE - 12, x + BASE_TILE_SIZE - 12, y + 12);
 
                 // 삭제됨 텍스트
                 g.setColor(new Color(236, 240, 241));
@@ -136,13 +179,13 @@ public class BoardPanel extends JPanel {
                 String deletedText = "삭제됨";
                 FontMetrics fm = g.getFontMetrics();
                 int textWidth = fm.stringWidth(deletedText);
-                g.drawString(deletedText, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE / 2 + 15);
+                g.drawString(deletedText, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 15);
                 return; // 더 이상 그리지 않음
             }
 
             // 컬러 바 (상단)
             g.setColor(getColorGroupColor(city.colorGroup));
-            g.fillRoundRect(x + 4, y + 4, TILE_SIZE - 8, 10, 5, 5);
+            g.fillRoundRect(x + 4, y + 4, BASE_TILE_SIZE - 8, 10, 5, 5);
 
             if (city.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)
@@ -169,19 +212,19 @@ public class BoardPanel extends JPanel {
             // 삭제된 칸인 경우 X 표시
             if (palace.isDeleted) {
                 g.setColor(new Color(44, 62, 80, 200));
-                g.fillRoundRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4, 10, 10);
+                g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
                 g.setColor(new Color(192, 57, 43));
                 g.setStroke(new BasicStroke(6));
-                g.drawLine(x + 12, y + 12, x + TILE_SIZE - 12, y + TILE_SIZE - 12);
-                g.drawLine(x + 12, y + TILE_SIZE - 12, x + TILE_SIZE - 12, y + 12);
+                g.drawLine(x + 12, y + 12, x + BASE_TILE_SIZE - 12, y + BASE_TILE_SIZE - 12);
+                g.drawLine(x + 12, y + BASE_TILE_SIZE - 12, x + BASE_TILE_SIZE - 12, y + 12);
 
                 g.setColor(new Color(236, 240, 241));
                 g.setFont(new Font("맑은 고딕", Font.BOLD, 9));
                 String deletedText = "삭제됨";
                 FontMetrics fm = g.getFontMetrics();
                 int textWidth = fm.stringWidth(deletedText);
-                g.drawString(deletedText, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE / 2 + 15);
+                g.drawString(deletedText, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 15);
                 return;
             }
 
@@ -202,12 +245,12 @@ public class BoardPanel extends JPanel {
         String name = tile.name;
         FontMetrics fm = g.getFontMetrics();
         int textWidth = fm.stringWidth(name);
-        g.drawString(name, x + (TILE_SIZE - textWidth) / 2, y + TILE_SIZE - 25);
+        g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE - 25);
 
         // 타일 번호
         g.setColor(new Color(189, 195, 199));
         g.setFont(new Font("Arial", Font.PLAIN, 9));
-        g.drawString(String.valueOf(tileIndex), x + 8, y + TILE_SIZE - 8);
+        g.drawString(String.valueOf(tileIndex), x + 8, y + BASE_TILE_SIZE - 8);
 
         // 특수 타일 아이콘
         drawTileIcon(g, tile, x, y);
@@ -239,7 +282,7 @@ public class BoardPanel extends JPanel {
         }
 
         if (!icon.isEmpty()) {
-            g.drawString(icon, x + TILE_SIZE/2 - 10, y + TILE_SIZE/2 + 7);
+            g.drawString(icon, x + BASE_TILE_SIZE/2 - 10, y + BASE_TILE_SIZE/2 + 7);
         }
     }
 
@@ -344,31 +387,31 @@ public class BoardPanel extends JPanel {
         // 44칸 보드 위치 계산
         // 하단 (우→좌): 0-11
         if (tileIndex <= 11) {
-            int x = (11 - tileIndex) * TILE_SIZE;
-            return new Point(x, 11 * TILE_SIZE);
+            int x = (11 - tileIndex) * BASE_TILE_SIZE;
+            return new Point(x, 11 * BASE_TILE_SIZE);
         }
         // 좌측 (하→상): 12-22
         else if (tileIndex <= 22) {
-            int y = (11 - (tileIndex - 11)) * TILE_SIZE;
+            int y = (11 - (tileIndex - 11)) * BASE_TILE_SIZE;
             return new Point(0, y);
         }
         // 상단 (좌→우): 23-33
         else if (tileIndex <= 33) {
-            int x = (tileIndex - 22) * TILE_SIZE;
+            int x = (tileIndex - 22) * BASE_TILE_SIZE;
             return new Point(x, 0);
         }
         // 우측 (상→하): 34-43
         else {
-            int y = (tileIndex - 33) * TILE_SIZE;
-            return new Point(11 * TILE_SIZE, y);
+            int y = (tileIndex - 33) * BASE_TILE_SIZE;
+            return new Point(11 * BASE_TILE_SIZE, y);
         }
     }
 
     private void drawCenterLogo(Graphics2D g) {
-        int centerX = TILE_SIZE * 2;
-        int centerY = TILE_SIZE * 2;
-        int centerW = TILE_SIZE * 8;
-        int centerH = TILE_SIZE * 8;
+        int centerX = BASE_TILE_SIZE * 2;
+        int centerY = BASE_TILE_SIZE * 2;
+        int centerW = BASE_TILE_SIZE * 8;
+        int centerH = BASE_TILE_SIZE * 8;
 
         // 배경
         g.setColor(new Color(236, 240, 241));
@@ -532,20 +575,30 @@ public class BoardPanel extends JPanel {
      */
     private int getTileIndexAt(int mouseX, int mouseY) {
         // 중앙 영역 클릭은 무시
-        int centerX = TILE_SIZE * 2;
-        int centerY = TILE_SIZE * 2;
-        int centerW = TILE_SIZE * 8;
-        int centerH = TILE_SIZE * 8;
-        if (mouseX >= centerX && mouseX < centerX + centerW &&
-            mouseY >= centerY && mouseY < centerY + centerH) {
+        int centerX = BASE_TILE_SIZE * 2;
+        int centerY = BASE_TILE_SIZE * 2;
+        int centerW = BASE_TILE_SIZE * 8;
+        int centerH = BASE_TILE_SIZE * 8;
+        updateTransform();
+
+        double boardX = (mouseX - translateX) / scaleFactor;
+        double boardY = (mouseY - translateY) / scaleFactor;
+
+        if (boardX < 0 || boardY < 0 ||
+            boardX >= BASE_BOARD_SIZE || boardY >= BASE_BOARD_SIZE) {
+            return -1;
+        }
+
+        if (boardX >= centerX && boardX < centerX + centerW &&
+            boardY >= centerY && boardY < centerY + centerH) {
             return -1;
         }
 
         // 44개 타일의 위치를 확인
-        for (int i = 0; i < 44; i++) {
+        for (int i = 0; i < board.getSize(); i++) {
             Point pos = getTilePosition(i);
-            if (mouseX >= pos.x && mouseX < pos.x + TILE_SIZE &&
-                mouseY >= pos.y && mouseY < pos.y + TILE_SIZE) {
+            if (boardX >= pos.x && boardX < pos.x + BASE_TILE_SIZE &&
+                boardY >= pos.y && boardY < pos.y + BASE_TILE_SIZE) {
                 return i;
             }
         }

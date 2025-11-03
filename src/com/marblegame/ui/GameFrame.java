@@ -25,9 +25,6 @@ public class GameFrame extends JFrame {
 
         initComponents(board, players);
 
-        // 최소 크기 설정 (레이아웃 깨짐 방지)
-        setMinimumSize(new Dimension(1200, 800));
-
         pack();
 
         // 화면 크기 가져오기
@@ -53,7 +50,7 @@ public class GameFrame extends JFrame {
     private void initComponents(Board board, List<Player> players) {
         setLayout(new BorderLayout(10, 10));
 
-        // 보드 패널 (중앙 좌측)
+        // 보드 패널 (좌측)
         boardPanel = new BoardPanel(board, players);
         JPanel boardContainer = new JPanel(new GridBagLayout());
         boardContainer.setBackground(new Color(44, 62, 80));
@@ -62,14 +59,14 @@ public class GameFrame extends JFrame {
         gbc.gridy = 0;
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
-        gbc.fill = GridBagConstraints.NONE;
+        gbc.fill = GridBagConstraints.BOTH;
         gbc.anchor = GridBagConstraints.CENTER;
         boardContainer.add(boardPanel, gbc);
 
         // 우측 패널 (정보 + 액션)
-        JPanel rightPanel = new JPanel(new BorderLayout(0, 10));
+        JPanel rightPanel = new JPanel(new GridBagLayout());
         rightPanel.setBackground(new Color(44, 62, 80));
-        rightPanel.setPreferredSize(new Dimension(320, 0));
+        rightPanel.setMinimumSize(new Dimension(320, 400));
 
         // 정보 패널 (우측 상단)
         infoPanel = new InfoPanel(players);
@@ -77,8 +74,18 @@ public class GameFrame extends JFrame {
         // 액션 패널 (우측 하단) - 고정
         actionPanel = new ActionPanel();
 
-        rightPanel.add(infoPanel, BorderLayout.CENTER);
-        rightPanel.add(actionPanel, BorderLayout.SOUTH);
+        GridBagConstraints rightGbc = new GridBagConstraints();
+        rightGbc.gridx = 0;
+        rightGbc.gridy = 0;
+        rightGbc.weightx = 1.0;
+        rightGbc.weighty = 0.65;
+        rightGbc.fill = GridBagConstraints.BOTH;
+        rightPanel.add(infoPanel, rightGbc);
+
+        rightGbc.gridy = 1;
+        rightGbc.weighty = 0.35;
+        rightGbc.insets = new Insets(10, 0, 0, 0);
+        rightPanel.add(actionPanel, rightGbc);
 
         // 컨트롤 패널 (하단) - 스크롤 가능
         controlPanel = new ControlPanel();

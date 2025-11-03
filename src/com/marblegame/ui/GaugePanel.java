@@ -21,6 +21,8 @@ public class GaugePanel extends JPanel {
     public GaugePanel(DiceGauge gauge) {
         this.gauge = gauge;
         setPreferredSize(new Dimension(300, 60));
+        setMinimumSize(new Dimension(120, 40));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         setBackground(new Color(44, 62, 80));
 
         // 30fps 애니메이션 타이머
@@ -50,7 +52,7 @@ public class GaugePanel extends JPanel {
 
         int width = getWidth();
         int height = getHeight();
-        int gaugeHeight = 30;
+        int gaugeHeight = Math.max(18, (int) Math.round(height * 0.5));
         int gaugeY = (height - gaugeHeight) / 2;
 
         // 3구간 배경 그리기
@@ -75,8 +77,10 @@ public class GaugePanel extends JPanel {
         int section3Width = width - section1Width - section2Width;
 
         // S1 (초록)
+        int corner = Math.max(8, height / 2);
+
         g.setColor(SECTION1_COLOR);
-        g.fillRoundRect(x, y, section1Width, height, 10, 10);
+        g.fillRoundRect(x, y, section1Width, height, corner, corner);
 
         // S2 (파랑)
         g.setColor(SECTION2_COLOR);
@@ -84,7 +88,7 @@ public class GaugePanel extends JPanel {
 
         // S3 (노랑)
         g.setColor(SECTION3_COLOR);
-        g.fillRoundRect(x + section1Width + section2Width, y, section3Width, height, 10, 10);
+        g.fillRoundRect(x + section1Width + section2Width, y, section3Width, height, corner, corner);
     }
 
     /**
@@ -92,7 +96,8 @@ public class GaugePanel extends JPanel {
      */
     private void drawBoundaries(Graphics2D g, int x, int y, int width, int height) {
         g.setColor(new Color(236, 240, 241));
-        g.setStroke(new BasicStroke(2));
+        float boundaryStroke = Math.max(1f, height / 20f);
+        g.setStroke(new BasicStroke(boundaryStroke));
 
         int boundary1X = (int)(width * 0.333);
         int boundary2X = (int)(width * 0.666);
@@ -101,7 +106,8 @@ public class GaugePanel extends JPanel {
         g.drawLine(x + boundary2X, y, x + boundary2X, y + height);
 
         // 외곽선
-        g.drawRoundRect(x, y, width, height, 10, 10);
+        int corner = Math.max(8, height / 2);
+        g.drawRoundRect(x, y, width, height, corner, corner);
     }
 
     /**
@@ -111,19 +117,22 @@ public class GaugePanel extends JPanel {
         double position = gauge.getCurrentPosition();
         int indicatorX = x + (int)(position * width);
 
-        // 인디케이터 (세로 막대)
         g.setColor(INDICATOR_COLOR);
-        g.setStroke(new BasicStroke(4));
-        g.drawLine(indicatorX, y - 5, indicatorX, y + height + 5);
+        float indicatorStroke = Math.max(2f, height / 12f);
+        g.setStroke(new BasicStroke(indicatorStroke));
 
-        // 인디케이터 상단 삼각형
-        int[] triangleX = {indicatorX - 6, indicatorX + 6, indicatorX};
-        int[] triangleY = {y - 5, y - 5, y - 12};
+        int padding = Math.max(4, (int) Math.round(height * 0.2));
+        g.drawLine(indicatorX, y - padding, indicatorX, y + height + padding);
+
+        int triangleWidth = Math.max(6, (int) Math.round(height * 0.3));
+        int triangleHeight = Math.max(6, (int) Math.round(height * 0.3));
+
+        int[] triangleX = {indicatorX - triangleWidth, indicatorX + triangleWidth, indicatorX};
+        int[] triangleY = {y - padding, y - padding, y - padding - triangleHeight};
         g.fillPolygon(triangleX, triangleY, 3);
 
-        // 인디케이터 하단 삼각형
-        int[] triangleX2 = {indicatorX - 6, indicatorX + 6, indicatorX};
-        int[] triangleY2 = {y + height + 5, y + height + 5, y + height + 12};
+        int[] triangleX2 = {indicatorX - triangleWidth, indicatorX + triangleWidth, indicatorX};
+        int[] triangleY2 = {y + height + padding, y + height + padding, y + height + padding + triangleHeight};
         g.fillPolygon(triangleX2, triangleY2, 3);
     }
 
@@ -132,7 +141,9 @@ public class GaugePanel extends JPanel {
      */
     private void drawLabels(Graphics2D g, int x, int y, int width, int height) {
         g.setColor(Color.WHITE);
-        g.setFont(new Font("맑은 고딕", Font.BOLD, 12));
+        double scale = height / 60.0;
+        int baseFontSize = 12;
+        g.setFont(new Font("맑은 고딕", Font.BOLD, Math.max(10, (int) Math.round(baseFontSize * scale))));
 
         int section1Center = (int)(width * 0.166);
         int section2Center = (int)(width * 0.5);

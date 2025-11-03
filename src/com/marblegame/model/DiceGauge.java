@@ -125,30 +125,6 @@ public class DiceGauge {
     }
 
     /**
-     * 특정 합이 나오도록 2D6 생성
-     */
-    private int rollDiceForSum(int sum) {
-        // sum이 나올 수 있는 조합 중 랜덤 선택
-        int d1 = 1 + (int)(Math.random() * 6);
-        int d2 = sum - d1;
-
-        // d2가 유효 범위가 아니면 재조정
-        if (d2 < 1 || d2 > 6) {
-            d1 = Math.max(1, Math.min(6, sum - 6));
-            d2 = sum - d1;
-        }
-
-        return d1 + d2;
-    }
-
-    /**
-     * 특정 범위의 합 생성
-     */
-    private int rollDiceForNonBiased(int min, int max) {
-        return min + (int)(Math.random() * (max - min + 1));
-    }
-
-    /**
      * 일반 주사위 (편향 없음)
      */
     private int rollNormal() {

@@ -16,6 +16,7 @@ public class Game {
     private final Dice dice;
     private final Scanner scanner;
     private final BoardRenderer renderer;
+    private final int initialCash;
     private int turnCount = 0;
 
     public Game(int numPlayers, int initialCash) {
@@ -25,6 +26,7 @@ public class Game {
         this.dice = new Dice();
         this.scanner = new Scanner(System.in);
         this.renderer = new BoardRenderer(board);
+        this.initialCash = initialCash;
 
         // 플레이어 초기화
         for (int i = 0; i < numPlayers; i++) {
@@ -38,7 +40,7 @@ public class Game {
     public void start() {
         System.out.println("=== 모두의 마블 게임 시작 ===");
         System.out.println("플레이어 수: " + players.size());
-        System.out.println("초기 자금: 1,000,000원\n");
+        System.out.println("초기 자금: " + String.format("%,d", initialCash) + "원\n");
 
         while (!isGameOver()) {
             turnCount++;
@@ -72,6 +74,11 @@ public class Game {
     private void playTurn(Player player, int playerIndex) {
         System.out.println("\n--- " + player.name + "의 차례 ---");
         System.out.println(player);
+
+        if (player.hasRailroadTicket) {
+            useRailroadTicket(player, playerIndex);
+            return;
+        }
 
         // 무인도 체크
         if (player.isInJail()) {
@@ -136,11 +143,15 @@ public class Game {
     private void handleTileLanding(Player player, int playerIndex, Tile tile) {
         switch (tile.type) {
             case START:
-                // 출발지는 통과 시에만 처리
+                System.out.println("출발지에 도착했습니다.");
                 break;
 
             case CITY:
                 handleCityTile(player, playerIndex, (City) tile);
+                break;
+
+            case PALACE:
+                handlePalaceTile(player, playerIndex, (Palace) tile);
                 break;
 
             case ISLAND:
@@ -153,6 +164,16 @@ public class Game {
                 ruleEngine.processChance(player);
                 System.out.println("찬스 카드! " + String.format("%,d", ruleEngine.getChanceReward()) + "원을 받았습니다!");
                 break;
+
+            case WELFARE:
+                System.out.println("사회복지기금에 도착했습니다! (기능 미구현)");
+                break;
+
+            case RAILROAD:
+                System.out.println("전국철도에 도착했습니다!");
+                System.out.println("다음 턴에 원하는 칸을 선택할 수 있는 티켓을 획득했습니다.");
+                player.hasRailroadTicket = true;
+                break;
         }
     }
 
@@ -160,6 +181,11 @@ public class Game {
      * 도시 칸 처리
      */
     private void handleCityTile(Player player, int playerIndex, City city) {
+        if (city.isDeleted) {
+            System.out.println("이 도시는 페이즈 딜리트로 삭제되어 접근할 수 없습니다.");
+            return;
+        }
+
         if (!city.isOwned()) {
             // 미소유 땅
             System.out.println(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
@@ -205,6 +231,101 @@ public class Game {
             if (player.bankrupt) {
                 System.out.println(player.name + "이(가) 파산했습니다!");
             }
+
+            if (!player.bankrupt) {
+                int takeoverCost = ruleEngine.calculateTakeoverCost(city);
+                System.out.println("인수 비용은 " + String.format("%,d", takeoverCost) + "원입니다.");
+                System.out.print("이 땅을 인수하시겠습니까? (Y/N): ");
+
+                String takeoverChoice = scanner.nextLine().trim().toUpperCase();
+                if (takeoverChoice.equals("Y")) {
+                    if (ruleEngine.takeoverCity(player, owner, city, playerIndex)) {
+                        System.out.println(player.name + "이(가) " + owner.name + "으로부터 " + city.name + "을(를) 인수했습니다!");
+                    } else {
+                        System.out.println("자금이 부족하여 인수할 수 없습니다.");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 궁 칸 처리
+     */
+    private void handlePalaceTile(Player player, int playerIndex, Palace palace) {
+        if (palace.isDeleted) {
+            System.out.println("이 관광지는 페이즈 딜리트로 삭제되어 접근할 수 없습니다.");
+            return;
+        }
+
+        if (!palace.isOwned()) {
+            System.out.println(palace.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", palace.price) + "원)");
+            System.out.println("관광지는 업그레이드가 불가능합니다.");
+            System.out.print("매입하시겠습니까? (Y/N): ");
+
+            String answer = scanner.nextLine().trim().toUpperCase();
+            if (answer.equals("Y")) {
+                if (ruleEngine.purchasePalace(player, palace, playerIndex)) {
+                    System.out.println(player.name + "이(가) " + palace.name + "을(를) " + String.format("%,d", palace.price) + "원에 매입했습니다!");
+                } else {
+                    System.out.println("자금이 부족하여 매입할 수 없습니다.");
+                }
+            }
+        } else if (palace.owner == playerIndex) {
+            System.out.println(palace.name + "은(는) 본인 소유 관광지입니다. (관광지는 업그레이드가 불가능합니다)");
+        } else {
+            Player owner = players.get(palace.owner);
+            int toll = ruleEngine.calculatePalaceToll(palace);
+
+            System.out.println(palace.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+            System.out.println("통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+
+            ruleEngine.payToll(player, owner, toll);
+
+            if (player.bankrupt) {
+                System.out.println(player.name + "이(가) 파산했습니다!");
+            }
+        }
+    }
+
+    /**
+     * 전국철도 티켓 사용 처리
+     */
+    private void useRailroadTicket(Player player, int playerIndex) {
+        System.out.println("전국철도 티켓이 있어 원하는 칸으로 이동할 수 있습니다.");
+
+        while (true) {
+            System.out.print("이동할 칸 번호를 입력하세요 (0-" + (board.getSize() - 1) + "): ");
+            String input = scanner.nextLine().trim();
+
+            int target;
+            try {
+                target = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("숫자를 입력해주세요.");
+                continue;
+            }
+
+            if (target < 0 || target >= board.getSize()) {
+                System.out.println("유효하지 않은 칸 번호입니다.");
+                continue;
+            }
+
+            Tile tile = board.getTile(target);
+            if (tile instanceof City && ((City) tile).isDeleted) {
+                System.out.println("해당 도시는 삭제되어 이동할 수 없습니다.");
+                continue;
+            }
+            if (tile instanceof Palace && ((Palace) tile).isDeleted) {
+                System.out.println("해당 관광지는 삭제되어 이동할 수 없습니다.");
+                continue;
+            }
+
+            player.pos = target;
+            player.hasRailroadTicket = false;
+            System.out.println(player.name + "이(가) " + tile.name + " (칸 " + target + ")으로 이동했습니다.");
+            handleTileLanding(player, playerIndex, tile);
+            return;
         }
     }
 
@@ -233,13 +354,6 @@ public class Game {
                 return;
             }
         }
-    }
-
-    /**
-     * 플레이어 인덱스 조회
-     */
-    private int getPlayerIndex(Player player) {
-        return players.indexOf(player);
     }
 
     public Board getBoard() {

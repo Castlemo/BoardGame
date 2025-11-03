@@ -25,6 +25,11 @@ public class DiceAnimationPanel extends JPanel {
     private static final Color DICE_DOT = new Color(44, 62, 80);
     private static final Color DICE_BORDER = new Color(189, 195, 199);
 
+    private static final int BASE_DICE_SIZE = 60;
+    private static final int BASE_SPACING = 10;
+    private static final int BASE_STROKE = 3;
+    private static final int BASE_DOT_SIZE = 8;
+
     public DiceAnimationPanel() {
         setPreferredSize(new Dimension(150, 90));
         setBackground(new Color(44, 62, 80));
@@ -101,44 +106,52 @@ public class DiceAnimationPanel extends JPanel {
         int width = getWidth();
         int height = getHeight();
 
-        // 주사위 크기 및 위치
-        int diceSize = 60;
-        int spacing = 10;
+        double scale = Math.min(
+            width / (double) (BASE_DICE_SIZE * 2 + BASE_SPACING),
+            height / (double) BASE_DICE_SIZE
+        );
+        scale = Math.max(0.5, scale);
+
+        int diceSize = (int) Math.round(BASE_DICE_SIZE * scale);
+        int spacing = (int) Math.round(BASE_SPACING * scale);
         int totalWidth = diceSize * 2 + spacing;
         int startX = (width - totalWidth) / 2;
         int y = (height - diceSize) / 2;
 
         // 첫 번째 주사위
-        drawDice(g2d, startX, y, diceSize, dice1);
+        drawDice(g2d, startX, y, diceSize, dice1, scale);
 
         // 두 번째 주사위
-        drawDice(g2d, startX + diceSize + spacing, y, diceSize, dice2);
+        drawDice(g2d, startX + diceSize + spacing, y, diceSize, dice2, scale);
 
         // 애니메이션 중이면 회전 효과 표시
         if (animating) {
             g2d.setColor(new Color(52, 152, 219, 100));
-            g2d.setStroke(new BasicStroke(3));
-            g2d.drawRoundRect(startX - 5, y - 5, diceSize + 10, diceSize + 10, 10, 10);
-            g2d.drawRoundRect(startX + diceSize + spacing - 5, y - 5, diceSize + 10, diceSize + 10, 10, 10);
+            g2d.setStroke(new BasicStroke(Math.max(1f, (float) (BASE_STROKE * scale))));
+            int highlightPad = Math.max(4, (int) Math.round(5 * scale));
+            int corner = Math.max(8, (int) Math.round(10 * scale));
+            g2d.drawRoundRect(startX - highlightPad, y - highlightPad, diceSize + highlightPad * 2, diceSize + highlightPad * 2, corner, corner);
+            g2d.drawRoundRect(startX + diceSize + spacing - highlightPad, y - highlightPad, diceSize + highlightPad * 2, diceSize + highlightPad * 2, corner, corner);
         }
     }
 
     /**
      * 주사위 그리기
      */
-    private void drawDice(Graphics2D g, int x, int y, int size, int value) {
+    private void drawDice(Graphics2D g, int x, int y, int size, int value, double scale) {
         // 배경
         g.setColor(DICE_BG);
-        g.fillRoundRect(x, y, size, size, 10, 10);
+        int corner = Math.max(10, (int) Math.round(10 * scale));
+        g.fillRoundRect(x, y, size, size, corner, corner);
 
         // 테두리
         g.setColor(DICE_BORDER);
-        g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(x, y, size, size, 10, 10);
+        g.setStroke(new BasicStroke(Math.max(1f, (float) (2f * scale))));
+        g.drawRoundRect(x, y, size, size, corner, corner);
 
         // 점 그리기
         g.setColor(DICE_DOT);
-        int dotSize = 8;
+        int dotSize = Math.max(4, (int) Math.round(BASE_DOT_SIZE * scale));
         int centerX = x + size / 2;
         int centerY = y + size / 2;
         int offset = size / 4;

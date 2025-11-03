@@ -22,10 +22,10 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S1 구간 테스트: 2~3이 60% 확률
+     * S1 구간 테스트: 2~5가 60% 확률
      */
     private static void testSection1() {
-        System.out.println("[ S1 구간 테스트 (2~3 우대 60%) ]");
+        System.out.println("[ S1 구간 테스트 (2~5 우대 60%) ]");
 
         DiceGauge gauge = new DiceGauge();
         int[] distribution = new int[13]; // 2~12 범위
@@ -48,10 +48,10 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S2 구간 테스트: 3~5가 60% 확률
+     * S2 구간 테스트: 6~9가 60% 확률
      */
     private static void testSection2() {
-        System.out.println("\n[ S2 구간 테스트 (3~5 우대 60%) ]");
+        System.out.println("\n[ S2 구간 테스트 (6~9 우대 60%) ]");
 
         DiceGauge gauge = new DiceGauge();
         int[] distribution = new int[13];
@@ -73,10 +73,10 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S3 구간 테스트: 5~6이 60% 확률
+     * S3 구간 테스트: 10~12가 60% 확률
      */
     private static void testSection3() {
-        System.out.println("\n[ S3 구간 테스트 (5~6 우대 60%) ]");
+        System.out.println("\n[ S3 구간 테스트 (10~12 우대 60%) ]");
 
         DiceGauge gauge = new DiceGauge();
         int[] distribution = new int[13];
@@ -110,13 +110,13 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S1 검증: 2~3이 60%±3%
+     * S1 검증: 2~5가 60%±3%
      */
     private static void validateSection1(int[] dist) {
-        int biasedCount = dist[2] + dist[3];
+        int biasedCount = dist[2] + dist[3] + dist[4] + dist[5];
         double biasedPercent = biasedCount * 100.0 / SIMULATION_COUNT;
 
-        System.out.printf("\n✓ 2~3 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
+        System.out.printf("\n✓ 2~5 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
 
         if (Math.abs(biasedPercent - 60.0) <= TOLERANCE * 100) {
             System.out.println("✅ PASS: 60%±3% 범위 내");
@@ -126,13 +126,13 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S2 검증: 3~5가 60%±3%
+     * S2 검증: 6~9가 60%±3%
      */
     private static void validateSection2(int[] dist) {
-        int biasedCount = dist[3] + dist[4] + dist[5];
+        int biasedCount = dist[6] + dist[7] + dist[8] + dist[9];
         double biasedPercent = biasedCount * 100.0 / SIMULATION_COUNT;
 
-        System.out.printf("\n✓ 3~5 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
+        System.out.printf("\n✓ 6~9 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
 
         if (Math.abs(biasedPercent - 60.0) <= TOLERANCE * 100) {
             System.out.println("✅ PASS: 60%±3% 범위 내");
@@ -142,13 +142,13 @@ public class DiceGaugeTest {
     }
 
     /**
-     * S3 검증: 5~6이 60%±3%
+     * S3 검증: 10~12가 60%±3%
      */
     private static void validateSection3(int[] dist) {
-        int biasedCount = dist[5] + dist[6];
+        int biasedCount = dist[10] + dist[11] + dist[12];
         double biasedPercent = biasedCount * 100.0 / SIMULATION_COUNT;
 
-        System.out.printf("\n✓ 5~6 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
+        System.out.printf("\n✓ 10~12 합산: %d회 (%.2f%%)\n", biasedCount, biasedPercent);
 
         if (Math.abs(biasedPercent - 60.0) <= TOLERANCE * 100) {
             System.out.println("✅ PASS: 60%±3% 범위 내");

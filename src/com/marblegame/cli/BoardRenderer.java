@@ -5,10 +5,13 @@ import java.util.List;
 
 /**
  * 2D 텍스트 기반 보드 렌더러
- * 28칸 정사각형 보드를 콘솔에 출력
+ * 44칸 순환 보드를 콘솔에 출력
  */
 public class BoardRenderer {
     private final Board board;
+    private static final int GRID_SIZE = 12;
+    private static final int CELL_WIDTH = 7;
+    private static final String EMPTY_CELL = " ".repeat(CELL_WIDTH);
 
     public BoardRenderer(Board board) {
         this.board = board;
@@ -21,48 +24,26 @@ public class BoardRenderer {
     public void render(List<Player> players) {
         System.out.println("\n========== 게임 보드 ==========");
 
-        // 상단 (0~7)
-        renderTopRow(players);
+        String[][] grid = new String[GRID_SIZE][GRID_SIZE];
 
-        // 중간 (8~19) - 양쪽만
-        renderMiddleRows(players);
+        for (int i = 0; i < board.getSize(); i++) {
+            int[] coord = getTileCoordinate(i);
+            grid[coord[1]][coord[0]] = padCell(formatCell(i, players));
+        }
 
-        // 하단 (20~27)
-        renderBottomRow(players);
+        for (int y = 0; y < GRID_SIZE; y++) {
+            StringBuilder line = new StringBuilder();
+            for (int x = 0; x < GRID_SIZE; x++) {
+                String cell = grid[y][x];
+                line.append(cell != null ? cell : EMPTY_CELL);
+                if (x < GRID_SIZE - 1) {
+                    line.append(' ');
+                }
+            }
+            System.out.println(line);
+        }
 
         System.out.println("================================\n");
-    }
-
-    private void renderTopRow(List<Player> players) {
-        for (int i = 0; i <= 7; i++) {
-            System.out.print(formatCell(i, players) + " ");
-        }
-        System.out.println();
-    }
-
-    private void renderMiddleRows(List<Player> players) {
-        // 왼쪽: 27, 26, ... 오른쪽: 8, 9, ...
-        int left = 27;
-        int right = 8;
-
-        while (left >= 20 && right <= 19) {
-            System.out.print(formatCell(left, players));
-
-            // 중간 공백 (6칸 분량)
-            System.out.print("                              ");
-
-            System.out.println(formatCell(right, players));
-
-            left--;
-            right++;
-        }
-    }
-
-    private void renderBottomRow(List<Player> players) {
-        for (int i = 19; i >= 20 - 7; i--) {
-            System.out.print(formatCell(i, players) + " ");
-        }
-        System.out.println();
     }
 
     /**
@@ -100,5 +81,28 @@ public class BoardRenderer {
             System.out.println(tile);
         }
         System.out.println("======================\n");
+    }
+
+    private int[] getTileCoordinate(int index) {
+        if (index <= 11) {
+            int x = 11 - index;
+            return new int[]{x, 11};
+        } else if (index <= 22) {
+            int y = 11 - (index - 11);
+            return new int[]{0, y};
+        } else if (index <= 33) {
+            int x = index - 22;
+            return new int[]{x, 0};
+        } else {
+            int y = index - 33;
+            return new int[]{11, y};
+        }
+    }
+
+    private String padCell(String cell) {
+        if (cell.length() >= CELL_WIDTH) {
+            return cell;
+        }
+        return String.format("%-" + CELL_WIDTH + "s", cell);
     }
 }

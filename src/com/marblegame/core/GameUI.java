@@ -210,20 +210,6 @@ public class GameUI {
         }
     }
 
-    private void rollDice() {
-        Player player = players[currentPlayerIndex];
-
-        if (state == GameState.WAITING_FOR_ROLL) {
-            // 일반 주사위
-            dice.roll();
-            log("주사위: [" + dice.getD1() + ", " + dice.getD2() + "] = " + dice.sum());
-
-            movePlayer(dice.sum());
-        }
-
-        updateDisplay();
-    }
-
     private void movePlayer(int steps) {
         Player player = players[currentPlayerIndex];
         int oldPos = player.pos;
@@ -297,6 +283,12 @@ public class GameUI {
     private void handleCityTile(City city) {
         Player player = players[currentPlayerIndex];
 
+        if (city.isDeleted) {
+            log(city.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
+            endTurn();
+            return;
+        }
+
         if (!city.isOwned()) {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
@@ -344,6 +336,12 @@ public class GameUI {
 
     private void handlePalaceTile(Palace palace) {
         Player player = players[currentPlayerIndex];
+
+        if (palace.isDeleted) {
+            log(palace.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
+            endTurn();
+            return;
+        }
 
         if (!palace.isOwned()) {
             // 미소유 궁
@@ -476,6 +474,17 @@ public class GameUI {
 
         Player player = players[currentPlayerIndex];
         Tile selectedTile = board.getTile(tileIndex);
+
+        if (selectedTile instanceof City && ((City) selectedTile).isDeleted) {
+            frame.getBoardPanel().showNotification("선택 불가", "삭제된 칸", new java.awt.Color(231, 76, 60));
+            log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
+            return;
+        }
+        if (selectedTile instanceof Palace && ((Palace) selectedTile).isDeleted) {
+            frame.getBoardPanel().showNotification("선택 불가", "삭제된 칸", new java.awt.Color(231, 76, 60));
+            log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
+            return;
+        }
 
         log(player.name + "이(가) " + selectedTile.name + " (칸 " + tileIndex + ")을(를) 선택했습니다!");
 
