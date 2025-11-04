@@ -201,12 +201,12 @@ public class BoardPanel extends JPanel {
                     }
                 }
             }
-        } else if (tile instanceof Palace) {
-            // 궁(관광지)인 경우 소유자 표시
-            Palace palace = (Palace) tile;
+        } else if (tile instanceof TouristSpot) {
+            // 관광지인 경우 소유자 표시
+            TouristSpot touristSpot = (TouristSpot) tile;
 
             // 삭제된 칸인 경우 X 표시
-            if (palace.isDeleted) {
+            if (touristSpot.isDeleted) {
                 g.setColor(new Color(44, 62, 80, 200));
                 g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
@@ -224,14 +224,14 @@ public class BoardPanel extends JPanel {
                 return;
             }
 
-            if (palace.isOwned()) {
+            if (touristSpot.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)
-                g.setColor(PLAYER_COLORS[palace.owner]);
+                g.setColor(PLAYER_COLORS[touristSpot.owner]);
                 g.fillOval(x + 6, y + 16, 16, 16);
 
                 g.setColor(Color.WHITE);
                 g.setFont(new Font("Arial", Font.BOLD, 10));
-                g.drawString(String.valueOf((char)('A' + palace.owner)), x + 11, y + 27);
+                g.drawString(String.valueOf((char)('A' + touristSpot.owner)), x + 11, y + 27);
             }
         }
 
@@ -312,6 +312,9 @@ public class BoardPanel extends JPanel {
                 return new Color(135, 206, 235); // 하늘색 배경
             case TAX:
                 return new Color(128, 128, 128); // 회색 배경
+            case TOURIST_SPOT:
+                // 관광지는 핑크-보라 그라데이션
+                return new Color(255, 182, 193); // 연한 핑크
             case CITY:
                 // 도시는 컬러 그룹 색상 사용
                 if (tile instanceof City) {

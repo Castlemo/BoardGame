@@ -242,9 +242,9 @@ public class GameUI {
                 handleCityTile((City) currentTile);
                 break;
 
-            case PALACE:
+            case TOURIST_SPOT:
                 frame.getBoardPanel().showNotification(currentTile.name, "도착!", new java.awt.Color(155, 89, 182));
-                handlePalaceTile((Palace) currentTile);
+                handleTouristSpotTile((TouristSpot) currentTile);
                 break;
 
             case ISLAND:
@@ -334,32 +334,32 @@ public class GameUI {
         }
     }
 
-    private void handlePalaceTile(Palace palace) {
+    private void handleTouristSpotTile(TouristSpot touristSpot) {
         Player player = players[currentPlayerIndex];
 
-        if (palace.isDeleted) {
-            log(palace.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
+        if (touristSpot.isDeleted) {
+            log(touristSpot.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
             endTurn();
             return;
         }
 
-        if (!palace.isOwned()) {
-            // 미소유 궁
-            log(palace.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", palace.price) + "원)");
+        if (!touristSpot.isOwned()) {
+            // 미소유 관광지
+            log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             log("(관광지는 업그레이드가 불가능합니다)");
             state = GameState.WAITING_FOR_ACTION;
             frame.getControlPanel().setButtonsEnabled(false, true, false, false, true, false);
-        } else if (palace.owner == currentPlayerIndex) {
-            // 본인 소유 궁
-            log(palace.name + "은(는) 본인 소유 관광지입니다.");
+        } else if (touristSpot.owner == currentPlayerIndex) {
+            // 본인 소유 관광지
+            log(touristSpot.name + "은(는) 본인 소유 관광지입니다.");
             log("(관광지는 업그레이드가 불가능합니다)");
             endTurn();
         } else {
-            // 타인 소유 궁
-            Player owner = players[palace.owner];
-            int toll = ruleEngine.calculatePalaceToll(palace);
+            // 타인 소유 관광지
+            Player owner = players[touristSpot.owner];
+            int toll = ruleEngine.calculateTouristSpotToll(touristSpot);
 
-            log(palace.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+            log(touristSpot.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
             // 통행료 지불 알림
@@ -386,11 +386,11 @@ public class GameUI {
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
-        } else if (currentTile instanceof Palace) {
-            Palace palace = (Palace) currentTile;
-            if (ruleEngine.purchasePalace(player, palace, currentPlayerIndex)) {
-                log(player.name + "이(가) " + palace.name + "을(를) " + String.format("%,d", palace.price) + "원에 매입했습니다!");
-                frame.getBoardPanel().showNotification(palace.name, "구매 완료!", new java.awt.Color(155, 89, 182));
+        } else if (currentTile instanceof TouristSpot) {
+            TouristSpot touristSpot = (TouristSpot) currentTile;
+            if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
+                log(player.name + "이(가) " + touristSpot.name + "을(를) " + String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
+                frame.getBoardPanel().showNotification(touristSpot.name, "구매 완료!", new java.awt.Color(155, 89, 182));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -480,7 +480,7 @@ public class GameUI {
             log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
             return;
         }
-        if (selectedTile instanceof Palace && ((Palace) selectedTile).isDeleted) {
+        if (selectedTile instanceof TouristSpot && ((TouristSpot) selectedTile).isDeleted) {
             frame.getBoardPanel().showNotification("선택 불가", "삭제된 칸", new java.awt.Color(231, 76, 60));
             log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
             return;

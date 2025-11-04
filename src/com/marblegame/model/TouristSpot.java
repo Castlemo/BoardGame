@@ -1,17 +1,17 @@
 package com.marblegame.model;
 
 /**
- * 관광지(궁) 클래스
+ * 관광지 클래스
  * 구매 가능하지만 업그레이드 불가능
  */
-public class Palace extends Tile {
+public class TouristSpot extends Tile {
     public final int price;
     public final int toll;  // 고정 통행료 (업그레이드 없음)
     public Integer owner = null; // 플레이어 인덱스 (null이면 미소유)
     public boolean isDeleted = false; // 페이즈 딜리트로 삭제된 칸
 
-    public Palace(int id, String name, int price, int toll) {
-        super(id, name, Type.PALACE, "PALACE");
+    public TouristSpot(int id, String name, int price, int toll) {
+        super(id, name, Type.TOURIST_SPOT, "TOURIST_SPOT");
         this.price = price;
         this.toll = toll;
     }

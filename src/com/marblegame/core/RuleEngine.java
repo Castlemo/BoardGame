@@ -92,27 +92,27 @@ public class RuleEngine {
     }
 
     /**
-     * 궁(Palace) 매입 처리
+     * 관광지(TouristSpot) 매입 처리
      */
-    public boolean purchasePalace(Player player, Palace palace, int playerIndex) {
-        if (palace.isOwned()) {
+    public boolean purchaseTouristSpot(Player player, TouristSpot touristSpot, int playerIndex) {
+        if (touristSpot.isOwned()) {
             return false;
         }
 
-        if (!player.canAfford(palace.price)) {
+        if (!player.canAfford(touristSpot.price)) {
             return false;
         }
 
-        player.pay(palace.price);
-        palace.owner = playerIndex;
+        player.pay(touristSpot.price);
+        touristSpot.owner = playerIndex;
         return true;
     }
 
     /**
-     * 궁(Palace) 통행료 계산 (고정 금액)
+     * 관광지(TouristSpot) 통행료 계산 (고정 금액)
      */
-    public int calculatePalaceToll(Palace palace) {
-        return palace.toll;
+    public int calculateTouristSpotToll(TouristSpot touristSpot) {
+        return touristSpot.toll;
     }
 
     /**

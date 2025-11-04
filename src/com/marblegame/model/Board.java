@@ -26,7 +26,7 @@ public class Board {
         tiles.add(new City(1, "방콕", "LIME", 100000, 50000));
         tiles.add(new Tile(2, "찬스", Tile.Type.CHANCE));
         tiles.add(new City(3, "베이징", "LIME", 100000, 50000));
-        tiles.add(new City(4, "독도", "SKY_GRADIENT", 120000, 60000));
+        tiles.add(new TouristSpot(4, "독도", 200000, 100000));
         tiles.add(new City(5, "타이페이", "GREEN", 120000, 60000));
         tiles.add(new City(6, "두바이", "GREEN", 150000, 75000));
         tiles.add(new City(7, "카이로", "GREEN", 150000, 75000));
@@ -35,12 +35,12 @@ public class Board {
         tiles.add(new Tile(8, "무인도", Tile.Type.ISLAND));
 
         // 9-16: 좌측 (무인도 → 올림픽)
-        tiles.add(new City(9, "발리", "PINK_GRADIENT", 180000, 90000));
+        tiles.add(new TouristSpot(9, "발리", 200000, 100000));
         tiles.add(new City(10, "도쿄", "CYAN", 200000, 100000));
         tiles.add(new City(11, "시드니", "CYAN", 200000, 100000));
         tiles.add(new Tile(12, "찬스", Tile.Type.CHANCE));
         tiles.add(new City(13, "퀘벡", "BLUE", 220000, 110000));
-        tiles.add(new City(14, "하와이", "SKY_GRADIENT", 220000, 110000));
+        tiles.add(new TouristSpot(14, "하와이", 200000, 100000));
         tiles.add(new City(15, "상파울로", "BLUE", 250000, 125000));
 
         // 16: OLYMPIC (좌측 상단 모서리)
@@ -48,7 +48,7 @@ public class Board {
 
         // 17-24: 상단 (올림픽 → 세계여행)
         tiles.add(new City(17, "프라하", "LIGHT_PURPLE", 280000, 140000));
-        tiles.add(new City(18, "푸켓", "SKY_GRADIENT", 280000, 140000));
+        tiles.add(new TouristSpot(18, "푸켓", 200000, 100000));
         tiles.add(new City(19, "베를린", "LIGHT_PURPLE", 300000, 150000));
         tiles.add(new Tile(20, "찬스", Tile.Type.CHANCE));
         tiles.add(new City(21, "모스크바", "PURPLE", 300000, 150000));
@@ -59,7 +59,7 @@ public class Board {
         tiles.add(new Tile(24, "세계여행", Tile.Type.WORLD_TOUR));
 
         // 25-31: 우측 (세계여행 → Start)
-        tiles.add(new City(25, "타히티", "PINK_GRADIENT", 350000, 175000));
+        tiles.add(new TouristSpot(25, "타히티", 200000, 100000));
         tiles.add(new City(26, "런던", "BROWN", 380000, 190000));
         tiles.add(new City(27, "파리", "BROWN", 380000, 190000));
         tiles.add(new Tile(28, "찬스", Tile.Type.CHANCE));

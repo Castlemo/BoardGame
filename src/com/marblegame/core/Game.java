@@ -150,8 +150,8 @@ public class Game {
                 handleCityTile(player, playerIndex, (City) tile);
                 break;
 
-            case PALACE:
-                handlePalaceTile(player, playerIndex, (Palace) tile);
+            case TOURIST_SPOT:
+                handleTouristSpotTile(player, playerIndex, (TouristSpot) tile);
                 break;
 
             case ISLAND:
@@ -250,34 +250,34 @@ public class Game {
     }
 
     /**
-     * 궁 칸 처리
+     * 관광지 칸 처리
      */
-    private void handlePalaceTile(Player player, int playerIndex, Palace palace) {
-        if (palace.isDeleted) {
+    private void handleTouristSpotTile(Player player, int playerIndex, TouristSpot touristSpot) {
+        if (touristSpot.isDeleted) {
             System.out.println("이 관광지는 페이즈 딜리트로 삭제되어 접근할 수 없습니다.");
             return;
         }
 
-        if (!palace.isOwned()) {
-            System.out.println(palace.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", palace.price) + "원)");
+        if (!touristSpot.isOwned()) {
+            System.out.println(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             System.out.println("관광지는 업그레이드가 불가능합니다.");
             System.out.print("매입하시겠습니까? (Y/N): ");
 
             String answer = scanner.nextLine().trim().toUpperCase();
             if (answer.equals("Y")) {
-                if (ruleEngine.purchasePalace(player, palace, playerIndex)) {
-                    System.out.println(player.name + "이(가) " + palace.name + "을(를) " + String.format("%,d", palace.price) + "원에 매입했습니다!");
+                if (ruleEngine.purchaseTouristSpot(player, touristSpot, playerIndex)) {
+                    System.out.println(player.name + "이(가) " + touristSpot.name + "을(를) " + String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
                 } else {
                     System.out.println("자금이 부족하여 매입할 수 없습니다.");
                 }
             }
-        } else if (palace.owner == playerIndex) {
-            System.out.println(palace.name + "은(는) 본인 소유 관광지입니다. (관광지는 업그레이드가 불가능합니다)");
+        } else if (touristSpot.owner == playerIndex) {
+            System.out.println(touristSpot.name + "은(는) 본인 소유 관광지입니다. (관광지는 업그레이드가 불가능합니다)");
         } else {
-            Player owner = players.get(palace.owner);
-            int toll = ruleEngine.calculatePalaceToll(palace);
+            Player owner = players.get(touristSpot.owner);
+            int toll = ruleEngine.calculateTouristSpotToll(touristSpot);
 
-            System.out.println(palace.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+            System.out.println(touristSpot.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
             System.out.println("통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
             ruleEngine.payToll(player, owner, toll);
@@ -316,7 +316,7 @@ public class Game {
                 System.out.println("해당 도시는 삭제되어 이동할 수 없습니다.");
                 continue;
             }
-            if (tile instanceof Palace && ((Palace) tile).isDeleted) {
+            if (tile instanceof TouristSpot && ((TouristSpot) tile).isDeleted) {
                 System.out.println("해당 관광지는 삭제되어 이동할 수 없습니다.");
                 continue;
             }
