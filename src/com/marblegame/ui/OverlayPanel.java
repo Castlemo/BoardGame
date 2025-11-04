@@ -21,8 +21,8 @@ import java.util.List;
  */
 public class OverlayPanel extends JPanel {
     private static final int COMPONENT_SPACING = 24; // 컴포넌트 간 간격
-    private static final int CARD_WIDTH = 200;  // 플레이어 카드 너비
-    private static final int CARD_HEIGHT = 120; // 플레이어 카드 높이
+    private static final int CARD_WIDTH = 160;  // 플레이어 카드 너비 (축소: 200→160)
+    private static final int CARD_HEIGHT = 70;  // 플레이어 카드 높이 (축소: 120→70)
     private static final int CARD_MARGIN = 20;  // 카드와 테두리 간격
 
     private JLabel turnLabel;
@@ -481,30 +481,25 @@ public class OverlayPanel extends JPanel {
 
             // 플레이어 이름
             g2.setColor(TEXT_PRIMARY);
-            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 14);
+            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 12);
             g2.setFont(nameFont);
-            g2.drawString(player.name, 15, 25);
+            g2.drawString(player.name, 10, 20);
 
             // 정보 텍스트
             Font infoFont = new Font("Malgun Gothic", Font.PLAIN, 11);
             g2.setFont(infoFont);
             g2.setColor(TEXT_PRIMARY);
-            int infoY = 45;
-            int lineHeight = 18;
+            int infoY = 38;
+            int lineHeight = 16;
 
-            g2.drawString(String.format("💰 %,d원", player.cash), 15, infoY);
+            // 항상 표시: 보유금액
+            g2.drawString(String.format("💰 %,d원", player.cash), 10, infoY);
             infoY += lineHeight;
 
-            g2.drawString(String.format("📍 %d번 칸", player.pos), 15, infoY);
-            infoY += lineHeight;
-
-            String status = player.bankrupt ? "💀 파산" : "✅ 플레이 중";
-            g2.drawString(status, 15, infoY);
-            infoY += lineHeight;
-
-            String jailInfo = player.jailTurns > 0 ? String.format("🏝 %d턴", player.jailTurns) : "🏝 없음";
-            g2.setColor(TEXT_SECONDARY);
-            g2.drawString(jailInfo, 15, infoY);
+            // 조건부 표시: 무인도에 있을 때만 남은 턴 수 표시
+            if (player.isInJail()) {
+                g2.drawString(String.format("🏝 %d턴", player.jailTurns), 10, infoY);
+            }
 
             g2.dispose();
         }
