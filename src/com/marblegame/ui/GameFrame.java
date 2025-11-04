@@ -8,12 +8,13 @@ import java.util.List;
 
 /**
  * 메인 게임 윈도우
+ * 리팩토링: 좌측 플레이어 정보 + 중앙 보드(오버레이) + 하단 로그
  */
 public class GameFrame extends JFrame {
     private BoardPanel boardPanel;
-    private InfoPanel infoPanel;
+    private InfoPanel infoPanel;           // 수정됨: 플레이어 정보만 (좌측)
     private ControlPanel controlPanel;
-    private ActionPanel actionPanel;
+    private OverlayPanel overlayPanel;     // 추가됨: 중앙 오버레이 (턴/주사위/버튼)
 
     public GameFrame(Board board, List<Player> players) {
         setTitle("모두의 마블 2.0 - Board Game");
@@ -50,55 +51,54 @@ public class GameFrame extends JFrame {
     private void initComponents(Board board, List<Player> players) {
         setLayout(new BorderLayout(10, 10));
 
-        // 보드 패널 (좌측)
-        boardPanel = new BoardPanel(board, players);
-        JPanel boardContainer = new JPanel(new GridBagLayout());
-        boardContainer.setBackground(new Color(44, 62, 80));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.weighty = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.anchor = GridBagConstraints.CENTER;
-        boardContainer.add(boardPanel, gbc);
-
-        // 우측 패널 (정보 + 액션)
-        JPanel rightPanel = new JPanel(new GridBagLayout());
-        rightPanel.setBackground(new Color(44, 62, 80));
-        rightPanel.setMinimumSize(new Dimension(320, 400));
-
-        // 정보 패널 (우측 상단)
+        // 수정됨: 좌측 - 플레이어 정보 패널
         infoPanel = new InfoPanel(players);
+        JScrollPane playerScrollPane = new JScrollPane(infoPanel);
+        playerScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        playerScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        playerScrollPane.setBorder(null);
+        playerScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        playerScrollPane.setPreferredSize(new Dimension(300, 600));
+        playerScrollPane.setMinimumSize(new Dimension(280, 400));
 
-        // 액션 패널 (우측 하단) - 고정
-        actionPanel = new ActionPanel();
+        // 추가됨: 중앙 - JLayeredPane (보드 + 오버레이)
+        JLayeredPane layeredPane = new JLayeredPane();
+        layeredPane.setPreferredSize(new Dimension(800, 800));
 
-        GridBagConstraints rightGbc = new GridBagConstraints();
-        rightGbc.gridx = 0;
-        rightGbc.gridy = 0;
-        rightGbc.weightx = 1.0;
-        rightGbc.weighty = 0.65;
-        rightGbc.fill = GridBagConstraints.BOTH;
-        rightPanel.add(infoPanel, rightGbc);
+        // 보드 패널 (DEFAULT_LAYER)
+        boardPanel = new BoardPanel(board, players);
+        boardPanel.setBounds(0, 0, 800, 800);
+        layeredPane.add(boardPanel, JLayeredPane.DEFAULT_LAYER);
 
-        rightGbc.gridy = 1;
-        rightGbc.weighty = 0.35;
-        rightGbc.insets = new Insets(10, 0, 0, 0);
-        rightPanel.add(actionPanel, rightGbc);
+        // 오버레이 패널 (PALETTE_LAYER) - 보드 위에 겹침
+        overlayPanel = new OverlayPanel();
+        overlayPanel.setBounds(0, 0, 800, 800);
+        layeredPane.add(overlayPanel, JLayeredPane.PALETTE_LAYER);
 
-        // 컨트롤 패널 (하단) - 스크롤 가능
+        // LayeredPane 리사이즈 처리
+        layeredPane.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int w = layeredPane.getWidth();
+                int h = layeredPane.getHeight();
+                boardPanel.setBounds(0, 0, w, h);
+                overlayPanel.setBounds(0, 0, w, h);
+            }
+        });
+
+        // 수정됨: 하단 - 로그 패널만 (버튼 제거됨)
         controlPanel = new ControlPanel();
         JScrollPane controlScrollPane = new JScrollPane(controlPanel);
         controlScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         controlScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         controlScrollPane.setBorder(null);
         controlScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        controlScrollPane.setPreferredSize(new Dimension(1200, 180));
 
         // 레이아웃 배치
-        add(boardContainer, BorderLayout.CENTER);
-        add(rightPanel, BorderLayout.EAST);
-        add(controlScrollPane, BorderLayout.SOUTH);
+        add(playerScrollPane, BorderLayout.WEST);     // 좌측: 플레이어 정보
+        add(layeredPane, BorderLayout.CENTER);        // 중앙: 보드 + 오버레이
+        add(controlScrollPane, BorderLayout.SOUTH);   // 하단: 로그
 
         // 여백 추가
         ((JPanel) getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -116,12 +116,20 @@ public class GameFrame extends JFrame {
         return controlPanel;
     }
 
-    public ActionPanel getActionPanel() {
-        return actionPanel;
+    // 추가됨: 오버레이 패널 getter
+    public OverlayPanel getOverlayPanel() {
+        return overlayPanel;
+    }
+
+    // 수정됨: ActionPanel은 제거되었으므로 deprecated
+    @Deprecated
+    public OverlayPanel getActionPanel() {
+        return overlayPanel; // 하위 호환성을 위해 overlayPanel 반환
     }
 
     public void updateDisplay(int currentTurn) {
         boardPanel.updateBoard();
-        infoPanel.updateInfo(currentTurn);
+        infoPanel.updateInfo();                      // 수정됨: 턴은 오버레이에서 표시
+        overlayPanel.setTurnNumber(currentTurn);     // 추가됨: 오버레이 턴 업데이트
     }
 }

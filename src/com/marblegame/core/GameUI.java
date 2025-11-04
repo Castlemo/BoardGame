@@ -59,19 +59,19 @@ public class GameUI {
         setupDiceButtonPressAndHold();
 
         // 매입
-        frame.getControlPanel().setPurchaseListener(e -> purchaseCity());
+        frame.getActionPanel().setPurchaseListener(e -> purchaseCity());
 
         // 업그레이드
-        frame.getControlPanel().setUpgradeListener(e -> upgradeCity());
+        frame.getActionPanel().setUpgradeListener(e -> upgradeCity());
 
         // 인수
-        frame.getControlPanel().setTakeoverListener(e -> takeoverCity());
+        frame.getActionPanel().setTakeoverListener(e -> takeoverCity());
 
         // 패스
-        frame.getControlPanel().setSkipListener(e -> skip());
+        frame.getActionPanel().setSkipListener(e -> skip());
 
         // 보석금 탈출
-        frame.getControlPanel().setEscapeListener(e -> escapeWithBail());
+        frame.getActionPanel().setEscapeListener(e -> escapeWithBail());
 
         // 보드 타일 클릭 (전국철도 선택용)
         frame.getBoardPanel().setTileClickListener(tileIndex -> onTileSelected(tileIndex));
@@ -81,7 +81,7 @@ public class GameUI {
      * 주사위 버튼에 press-and-hold 이벤트 설정
      */
     private void setupDiceButtonPressAndHold() {
-        JButton diceButton = frame.getControlPanel().getRollDiceButton();
+        JButton diceButton = frame.getActionPanel().getRollDiceButton();
 
         diceButton.addMouseListener(new MouseAdapter() {
             @Override
@@ -122,20 +122,19 @@ public class GameUI {
 
         if (player.isInJail()) {
             state = GameState.WAITING_FOR_JAIL_CHOICE;
-            frame.getControlPanel().setButtonsEnabled(false, false, false, false, true, true);
+            frame.getActionPanel().setButtonsEnabled(false, false, false, false, true, true);
             frame.getBoardPanel().setTileClickEnabled(false);
             log("무인도에 갇혀있습니다. (남은 턴: " + player.jailTurns + ")");
             log("💰 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
         } else if (player.hasRailroadTicket) {
             state = GameState.WAITING_FOR_RAILROAD_SELECTION;
-            frame.getControlPanel().setButtonsEnabled(false, false, false, false, false, false);
+            frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
             frame.getBoardPanel().setTileClickEnabled(true);
             log("🚆 전국철도 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
-            frame.getBoardPanel().showNotification("칸 선택", "클릭하세요!", new java.awt.Color(22, 160, 133));
         } else {
             state = GameState.WAITING_FOR_ROLL;
-            frame.getControlPanel().setButtonsEnabled(true, false, false, false, false, false);
+            frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
             frame.getBoardPanel().setTileClickEnabled(false);
             log("주사위를 굴려주세요.");
         }
@@ -226,22 +225,18 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
-                frame.getBoardPanel().showNotification("출발", "통과!", new java.awt.Color(46, 204, 113));
                 endTurn();
                 break;
 
             case CITY:
-                frame.getBoardPanel().showNotification(currentTile.name, "도착!", java.awt.Color.WHITE);
                 handleCityTile((City) currentTile);
                 break;
 
             case TOURIST_SPOT:
-                frame.getBoardPanel().showNotification(currentTile.name, "도착!", new java.awt.Color(155, 89, 182));
                 handleTouristSpotTile((TouristSpot) currentTile);
                 break;
 
             case ISLAND:
-                frame.getBoardPanel().showNotification("무인도", "갇힘!", new java.awt.Color(127, 140, 141));
                 log("무인도에 도착했습니다!");
                 player.jailTurns = 2; // 2턴 갇힘
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
@@ -250,19 +245,16 @@ public class GameUI {
 
             case CHANCE:
                 ruleEngine.processChance(player);
-                frame.getBoardPanel().showNotification("찬스", "보너스!", new java.awt.Color(241, 196, 15));
                 log("찬스 카드! " + String.format("%,d", ruleEngine.getChanceReward()) + "원을 받았습니다!");
                 endTurn();
                 break;
 
             case WELFARE:
-                frame.getBoardPanel().showNotification("사회복지기금", "도착!", new java.awt.Color(52, 152, 219));
                 log("사회복지기금에 도착했습니다! (기능 미구현)");
                 endTurn();
                 break;
 
             case RAILROAD:
-                frame.getBoardPanel().showNotification("전국철도", "도착!", new java.awt.Color(22, 160, 133));
                 log("전국철도에 도착했습니다!");
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true;
@@ -278,7 +270,6 @@ public class GameUI {
                 break;
 
             case WORLD_TOUR:
-                frame.getBoardPanel().showNotification("세계여행", "도착!", new java.awt.Color(135, 206, 235));
                 log("세계여행에 도착했습니다!");
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true; // 전국철도와 동일한 효과
@@ -296,7 +287,7 @@ public class GameUI {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
             state = GameState.WAITING_FOR_ACTION;
-            frame.getControlPanel().setButtonsEnabled(false, true, false, false, true, false);
+            frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (city.owner == currentPlayerIndex) {
             // 본인 소유 땅
             log(city.name + "은(는) 본인 소유입니다. (레벨: " + city.level + ")");
@@ -305,7 +296,7 @@ public class GameUI {
                 int upgradeCost = city.getUpgradeCost();
                 log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
                 state = GameState.WAITING_FOR_ACTION;
-                frame.getControlPanel().setButtonsEnabled(false, false, true, false, true, false);
+                frame.getActionPanel().setButtonsEnabled(false, false, true, false, true, false);
             } else {
                 log("최대 레벨입니다. 더 이상 업그레이드할 수 없습니다.");
                 endTurn();
@@ -324,7 +315,6 @@ public class GameUI {
             }
 
             // 통행료 지불 알림
-            frame.getBoardPanel().showNotification("통행료", String.format("%,d원 지불", toll), new java.awt.Color(231, 76, 60));
 
             ruleEngine.payToll(player, owner, toll);
 
@@ -348,7 +338,7 @@ public class GameUI {
                     log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 땅을 인수하거나 패스하세요.");
                     state = GameState.WAITING_FOR_ACTION;
-                    frame.getControlPanel().setButtonsEnabled(false, false, false, true, true, false);
+                    frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
                 }
             }
         }
@@ -362,7 +352,7 @@ public class GameUI {
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             log("(관광지는 업그레이드가 불가능합니다)");
             state = GameState.WAITING_FOR_ACTION;
-            frame.getControlPanel().setButtonsEnabled(false, true, false, false, true, false);
+            frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (touristSpot.owner == currentPlayerIndex) {
             // 본인 소유 관광지
             log(touristSpot.name + "은(는) 본인 소유 관광지입니다.");
@@ -377,7 +367,6 @@ public class GameUI {
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
             // 통행료 지불 알림
-            frame.getBoardPanel().showNotification("통행료", String.format("%,d원 지불", toll), new java.awt.Color(231, 76, 60));
 
             ruleEngine.payToll(player, owner, toll);
 
@@ -399,7 +388,6 @@ public class GameUI {
                 city.level = 1;
                 log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
                 log("🏠 집이 건설되었습니다! (레벨 1)");
-                frame.getBoardPanel().showNotification(city.name, "구매 완료!", new java.awt.Color(46, 204, 113));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -407,7 +395,6 @@ public class GameUI {
             TouristSpot touristSpot = (TouristSpot) currentTile;
             if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
                 log(player.name + "이(가) " + touristSpot.name + "을(를) " + String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
-                frame.getBoardPanel().showNotification(touristSpot.name, "구매 완료!", new java.awt.Color(155, 89, 182));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -432,7 +419,6 @@ public class GameUI {
             if (city.isLandmark()) {
                 log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
             }
-            frame.getBoardPanel().showNotification(city.name, "레벨 " + city.level + " 업그레이드!", new java.awt.Color(52, 152, 219));
         } else {
             log("자금이 부족하여 업그레이드할 수 없습니다.");
         }
@@ -451,7 +437,6 @@ public class GameUI {
             log(buyer.name + "이(가) " + seller.name + "으로부터 " + city.name + "을(를) " +
                 String.format("%,d", takeoverCost) + "원에 인수했습니다!");
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
-            frame.getBoardPanel().showNotification(city.name, "인수 완료!", new java.awt.Color(230, 126, 34));
         } else if (city.isLandmark()) {
             log("🏛️ 랜드마크는 인수할 수 없습니다.");
         } else {
@@ -485,7 +470,7 @@ public class GameUI {
         if (ruleEngine.escapeIslandWithBail(player)) {
             log("보석금 200,000원을 내고 무인도에서 탈출했습니다!");
             state = GameState.WAITING_FOR_ROLL;
-            frame.getControlPanel().setButtonsEnabled(true, false, false, false, false, false);
+            frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
             updateDisplay();
         } else {
             log("보석금이 부족합니다.");
@@ -523,7 +508,6 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
         int tax = ruleEngine.calculateTax(player);
 
-        frame.getBoardPanel().showNotification("국세청", "세금 납부!", new java.awt.Color(128, 128, 128));
         log("국세청에 도착했습니다!");
         log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
 
@@ -539,7 +523,6 @@ public class GameUI {
     private void handleOlympicTile() {
         Player player = players[currentPlayerIndex];
 
-        frame.getBoardPanel().showNotification("올림픽", "도착!", new java.awt.Color(135, 206, 235));
         log("올림픽에 도착했습니다!");
 
         // 플레이어가 소유한 도시 찾기
@@ -574,7 +557,6 @@ public class GameUI {
             City selectedCity = ownedCities.get(0);
             ruleEngine.applyOlympicBoost(selectedCity);
             log("⚡ " + selectedCity.name + "에 올림픽 효과가 적용되었습니다! (통행료 2배)");
-            frame.getBoardPanel().showNotification("올림픽 효과", selectedCity.name + " 통행료 2배!", new java.awt.Color(241, 196, 15));
         }
 
         endTurn();
@@ -626,7 +608,7 @@ public class GameUI {
 
     private void endGame() {
         state = GameState.GAME_OVER;
-        frame.getControlPanel().setButtonsEnabled(false, false, false, false, false, false);
+        frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
 
         log("\n\n=== 게임 종료 ===");
 

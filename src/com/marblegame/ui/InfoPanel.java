@@ -8,7 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 플레이어 정보를 비율 유지하며 렌더링하는 패널
+ * 플레이어 정보만 표시하는 패널 (좌측 배치용)
+ * 수정됨: TurnPanel 제거 (중앙 오버레이로 이동), 단순 BoxLayout 사용
  */
 public class InfoPanel extends JPanel {
     private static final Color BACKGROUND = new Color(44, 62, 80);
@@ -24,177 +25,50 @@ public class InfoPanel extends JPanel {
         new Color(230, 126, 34)   // Orange
     };
 
-    private static final int TURN_BASE_WIDTH = 250;
-    private static final int TURN_BASE_HEIGHT = 85;
-    private static final int CARD_BASE_WIDTH = 250;
-    private static final int CARD_BASE_HEIGHT = 120;
+    private static final int CARD_WIDTH = 260;
+    private static final int CARD_HEIGHT = 160;
 
     private final List<Player> players;
-    private final TurnPanel turnPanel;
     private final List<PlayerInfoPanel> playerPanels;
 
     public InfoPanel(List<Player> players) {
         this.players = players;
-        setLayout(new GridBagLayout());
+
+        // 수정됨: BoxLayout으로 단순화
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(BACKGROUND);
         setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        turnPanel = new TurnPanel();
         playerPanels = new ArrayList<>();
 
-        double totalBaseHeight = TURN_BASE_HEIGHT + players.size() * CARD_BASE_HEIGHT;
-        if (totalBaseHeight <= 0) {
-            totalBaseHeight = 1.0;
-        }
-        double accumulated = 0.0;
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(0, 0, 12, 0);
-        gbc.weightx = 1.0;
-
-        gbc.gridy = 0;
-        gbc.weighty = TURN_BASE_HEIGHT / totalBaseHeight;
-        add(wrapWithAspect(turnPanel, TURN_BASE_WIDTH, TURN_BASE_HEIGHT), gbc);
-        accumulated += gbc.weighty;
-
+        // 플레이어 패널만 추가
         for (int i = 0; i < players.size(); i++) {
+            if (i > 0) {
+                add(Box.createRigidArea(new Dimension(0, 12))); // 간격
+            }
+
             PlayerInfoPanel panel = new PlayerInfoPanel(players.get(i), i);
+            panel.setMaximumSize(new Dimension(CARD_WIDTH, CARD_HEIGHT));
+            panel.setPreferredSize(new Dimension(CARD_WIDTH, CARD_HEIGHT));
+            panel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
             playerPanels.add(panel);
-
-            gbc.gridy = i + 1;
-            gbc.insets = new Insets(i == 0 ? 12 : 10, 0, 0, 0);
-            double weight = CARD_BASE_HEIGHT / totalBaseHeight;
-            gbc.weighty = weight;
-            accumulated += weight;
-            add(wrapWithAspect(panel, CARD_BASE_WIDTH, CARD_BASE_HEIGHT), gbc);
+            add(panel);
         }
 
-        if (accumulated < 1.0) {
-            gbc.gridy = players.size() + 1;
-            gbc.weighty = Math.max(0.0, 1.0 - accumulated);
-            gbc.insets = new Insets(10, 0, 0, 0);
-            add(Box.createVerticalGlue(), gbc);
-        }
+        // 여백 추가
+        add(Box.createVerticalGlue());
     }
 
-    private AspectRatioWrapper wrapWithAspect(JComponent component, int baseWidth, int baseHeight) {
-        return new AspectRatioWrapper(component, baseWidth, baseHeight);
-    }
-
-    public void updateInfo(int currentTurn) {
-        turnPanel.setTurn(currentTurn);
-
+    // 수정됨: currentTurn 파라미터 제거 (오버레이에서 표시)
+    public void updateInfo() {
         for (int i = 0; i < playerPanels.size(); i++) {
             playerPanels.get(i).setPlayer(players.get(i));
         }
-
         repaint();
     }
 
-    private static class AspectRatioWrapper extends JPanel {
-        private final JComponent content;
-        private final int baseWidth;
-        private final int baseHeight;
-
-        AspectRatioWrapper(JComponent content, int baseWidth, int baseHeight) {
-            super(null);
-            this.content = content;
-            this.baseWidth = baseWidth;
-            this.baseHeight = baseHeight;
-            setOpaque(false);
-            add(content);
-        }
-
-        @Override
-        public Dimension getMinimumSize() {
-            return new Dimension(Math.max(120, baseWidth / 2), Math.max(80, baseHeight / 2));
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            return new Dimension(baseWidth, baseHeight);
-        }
-
-        @Override
-        public void doLayout() {
-            int width = getWidth();
-            int height = getHeight();
-
-            double scale = Math.min(width / (double) baseWidth, height / (double) baseHeight);
-            int scaledWidth = (int) Math.round(baseWidth * scale);
-            int scaledHeight = (int) Math.round(baseHeight * scale);
-
-            int x = (width - scaledWidth) / 2;
-            int y = (height - scaledHeight) / 2;
-
-            content.setBounds(x, y, scaledWidth, scaledHeight);
-        }
-    }
-
-    private class TurnPanel extends JPanel {
-        private static final int BASE_WIDTH = TURN_BASE_WIDTH;
-        private static final int BASE_HEIGHT = TURN_BASE_HEIGHT;
-
-        private int currentTurn = 1;
-
-        TurnPanel() {
-            setOpaque(false);
-        }
-
-        void setTurn(int turn) {
-            this.currentTurn = turn;
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            double scale = Math.min(getWidth() / (double) BASE_WIDTH, getHeight() / (double) BASE_HEIGHT);
-            int offsetX = (int) ((getWidth() - BASE_WIDTH * scale) / 2);
-            int offsetY = (int) ((getHeight() - BASE_HEIGHT * scale) / 2);
-
-            g2.translate(offsetX, offsetY);
-            g2.scale(scale, scale);
-
-            // 배경
-            g2.setColor(CARD_BACKGROUND);
-            g2.fillRoundRect(0, 0, BASE_WIDTH, BASE_HEIGHT, 18, 18);
-
-            // 테두리
-            g2.setStroke(new BasicStroke(3f));
-            g2.setColor(BORDER_COLOR);
-            g2.drawRoundRect(0, 0, BASE_WIDTH, BASE_HEIGHT, 18, 18);
-
-            // 텍스트
-            g2.setColor(TEXT_SECONDARY);
-            Font subtitle = new Font("맑은 고딕", Font.PLAIN, 14);
-            g2.setFont(subtitle);
-            String title = "현재 턴";
-            FontMetrics fm = g2.getFontMetrics();
-            int titleX = (BASE_WIDTH - fm.stringWidth(title)) / 2;
-            g2.drawString(title, titleX, 28);
-
-            g2.setColor(new Color(52, 152, 219));
-            Font turnFont = new Font("Arial", Font.BOLD, 46);
-            g2.setFont(turnFont);
-            String turnText = String.valueOf(currentTurn);
-            FontMetrics turnFm = g2.getFontMetrics();
-            g2.drawString(turnText, (BASE_WIDTH - turnFm.stringWidth(turnText)) / 2, 65);
-
-            g2.dispose();
-        }
-    }
-
     private class PlayerInfoPanel extends JPanel {
-        private static final int BASE_WIDTH = CARD_BASE_WIDTH;
-        private static final int BASE_HEIGHT = CARD_BASE_HEIGHT;
-
         private Player player;
         private final int playerIndex;
 
@@ -202,6 +76,7 @@ public class InfoPanel extends JPanel {
             this.player = player;
             this.playerIndex = index;
             setOpaque(false);
+            setPreferredSize(new Dimension(CARD_WIDTH, CARD_HEIGHT));
         }
 
         void setPlayer(Player player) {
@@ -216,37 +91,31 @@ public class InfoPanel extends JPanel {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-            double scale = Math.min(getWidth() / (double) BASE_WIDTH, getHeight() / (double) BASE_HEIGHT);
-            int offsetX = (int) ((getWidth() - BASE_WIDTH * scale) / 2);
-            int offsetY = (int) ((getHeight() - BASE_HEIGHT * scale) / 2);
-
-            g2.translate(offsetX, offsetY);
-            g2.scale(scale, scale);
+            int width = getWidth();
+            int height = getHeight();
 
             // 카드 배경
             g2.setColor(CARD_BACKGROUND);
-            g2.fillRoundRect(0, 0, BASE_WIDTH, BASE_HEIGHT, 18, 18);
+            g2.fillRoundRect(0, 0, width, height, 18, 18);
 
             // 테두리
             Color accent = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
             g2.setColor(accent);
             g2.setStroke(new BasicStroke(3f));
-            g2.drawRoundRect(0, 0, BASE_WIDTH, BASE_HEIGHT, 18, 18);
+            g2.drawRoundRect(0, 0, width, height, 18, 18);
 
+            // 플레이어 이름
             g2.setColor(TEXT_PRIMARY);
-            Font nameFont = fitFont(g2, new Font("맑은 고딕", Font.BOLD, 12), player.name, BASE_WIDTH - 80, 8);
+            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 18);
             g2.setFont(nameFont);
-            FontMetrics nameFm = g2.getFontMetrics();
-            int nameY = 38;
-            g2.drawString(player.name, 20, nameY);
+            g2.drawString(player.name, 20, 35);
 
             // 정보 텍스트
-            Font infoFont = new Font("맑은 고딕", Font.PLAIN, 10);
-            infoFont = fitFont(g2, infoFont, "💰 000,000원", BASE_WIDTH - 40, 6);
+            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, 14);
             g2.setFont(infoFont);
             g2.setColor(TEXT_PRIMARY);
-            int infoY = 56;
-            int lineHeight = g2.getFontMetrics().getHeight() + 2;
+            int infoY = 60;
+            int lineHeight = 22;
 
             g2.drawString(String.format("💰 %,d원", player.cash), 20, infoY);
             infoY += lineHeight;
@@ -263,16 +132,6 @@ public class InfoPanel extends JPanel {
             g2.drawString(jailInfo, 20, infoY);
 
             g2.dispose();
-        }
-
-        private Font fitFont(Graphics2D g2, Font baseFont, String text, int maxWidth, int minSize) {
-            Font font = baseFont;
-            FontMetrics fm = g2.getFontMetrics(font);
-            while (fm.stringWidth(text) > maxWidth && font.getSize() > minSize) {
-                font = font.deriveFont(font.getSize2D() - 1f);
-                fm = g2.getFontMetrics(font);
-            }
-            return font;
         }
     }
 }
