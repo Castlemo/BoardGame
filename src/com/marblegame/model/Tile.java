@@ -5,7 +5,7 @@ package com.marblegame.model;
  */
 public class Tile {
     public enum Type {
-        START, CITY, ISLAND, CHANCE, PALACE, WELFARE, RAILROAD
+        START, CITY, ISLAND, CHANCE, PALACE, WELFARE, RAILROAD, OLYMPIC, WORLD_TOUR, TAX
     }
 
     public final int id;

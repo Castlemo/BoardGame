@@ -12,11 +12,11 @@ import java.util.function.Consumer;
 
 /**
  * 게임 보드를 그래픽으로 렌더링하는 패널
- * 44칸을 정사각형 형태로 배치
+ * 32칸을 9x9 정사각형 형태로 배치
  */
 public class BoardPanel extends JPanel {
-    private static final int BASE_TILE_SIZE = 60;
-    private static final int BOARD_SIZE = 12; // 한 변에 12칸
+    private static final int BASE_TILE_SIZE = 80;
+    private static final int BOARD_SIZE = 9; // 한 변에 9칸
     private static final Color[] PLAYER_COLORS = {
         new Color(231, 76, 60),   // Red
         new Color(52, 152, 219),  // Blue
@@ -113,31 +113,31 @@ public class BoardPanel extends JPanel {
     }
 
     private void drawBoard(Graphics2D g) {
-        // 44칸 보드: 12x12 그리드
-        // 반시계 방향: 출발(우하) → 무인도(좌하) → 복지기금(좌상) → 전국철도(우상) → 출발
+        // 32칸 보드: 9x9 그리드
+        // 반시계 방향: Start(우하) → 무인도(좌하) → 올림픽(좌상) → 세계여행(우상) → Start
 
-        // 하단 (우→좌): 0(출발), 1-10, 11(무인도) = 12칸
-        for (int i = 0; i <= 11; i++) {
-            int x = (11 - i) * BASE_TILE_SIZE;
-            drawTile(g, i, x, 11 * BASE_TILE_SIZE);
+        // 하단 (우→좌): 0(Start), 1-7, 8(무인도) = 9칸
+        for (int i = 0; i <= 8; i++) {
+            int x = (8 - i) * BASE_TILE_SIZE;
+            drawTile(g, i, x, 8 * BASE_TILE_SIZE);
         }
 
-        // 좌측 (하→상): 12-21, 22(복지기금) = 11칸 (11번 무인도는 이미 그려짐)
-        for (int i = 12; i <= 22; i++) {
-            int y = (11 - (i - 11)) * BASE_TILE_SIZE;
+        // 좌측 (하→상): 9-15, 16(올림픽) = 8칸 (8번 무인도는 이미 그려짐)
+        for (int i = 9; i <= 16; i++) {
+            int y = (8 - (i - 8)) * BASE_TILE_SIZE;
             drawTile(g, i, 0, y);
         }
 
-        // 상단 (좌→우): 23-32, 33(전국철도) = 11칸 (22번 복지기금은 이미 그려짐)
-        for (int i = 23; i <= 33; i++) {
-            int x = (i - 22) * BASE_TILE_SIZE;
+        // 상단 (좌→우): 17-23, 24(세계여행) = 8칸 (16번 올림픽은 이미 그려짐)
+        for (int i = 17; i <= 24; i++) {
+            int x = (i - 16) * BASE_TILE_SIZE;
             drawTile(g, i, x, 0);
         }
 
-        // 우측 (상→하): 34-43 = 10칸 (33번 전국철도는 이미 그려짐, 0번 출발로 순환)
-        for (int i = 34; i <= 43; i++) {
-            int y = (i - 33) * BASE_TILE_SIZE;
-            drawTile(g, i, 11 * BASE_TILE_SIZE, y);
+        // 우측 (상→하): 25-31 = 7칸 (24번 세계여행은 이미 그려짐, 0번 Start로 순환)
+        for (int i = 25; i <= 31; i++) {
+            int y = (i - 24) * BASE_TILE_SIZE;
+            drawTile(g, i, 8 * BASE_TILE_SIZE, y);
         }
 
         // 중앙 로고
@@ -182,10 +182,6 @@ public class BoardPanel extends JPanel {
                 g.drawString(deletedText, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 15);
                 return; // 더 이상 그리지 않음
             }
-
-            // 컬러 바 (상단)
-            g.setColor(getColorGroupColor(city.colorGroup));
-            g.fillRoundRect(x + 4, y + 4, BASE_TILE_SIZE - 8, 10, 5, 5);
 
             if (city.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)
@@ -239,25 +235,39 @@ public class BoardPanel extends JPanel {
             }
         }
 
+        // 특수 타일 아이콘
+        drawTileIcon(g, tile, x, y);
+
         // 타일 이름
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("맑은 고딕", Font.BOLD, 11));
+        Color textColor = Color.WHITE;
+        if (tile.type == Tile.Type.ISLAND || tile.type == Tile.Type.OLYMPIC ||
+            tile.type == Tile.Type.WORLD_TOUR || tile.type == Tile.Type.CHANCE ||
+            tile.type == Tile.Type.TAX) {
+            textColor = Color.BLACK; // 특수 타일은 검은색 텍스트
+        }
+        g.setColor(textColor);
+        g.setFont(new Font("맑은 고딕", Font.BOLD, 13));
         String name = tile.name;
         FontMetrics fm = g.getFontMetrics();
         int textWidth = fm.stringWidth(name);
-        g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE - 25);
+
+        // 특수 타일은 이모지 아래에 텍스트 배치
+        if (tile.type == Tile.Type.ISLAND || tile.type == Tile.Type.OLYMPIC ||
+            tile.type == Tile.Type.WORLD_TOUR || tile.type == Tile.Type.CHANCE ||
+            tile.type == Tile.Type.TAX) {
+            g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 28);
+        } else {
+            g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE - 20);
+        }
 
         // 타일 번호
         g.setColor(new Color(189, 195, 199));
         g.setFont(new Font("Arial", Font.PLAIN, 9));
         g.drawString(String.valueOf(tileIndex), x + 8, y + BASE_TILE_SIZE - 8);
-
-        // 특수 타일 아이콘
-        drawTileIcon(g, tile, x, y);
     }
 
     private void drawTileIcon(Graphics2D g, Tile tile, int x, int y) {
-        g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
         String icon = "";
 
         switch (tile.type) {
@@ -270,19 +280,21 @@ public class BoardPanel extends JPanel {
             case CHANCE:
                 icon = "🎁";
                 break;
-            case PALACE:
-                icon = "🏛";
+            case OLYMPIC:
+                icon = "🏆";
                 break;
-            case WELFARE:
-                icon = "💰";
+            case WORLD_TOUR:
+                icon = "✈️";
                 break;
-            case RAILROAD:
-                icon = "🚆";
+            case TAX:
+                icon = "💵";
                 break;
         }
 
         if (!icon.isEmpty()) {
-            g.drawString(icon, x + BASE_TILE_SIZE/2 - 10, y + BASE_TILE_SIZE/2 + 7);
+            FontMetrics fm = g.getFontMetrics();
+            int iconWidth = fm.stringWidth(icon);
+            g.drawString(icon, x + (BASE_TILE_SIZE - iconWidth) / 2, y + BASE_TILE_SIZE/2 - 5);
         }
     }
 
@@ -291,16 +303,21 @@ public class BoardPanel extends JPanel {
             case START:
                 return new Color(26, 188, 156); // 청록색
             case ISLAND:
-                return new Color(52, 73, 94); // 어두운 파랑
+                return new Color(135, 206, 235); // 하늘색 배경
             case CHANCE:
-                return new Color(142, 68, 173); // 보라색
-            case PALACE:
-                return new Color(155, 89, 182); // 자주색 (궁)
-            case WELFARE:
-                return new Color(52, 152, 219); // 밝은 파랑 (복지기금)
-            case RAILROAD:
-                return new Color(22, 160, 133); // 청록색 (철도)
+                return new Color(128, 128, 128); // 회색 배경
+            case OLYMPIC:
+                return new Color(135, 206, 235); // 하늘색 배경
+            case WORLD_TOUR:
+                return new Color(135, 206, 235); // 하늘색 배경
+            case TAX:
+                return new Color(128, 128, 128); // 회색 배경
             case CITY:
+                // 도시는 컬러 그룹 색상 사용
+                if (tile instanceof City) {
+                    City city = (City) tile;
+                    return getColorGroupColor(city.colorGroup);
+                }
                 return new Color(52, 73, 94); // 기본 어두운 파랑
         }
         return new Color(52, 73, 94);
@@ -310,10 +327,16 @@ public class BoardPanel extends JPanel {
         if (colorGroup == null) return Color.GRAY;
 
         switch (colorGroup) {
-            case "RED": return new Color(231, 76, 60);
-            case "BLUE": return new Color(52, 152, 219);
-            case "GREEN": return new Color(46, 204, 113);
-            case "YELLOW": return new Color(241, 196, 15);
+            case "LIME": return new Color(144, 238, 144); // 연두색
+            case "GREEN": return new Color(34, 139, 34); // 초록색
+            case "CYAN": return new Color(135, 206, 235); // 하늘색
+            case "SKY_GRADIENT": return new Color(135, 206, 250); // 하늘색 그라데이션
+            case "BLUE": return new Color(30, 144, 255); // 파란색
+            case "LIGHT_PURPLE": return new Color(186, 152, 204); // 연보라색
+            case "PURPLE": return new Color(138, 43, 226); // 보라색
+            case "BROWN": return new Color(139, 69, 19); // 갈색
+            case "RED": return new Color(220, 20, 60); // 빨간색
+            case "PINK_GRADIENT": return new Color(255, 192, 203); // 핑크색 그라데이션
             default: return Color.GRAY;
         }
     }
@@ -384,34 +407,34 @@ public class BoardPanel extends JPanel {
     }
 
     private Point getTilePosition(int tileIndex) {
-        // 44칸 보드 위치 계산
-        // 하단 (우→좌): 0-11
-        if (tileIndex <= 11) {
-            int x = (11 - tileIndex) * BASE_TILE_SIZE;
-            return new Point(x, 11 * BASE_TILE_SIZE);
+        // 32칸 보드 위치 계산 (9x9 그리드)
+        // 하단 (우→좌): 0-8
+        if (tileIndex <= 8) {
+            int x = (8 - tileIndex) * BASE_TILE_SIZE;
+            return new Point(x, 8 * BASE_TILE_SIZE);
         }
-        // 좌측 (하→상): 12-22
-        else if (tileIndex <= 22) {
-            int y = (11 - (tileIndex - 11)) * BASE_TILE_SIZE;
+        // 좌측 (하→상): 9-16
+        else if (tileIndex <= 16) {
+            int y = (8 - (tileIndex - 8)) * BASE_TILE_SIZE;
             return new Point(0, y);
         }
-        // 상단 (좌→우): 23-33
-        else if (tileIndex <= 33) {
-            int x = (tileIndex - 22) * BASE_TILE_SIZE;
+        // 상단 (좌→우): 17-24
+        else if (tileIndex <= 24) {
+            int x = (tileIndex - 16) * BASE_TILE_SIZE;
             return new Point(x, 0);
         }
-        // 우측 (상→하): 34-43
+        // 우측 (상→하): 25-31
         else {
-            int y = (tileIndex - 33) * BASE_TILE_SIZE;
-            return new Point(11 * BASE_TILE_SIZE, y);
+            int y = (tileIndex - 24) * BASE_TILE_SIZE;
+            return new Point(8 * BASE_TILE_SIZE, y);
         }
     }
 
     private void drawCenterLogo(Graphics2D g) {
-        int centerX = BASE_TILE_SIZE * 2;
-        int centerY = BASE_TILE_SIZE * 2;
-        int centerW = BASE_TILE_SIZE * 8;
-        int centerH = BASE_TILE_SIZE * 8;
+        int centerX = BASE_TILE_SIZE * 1;
+        int centerY = BASE_TILE_SIZE * 1;
+        int centerW = BASE_TILE_SIZE * 7;
+        int centerH = BASE_TILE_SIZE * 7;
 
         // 배경
         g.setColor(new Color(236, 240, 241));
@@ -571,14 +594,14 @@ public class BoardPanel extends JPanel {
 
     /**
      * 마우스 좌표로부터 타일 인덱스 계산
-     * @return 타일 인덱스 (0-43), 타일이 아닌 영역을 클릭하면 -1 반환
+     * @return 타일 인덱스 (0-31), 타일이 아닌 영역을 클릭하면 -1 반환
      */
     private int getTileIndexAt(int mouseX, int mouseY) {
         // 중앙 영역 클릭은 무시
-        int centerX = BASE_TILE_SIZE * 2;
-        int centerY = BASE_TILE_SIZE * 2;
-        int centerW = BASE_TILE_SIZE * 8;
-        int centerH = BASE_TILE_SIZE * 8;
+        int centerX = BASE_TILE_SIZE * 1;
+        int centerY = BASE_TILE_SIZE * 1;
+        int centerW = BASE_TILE_SIZE * 7;
+        int centerH = BASE_TILE_SIZE * 7;
         updateTransform();
 
         double boardX = (mouseX - translateX) / scaleFactor;
