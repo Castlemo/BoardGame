@@ -117,14 +117,6 @@ public class GameUI {
             return;
         }
 
-        // 5턴 이후부터 페이즈 딜리트 실행 (매 턴 시작 시 한 번)
-        if (currentPlayerIndex == 0 && turnCount >= 5) {
-            String deletedCity = ruleEngine.performPhaseDelete();
-            if (deletedCity != null) {
-                log("\n⚠️ [페이즈 딜리트] " + deletedCity + " 칸이 삭제되었습니다! ⚠️");
-            }
-        }
-
         log("\n--- " + player.name + "의 차례 ---");
         log(String.format("%s (현금: %,d원, 위치: %d)", player.name, player.cash, player.pos));
 
@@ -300,12 +292,6 @@ public class GameUI {
     private void handleCityTile(City city) {
         Player player = players[currentPlayerIndex];
 
-        if (city.isDeleted) {
-            log(city.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
-            endTurn();
-            return;
-        }
-
         if (!city.isOwned()) {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
@@ -370,12 +356,6 @@ public class GameUI {
 
     private void handleTouristSpotTile(TouristSpot touristSpot) {
         Player player = players[currentPlayerIndex];
-
-        if (touristSpot.isDeleted) {
-            log(touristSpot.name + "은(는) 삭제된 칸입니다. 이동이 무효 처리됩니다.");
-            endTurn();
-            return;
-        }
 
         if (!touristSpot.isOwned()) {
             // 미소유 관광지
@@ -524,17 +504,6 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
         Tile selectedTile = board.getTile(tileIndex);
 
-        if (selectedTile instanceof City && ((City) selectedTile).isDeleted) {
-            frame.getBoardPanel().showNotification("선택 불가", "삭제된 칸", new java.awt.Color(231, 76, 60));
-            log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
-            return;
-        }
-        if (selectedTile instanceof TouristSpot && ((TouristSpot) selectedTile).isDeleted) {
-            frame.getBoardPanel().showNotification("선택 불가", "삭제된 칸", new java.awt.Color(231, 76, 60));
-            log("삭제된 칸은 선택할 수 없습니다. 다른 칸을 선택하세요.");
-            return;
-        }
-
         log(player.name + "이(가) " + selectedTile.name + " (칸 " + tileIndex + ")을(를) 선택했습니다!");
 
         // 선택한 칸으로 이동
@@ -578,7 +547,7 @@ public class GameUI {
         for (Tile tile : board.getAllTiles()) {
             if (tile instanceof City) {
                 City city = (City) tile;
-                if (city.isOwned() && city.owner == currentPlayerIndex && !city.isDeleted) {
+                if (city.isOwned() && city.owner == currentPlayerIndex) {
                     ownedCities.add(city);
                 }
             }
@@ -612,6 +581,12 @@ public class GameUI {
     }
 
     private void endTurn() {
+        // 승리 조건 체크 (턴 종료 시)
+        if (ruleEngine.checkVictory(players, currentPlayerIndex)) {
+            endGame();
+            return;
+        }
+
         nextPlayer();
     }
 
@@ -628,13 +603,25 @@ public class GameUI {
     }
 
     private boolean isGameOver() {
+        // 기존 파산 체크도 유지
         int alive = 0;
         for (Player player : players) {
             if (!player.bankrupt) {
                 alive++;
             }
         }
-        return alive <= 1;
+        if (alive <= 1) {
+            return true;
+        }
+
+        // 승리 조건 체크
+        for (int i = 0; i < players.length; i++) {
+            if (ruleEngine.checkVictory(players, i)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void endGame() {
@@ -642,31 +629,51 @@ public class GameUI {
         frame.getControlPanel().setButtonsEnabled(false, false, false, false, false, false);
 
         log("\n\n=== 게임 종료 ===");
-        for (Player player : players) {
-            if (!player.bankrupt) {
-                log("🎉 승자: " + player.name + " 🎉");
-                log("최종 자산: " + String.format("%,d", player.cash) + "원");
 
-                // 재시작 옵션이 포함된 다이얼로그
-                int choice = JOptionPane.showOptionDialog(
-                    frame,
-                    player.name + " 승리!\n최종 자산: " + String.format("%,d", player.cash) + "원",
-                    "게임 종료",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    null,
-                    new Object[]{"새 게임", "종료"},
-                    "새 게임"
-                );
+        // 승리자 찾기
+        Player winner = null;
+        int winnerIndex = -1;
+        for (int i = 0; i < players.length; i++) {
+            if (!players[i].bankrupt) {
+                winner = players[i];
+                winnerIndex = i;
+                break;
+            }
+        }
 
-                if (choice == 0) {
-                    // 새 게임 시작
-                    restartGame();
-                } else {
-                    // 게임 종료
-                    System.exit(0);
-                }
-                return;
+        // 승리 조건도 체크
+        for (int i = 0; i < players.length; i++) {
+            if (ruleEngine.checkVictory(players, i)) {
+                winner = players[i];
+                winnerIndex = i;
+                break;
+            }
+        }
+
+        if (winner != null && winnerIndex >= 0) {
+            String victoryType = ruleEngine.getVictoryType(players, winnerIndex);
+            log("🎉 승자: " + winner.name + " 🎉");
+            log("승리 조건: " + victoryType);
+            log("최종 자산: " + String.format("%,d", winner.cash) + "원");
+
+            // 재시작 옵션이 포함된 다이얼로그
+            int choice = JOptionPane.showOptionDialog(
+                frame,
+                winner.name + " 승리!\n승리 조건: " + victoryType + "\n최종 자산: " + String.format("%,d", winner.cash) + "원",
+                "게임 종료",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new Object[]{"새 게임", "종료"},
+                "새 게임"
+            );
+
+            if (choice == 0) {
+                // 새 게임 시작
+                restartGame();
+            } else {
+                // 게임 종료
+                System.exit(0);
             }
         }
     }

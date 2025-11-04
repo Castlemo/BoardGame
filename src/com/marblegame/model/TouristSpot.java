@@ -8,7 +8,6 @@ public class TouristSpot extends Tile {
     public final int price;
     public final int toll;  // 고정 통행료 (업그레이드 없음)
     public Integer owner = null; // 플레이어 인덱스 (null이면 미소유)
-    public boolean isDeleted = false; // 페이즈 딜리트로 삭제된 칸
 
     public TouristSpot(int id, String name, int price, int toll) {
         super(id, name, Type.TOURIST_SPOT, "TOURIST_SPOT");

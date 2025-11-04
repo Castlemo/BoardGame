@@ -167,28 +167,6 @@ public class BoardPanel extends JPanel {
         if (tile instanceof City) {
             City city = (City) tile;
 
-            // 삭제된 칸인 경우 X 표시
-            if (city.isDeleted) {
-                // 반투명한 배경
-                g.setColor(new Color(44, 62, 80, 200));
-                g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
-
-                // 큰 빨간 X 표시
-                g.setColor(new Color(192, 57, 43));
-                g.setStroke(new BasicStroke(6));
-                g.drawLine(x + 12, y + 12, x + BASE_TILE_SIZE - 12, y + BASE_TILE_SIZE - 12);
-                g.drawLine(x + 12, y + BASE_TILE_SIZE - 12, x + BASE_TILE_SIZE - 12, y + 12);
-
-                // 삭제됨 텍스트
-                g.setColor(new Color(236, 240, 241));
-                g.setFont(new Font("맑은 고딕", Font.BOLD, 9));
-                String deletedText = "삭제됨";
-                FontMetrics fm = g.getFontMetrics();
-                int textWidth = fm.stringWidth(deletedText);
-                g.drawString(deletedText, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 15);
-                return; // 더 이상 그리지 않음
-            }
-
             if (city.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)
                 g.setColor(PLAYER_COLORS[city.owner]);
@@ -217,25 +195,6 @@ public class BoardPanel extends JPanel {
         } else if (tile instanceof TouristSpot) {
             // 관광지인 경우 소유자 표시
             TouristSpot touristSpot = (TouristSpot) tile;
-
-            // 삭제된 칸인 경우 X 표시
-            if (touristSpot.isDeleted) {
-                g.setColor(new Color(44, 62, 80, 200));
-                g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
-
-                g.setColor(new Color(192, 57, 43));
-                g.setStroke(new BasicStroke(6));
-                g.drawLine(x + 12, y + 12, x + BASE_TILE_SIZE - 12, y + BASE_TILE_SIZE - 12);
-                g.drawLine(x + 12, y + BASE_TILE_SIZE - 12, x + BASE_TILE_SIZE - 12, y + 12);
-
-                g.setColor(new Color(236, 240, 241));
-                g.setFont(new Font("맑은 고딕", Font.BOLD, 9));
-                String deletedText = "삭제됨";
-                FontMetrics fm = g.getFontMetrics();
-                int textWidth = fm.stringWidth(deletedText);
-                g.drawString(deletedText, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 15);
-                return;
-            }
 
             if (touristSpot.isOwned()) {
                 // 소유자 표시 (좌측 상단 원)

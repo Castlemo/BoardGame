@@ -18,22 +18,7 @@ public class Player {
     }
 
     public void move(int steps, int boardSize, Board board) {
-        int stepsRemaining = steps;
-
-        while (stepsRemaining > 0) {
-            pos = (pos + 1) % boardSize;
-
-            // 삭제된 칸은 건너뛰기 (카운트하지 않음)
-            Tile tile = board.getTile(pos);
-            if (tile.type == Tile.Type.CITY) {
-                City city = (City) tile;
-                if (city.isDeleted) {
-                    continue; // 삭제된 칸은 스텝 카운트 안 함
-                }
-            }
-
-            stepsRemaining--;
-        }
+        pos = (pos + steps) % boardSize;
     }
 
     public boolean canAfford(int amount) {

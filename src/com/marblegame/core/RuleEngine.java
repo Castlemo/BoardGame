@@ -45,39 +45,24 @@ public class RuleEngine {
 
     /**
      * 특정 플레이어가 해당 컬러 그룹을 독점했는지 확인
-     * 삭제된 칸은 독점 판정에서 제외
      *
      * 독점 조건:
-     * 1. 해당 컬러 그룹의 남은 활성 칸(삭제되지 않은 칸) 중
-     * 2. 모든 칸이 동일한 플레이어 소유여야 함
-     * 3. 최소 1칸 이상 소유해야 함 (칸 수와 무관)
+     * 해당 컬러 그룹의 모든 칸이 동일한 플레이어 소유여야 함
      */
     public boolean hasColorMonopoly(int playerIndex, String colorGroup) {
         List<City> cities = board.getCitiesByColor(colorGroup);
-        int activeCities = 0;  // 삭제되지 않은 칸 수
-        int ownedByPlayer = 0; // 플레이어가 소유한 칸 수
 
-        for (City city : cities) {
-            // 삭제된 칸은 독점 판정에서 제외
-            if (city.isDeleted) {
-                continue;
-            }
-
-            activeCities++;
-
-            // 해당 플레이어가 소유한 칸 카운트
-            if (city.isOwned() && city.owner == playerIndex) {
-                ownedByPlayer++;
-            }
-        }
-
-        // 활성 칸이 없으면 독점 불가
-        if (activeCities == 0) {
+        if (cities.isEmpty()) {
             return false;
         }
 
-        // 모든 활성 칸을 소유해야 독점 성립
-        return ownedByPlayer == activeCities;
+        for (City city : cities) {
+            if (!city.isOwned() || city.owner != playerIndex) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -275,32 +260,123 @@ public class RuleEngine {
     }
 
     /**
-     * 페이즈 딜리트: 비어있는 도시 칸 중 하나를 랜덤으로 삭제
-     * @return 삭제된 도시 이름 (삭제 실패 시 null)
+     * 승리조건 1: 파산 승리
+     * 다른 모든 플레이어의 보유금액이 0원 이하인지 확인
      */
-    public String performPhaseDelete() {
-        List<Tile> tiles = board.getAllTiles();
-        java.util.List<City> unownedCities = new java.util.ArrayList<>();
+    public boolean checkBankruptcyVictory(Player[] players, int playerIndex) {
+        for (int i = 0; i < players.length; i++) {
+            if (i == playerIndex) continue; // 자신은 제외
+            if (players[i].cash > 0 && !players[i].bankrupt) {
+                return false; // 한 명이라도 돈이 있으면 승리 아님
+            }
+        }
+        return true;
+    }
 
-        // 비어있는 도시 칸 찾기 (START 제외, 도시만)
-        for (Tile tile : tiles) {
-            if (tile.type == Tile.Type.CITY) {
-                City city = (City) tile;
-                if (!city.isOwned() && !city.isDeleted) {
-                    unownedCities.add(city);
+    /**
+     * 승리조건 2: 라인 독점 승리
+     * 보드판 4면 중 한 라인에 있는 모든 타일(도시 + 관광지)을 구매한 경우 승리
+     * 라인 구성: 하단(0-8), 좌측(9-16), 상단(17-24), 우측(25-31)
+     */
+    public boolean checkLineMonopolyVictory(int playerIndex) {
+        // 4개 라인 정의 (모서리 타일 포함)
+        int[][] lines = {
+            {0, 1, 2, 3, 4, 5, 6, 7, 8},      // 하단 (Start ~ 무인도)
+            {8, 9, 10, 11, 12, 13, 14, 15, 16}, // 좌측 (무인도 ~ 올림픽)
+            {16, 17, 18, 19, 20, 21, 22, 23, 24}, // 상단 (올림픽 ~ 세계여행)
+            {24, 25, 26, 27, 28, 29, 30, 31, 0}  // 우측 (세계여행 ~ Start)
+        };
+
+        for (int[] line : lines) {
+            boolean hasMonopoly = true;
+            for (int tileId : line) {
+                Tile tile = board.getTile(tileId);
+
+                // 도시나 관광지만 소유 확인 (특수 타일은 제외)
+                if (tile instanceof City) {
+                    City city = (City) tile;
+                    if (!city.isOwned() || city.owner != playerIndex) {
+                        hasMonopoly = false;
+                        break;
+                    }
+                } else if (tile instanceof TouristSpot) {
+                    TouristSpot spot = (TouristSpot) tile;
+                    if (!spot.isOwned() || spot.owner != playerIndex) {
+                        hasMonopoly = false;
+                        break;
+                    }
                 }
+                // 특수 타일(START, ISLAND 등)은 무시
+            }
+
+            if (hasMonopoly) {
+                return true; // 한 라인이라도 독점하면 승리
             }
         }
 
-        // 비어있는 도시가 없으면 null 반환
-        if (unownedCities.isEmpty()) {
-            return null;
+        return false;
+    }
+
+    /**
+     * 승리조건 3: 트리플 독점 승리
+     * 보드판의 도시 색상 중 3가지의 컬러를 모두 소유한 경우 승리
+     * 가능한 컬러: LIME, GREEN, CYAN, BLUE, LIGHT_PURPLE, PURPLE, BROWN, RED,
+     *            SKY_GRADIENT, PINK_GRADIENT (총 10가지)
+     */
+    public boolean checkTripleColorMonopolyVictory(int playerIndex) {
+        String[] allColors = {
+            "LIME", "GREEN", "CYAN", "BLUE", "LIGHT_PURPLE",
+            "PURPLE", "BROWN", "RED", "SKY_GRADIENT", "PINK_GRADIENT"
+        };
+
+        int monopolyCount = 0;
+
+        for (String color : allColors) {
+            if (hasColorMonopoly(playerIndex, color)) {
+                monopolyCount++;
+            }
         }
 
-        // 랜덤으로 하나 선택하여 삭제
-        int randomIndex = (int)(Math.random() * unownedCities.size());
-        City cityToDelete = unownedCities.get(randomIndex);
-        cityToDelete.isDeleted = true;
-        return cityToDelete.name;
+        return monopolyCount >= 3;
     }
+
+    /**
+     * 통합 승리 조건 체크
+     * 3가지 조건 중 하나라도 만족하면 승리
+     */
+    public boolean checkVictory(Player[] players, int playerIndex) {
+        // 1. 파산 승리
+        if (checkBankruptcyVictory(players, playerIndex)) {
+            return true;
+        }
+
+        // 2. 라인 독점 승리
+        if (checkLineMonopolyVictory(playerIndex)) {
+            return true;
+        }
+
+        // 3. 트리플 독점 승리
+        if (checkTripleColorMonopolyVictory(playerIndex)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 승리 타입 확인 (디버깅/로그용)
+     */
+    public String getVictoryType(Player[] players, int playerIndex) {
+        if (checkBankruptcyVictory(players, playerIndex)) {
+            return "파산 승리";
+        }
+        if (checkLineMonopolyVictory(playerIndex)) {
+            return "라인 독점 승리";
+        }
+        if (checkTripleColorMonopolyVictory(playerIndex)) {
+            return "트리플 독점 승리";
+        }
+        return "승리 조건 미달성";
+    }
+
 }

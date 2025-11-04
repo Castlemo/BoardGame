@@ -181,11 +181,6 @@ public class Game {
      * 도시 칸 처리
      */
     private void handleCityTile(Player player, int playerIndex, City city) {
-        if (city.isDeleted) {
-            System.out.println("이 도시는 페이즈 딜리트로 삭제되어 접근할 수 없습니다.");
-            return;
-        }
-
         if (!city.isOwned()) {
             // 미소유 땅
             System.out.println(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
@@ -253,11 +248,6 @@ public class Game {
      * 관광지 칸 처리
      */
     private void handleTouristSpotTile(Player player, int playerIndex, TouristSpot touristSpot) {
-        if (touristSpot.isDeleted) {
-            System.out.println("이 관광지는 페이즈 딜리트로 삭제되어 접근할 수 없습니다.");
-            return;
-        }
-
         if (!touristSpot.isOwned()) {
             System.out.println(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             System.out.println("관광지는 업그레이드가 불가능합니다.");
@@ -312,15 +302,6 @@ public class Game {
             }
 
             Tile tile = board.getTile(target);
-            if (tile instanceof City && ((City) tile).isDeleted) {
-                System.out.println("해당 도시는 삭제되어 이동할 수 없습니다.");
-                continue;
-            }
-            if (tile instanceof TouristSpot && ((TouristSpot) tile).isDeleted) {
-                System.out.println("해당 관광지는 삭제되어 이동할 수 없습니다.");
-                continue;
-            }
-
             player.pos = target;
             player.hasRailroadTicket = false;
             System.out.println(player.name + "이(가) " + tile.name + " (칸 " + target + ")으로 이동했습니다.");
