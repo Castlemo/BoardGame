@@ -23,25 +23,25 @@ public class Board {
         tiles.add(new Tile(0, "Start", Tile.Type.START));
 
         // 1-7: 하단 (Start → 무인도)
-        tiles.add(new City(1, "방콕", "LIME", 100000, 50000));
+        tiles.add(new City(1, "방콕", "LIME", 150000, 75000));
         tiles.add(new Tile(2, "찬스", Tile.Type.CHANCE));
-        tiles.add(new City(3, "베이징", "LIME", 100000, 50000));
+        tiles.add(new City(3, "베이징", "LIME", 150000, 75000));
         tiles.add(new TouristSpot(4, "독도", 200000, 100000));
-        tiles.add(new City(5, "타이페이", "GREEN", 120000, 60000));
-        tiles.add(new City(6, "두바이", "GREEN", 150000, 75000));
-        tiles.add(new City(7, "카이로", "GREEN", 150000, 75000));
+        tiles.add(new City(5, "타이페이", "GREEN", 180000, 90000));
+        tiles.add(new City(6, "두바이", "GREEN", 200000, 100000));
+        tiles.add(new City(7, "카이로", "GREEN", 200000, 100000));
 
         // 8: ISLAND (좌측 하단 모서리)
         tiles.add(new Tile(8, "무인도", Tile.Type.ISLAND));
 
         // 9-16: 좌측 (무인도 → 올림픽)
         tiles.add(new TouristSpot(9, "발리", 200000, 100000));
-        tiles.add(new City(10, "도쿄", "CYAN", 200000, 100000));
-        tiles.add(new City(11, "시드니", "CYAN", 200000, 100000));
+        tiles.add(new City(10, "도쿄", "CYAN", 220000, 110000));
+        tiles.add(new City(11, "시드니", "CYAN", 220000, 110000));
         tiles.add(new Tile(12, "찬스", Tile.Type.CHANCE));
-        tiles.add(new City(13, "퀘벡", "BLUE", 220000, 110000));
+        tiles.add(new City(13, "퀘벡", "BLUE", 240000, 120000));
         tiles.add(new TouristSpot(14, "하와이", 200000, 100000));
-        tiles.add(new City(15, "상파울로", "BLUE", 250000, 125000));
+        tiles.add(new City(15, "상파울로", "BLUE", 260000, 130000));
 
         // 16: OLYMPIC (좌측 상단 모서리)
         tiles.add(new Tile(16, "올림픽", Tile.Type.OLYMPIC));
@@ -51,9 +51,9 @@ public class Board {
         tiles.add(new TouristSpot(18, "푸켓", 200000, 100000));
         tiles.add(new City(19, "베를린", "LIGHT_PURPLE", 300000, 150000));
         tiles.add(new Tile(20, "찬스", Tile.Type.CHANCE));
-        tiles.add(new City(21, "모스크바", "PURPLE", 300000, 150000));
-        tiles.add(new City(22, "제네바", "PURPLE", 350000, 175000));
-        tiles.add(new City(23, "로마", "PURPLE", 350000, 175000));
+        tiles.add(new City(21, "모스크바", "PURPLE", 320000, 160000));
+        tiles.add(new City(22, "제네바", "PURPLE", 340000, 170000));
+        tiles.add(new City(23, "로마", "PURPLE", 340000, 170000));
 
         // 24: WORLD_TOUR (우측 상단 모서리)
         tiles.add(new Tile(24, "세계여행", Tile.Type.WORLD_TOUR));

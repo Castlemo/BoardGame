@@ -12,7 +12,7 @@ public class RuleEngine {
     private final int salary = 200000;
     private final int bail = 200000;
     private final int islandMaxTurns = 2; // 2턴 대기
-    private final double[] tollMultiplierByLevel = {0.0, 1.0, 2.0, 4.0, 8.0}; // 레벨 0~4
+    private final double[] tollMultiplierByLevel = {0.0, 1.5, 2.2, 3.0, 4.0}; // 레벨 0~4
     private final double colorMonopolyMultiplier = 1.5;
     private final int chanceReward = 100000;
     private final double taxRate = 0.1; // 국세청 세율 10%
@@ -100,10 +100,10 @@ public class RuleEngine {
     }
 
     /**
-     * 관광지(TouristSpot) 통행료 계산 (고정 금액)
+     * 관광지(TouristSpot) 통행료 계산 (기본가 × 2.0)
      */
     public int calculateTouristSpotToll(TouristSpot touristSpot) {
-        return touristSpot.toll;
+        return (int)(touristSpot.price * 2.0);
     }
 
     /**

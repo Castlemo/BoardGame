@@ -51,17 +51,16 @@ public class City extends Tile {
     }
 
     /**
-     * 인수 가격 계산 (원래 가격 + 모든 업그레이드 비용)
+     * 인수 가격 계산
+     * 공식: 기본가 + (레벨 단계 누적 × 기본가의 50%)
+     * L1: 기본가 × 1.5
+     * L2: 기본가 × 2.0 (1+1 단계)
+     * L3: 기본가 × 2.5 (1+1+1 단계)
+     * L4: 기본가 × 3.0 (1+1+1+1 단계)
      */
     public int getTakeoverPrice() {
-        int total = price; // 원래 가격
-
-        // 레벨별 업그레이드 비용 합산
-        if (level >= 2) total += (int)(price * 0.3); // 1->2 업그레이드
-        if (level >= 3) total += (int)(price * 0.3); // 2->3 업그레이드
-        if (level >= 4) total += (int)(price * 0.4); // 3->4 업그레이드 (랜드마크)
-
-        return total;
+        int levelSteps = level; // L1=1, L2=2, L3=3, L4=4
+        return (int)(price * (1.0 + levelSteps * 0.5));
     }
 
     /**
