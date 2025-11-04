@@ -1,29 +1,39 @@
 package com.marblegame.ui;
 
 import com.marblegame.model.DiceGauge;
+import com.marblegame.model.Player;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 보드 위에 겹쳐지는 중앙 오버레이 패널
  * 턴 표시, 주사위, 게이지, 행동 버튼을 중앙에 배치
+ * 수정됨: 플레이어 정보 카드도 좌측 상단/하단에 표시
  *
- * 배치 순서 (상단 → 하단):
- * 1. 턴 라벨 (Turn #N)
- * 2. 주사위 애니메이션 패널
- * 3. 게이지 패널
- * 4. 행동 버튼 패널
+ * 배치 순서:
+ * - 좌측 상단: Player 1 카드
+ * - 좌측 하단: Player 2 카드
+ * - 중앙: 턴/주사위/게이지/버튼
  */
 public class OverlayPanel extends JPanel {
     private static final int COMPONENT_SPACING = 24; // 컴포넌트 간 간격
+    private static final int CARD_WIDTH = 200;  // 플레이어 카드 너비
+    private static final int CARD_HEIGHT = 120; // 플레이어 카드 높이
+    private static final int CARD_MARGIN = 20;  // 카드와 테두리 간격
 
     private JLabel turnLabel;
     private DiceAnimationPanel dicePanel;
     private GaugePanel gaugePanel;
     private DiceGauge diceGauge; // 추가됨: 게이지 모델
     private JPanel actionButtonPanel;
+
+    // 추가됨: 플레이어 카드
+    private List<CompactPlayerCard> playerCards;
+    private List<Player> players;
 
     // 추가됨: 행동 버튼들
     private JButton rollDiceButton;
@@ -46,7 +56,10 @@ public class OverlayPanel extends JPanel {
     private static final Color BUTTON_SKIP = new Color(127, 140, 141);
     private static final Color BUTTON_ESCAPE = new Color(192, 57, 43);
 
-    public OverlayPanel() {
+    public OverlayPanel(List<Player> players) {
+        this.players = players;
+        this.playerCards = new ArrayList<>();
+
         setLayout(null); // 절대 위치 사용
         setOpaque(false); // 투명 배경으로 보드가 보이도록
 
@@ -117,6 +130,13 @@ public class OverlayPanel extends JPanel {
         actionButtonPanel.add(skipButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(escapeButton);
+
+        // 6. 플레이어 카드 생성 및 추가
+        for (int i = 0; i < players.size(); i++) {
+            CompactPlayerCard card = new CompactPlayerCard(players.get(i), i);
+            playerCards.add(card);
+            add(card);
+        }
     }
 
     /**
@@ -152,7 +172,9 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 창 크기 변경 시 모든 컴포넌트를 중앙에 재배치
+     * 창 크기 변경 시 모든 컴포넌트를 재배치
+     * 플레이어 카드: 보드 내부(타일 안쪽) 좌측 상단/하단
+     * 중앙 컴포넌트: 턴/주사위/게이지/버튼
      */
     private void repositionComponents() {
         int width = getWidth();
@@ -160,6 +182,49 @@ public class OverlayPanel extends JPanel {
 
         if (width == 0 || height == 0) return;
 
+        // 보드 내부 영역 계산 (타일 안쪽)
+        // 보드는 9x9 타일로 구성되며, 각 타일은 80px
+        // 내부 영역: 첫 번째 타일 이후부터 마지막 타일 전까지
+        int tileSize = 80;
+        int boardSize = 9 * tileSize; // 720px
+
+        // 패널 크기에 맞춰 스케일 계산
+        float scale = Math.min((float)width / boardSize, (float)height / boardSize);
+        int scaledTileSize = (int)(tileSize * scale);
+        int scaledBoardSize = (int)(boardSize * scale);
+
+        // 보드가 중앙에 위치하도록 오프셋 계산
+        int offsetX = (width - scaledBoardSize) / 2;
+        int offsetY = (height - scaledBoardSize) / 2;
+
+        // 내부 영역 경계 (첫 번째 타일 다음부터)
+        int innerLeft = offsetX + scaledTileSize;
+        int innerTop = offsetY + scaledTileSize;
+        int innerRight = offsetX + scaledBoardSize - scaledTileSize;
+        int innerBottom = offsetY + scaledBoardSize - scaledTileSize;
+
+        // === 플레이어 카드 배치 (보드 내부 좌측) ===
+        if (playerCards.size() >= 1) {
+            // Player 1: 내부 영역 좌측 상단
+            playerCards.get(0).setBounds(
+                innerLeft + CARD_MARGIN,
+                innerTop + CARD_MARGIN,
+                CARD_WIDTH,
+                CARD_HEIGHT
+            );
+        }
+
+        if (playerCards.size() >= 2) {
+            // Player 2: 내부 영역 좌측 하단
+            playerCards.get(1).setBounds(
+                innerLeft + CARD_MARGIN,
+                innerBottom - CARD_HEIGHT - CARD_MARGIN,
+                CARD_WIDTH,
+                CARD_HEIGHT
+            );
+        }
+
+        // === 중앙 컴포넌트 배치 ===
         int cx = width / 2;  // 중심 X 좌표
         int cy = height / 2; // 중심 Y 좌표
 
@@ -356,5 +421,92 @@ public class OverlayPanel extends JPanel {
      */
     public DiceAnimationPanel getDiceAnimationPanel() {
         return dicePanel;
+    }
+
+    /**
+     * 플레이어 정보 업데이트
+     */
+    public void updatePlayerInfo() {
+        for (CompactPlayerCard card : playerCards) {
+            card.repaint();
+        }
+    }
+
+    // ========== 내부 클래스: CompactPlayerCard ==========
+
+    /**
+     * 소형 플레이어 정보 카드 (200x120)
+     */
+    private class CompactPlayerCard extends JPanel {
+        private static final Color CARD_BACKGROUND = new Color(52, 73, 94);
+        private static final Color TEXT_PRIMARY = new Color(236, 240, 241);
+        private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
+
+        private static final Color[] PLAYER_COLORS = {
+            new Color(231, 76, 60),   // Red
+            new Color(52, 152, 219),  // Blue
+            new Color(46, 204, 113),  // Green
+            new Color(230, 126, 34)   // Orange
+        };
+
+        private final Player player;
+        private final int playerIndex;
+
+        CompactPlayerCard(Player player, int playerIndex) {
+            this.player = player;
+            this.playerIndex = playerIndex;
+            setOpaque(false);
+            setPreferredSize(new Dimension(CARD_WIDTH, CARD_HEIGHT));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int width = getWidth();
+            int height = getHeight();
+
+            // 카드 배경
+            g2.setColor(CARD_BACKGROUND);
+            g2.fillRoundRect(0, 0, width, height, 12, 12);
+
+            // 테두리
+            Color accent = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
+            g2.setColor(accent);
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawRoundRect(0, 0, width, height, 12, 12);
+
+            // 플레이어 이름
+            g2.setColor(TEXT_PRIMARY);
+            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 14);
+            g2.setFont(nameFont);
+            g2.drawString(player.name, 15, 25);
+
+            // 정보 텍스트
+            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, 11);
+            g2.setFont(infoFont);
+            g2.setColor(TEXT_PRIMARY);
+            int infoY = 45;
+            int lineHeight = 18;
+
+            g2.drawString(String.format("💰 %,d원", player.cash), 15, infoY);
+            infoY += lineHeight;
+
+            g2.drawString(String.format("📍 %d번 칸", player.pos), 15, infoY);
+            infoY += lineHeight;
+
+            String status = player.bankrupt ? "💀 파산" : "✅ 플레이 중";
+            g2.drawString(status, 15, infoY);
+            infoY += lineHeight;
+
+            String jailInfo = player.jailTurns > 0 ? String.format("🏝 %d턴", player.jailTurns) : "🏝 없음";
+            g2.setColor(TEXT_SECONDARY);
+            g2.drawString(jailInfo, 15, infoY);
+
+            g2.dispose();
+        }
     }
 }
