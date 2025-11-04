@@ -12,9 +12,10 @@ public class RuleEngine {
     private final int salary = 200000;
     private final int bail = 200000;
     private final int islandMaxTurns = 2; // 2턴 대기
-    private final double[] tollMultiplierByLevel = {1.0, 2.0, 4.0, 8.0};
+    private final double[] tollMultiplierByLevel = {0.0, 1.0, 2.0, 4.0, 8.0}; // 레벨 0~4
     private final double colorMonopolyMultiplier = 1.5;
     private final int chanceReward = 100000;
+    private final double taxRate = 0.1; // 국세청 세율 10%
 
     private final Board board;
 
@@ -24,7 +25,7 @@ public class RuleEngine {
 
     /**
      * 통행료 계산
-     * level과 컬러 독점 여부 반영
+     * level과 컬러 독점 여부, 올림픽 효과 반영
      */
     public int calculateToll(City city, int ownerIndex) {
         int toll = (int)(city.baseToll * tollMultiplierByLevel[city.level]);
@@ -32,6 +33,11 @@ public class RuleEngine {
         // 컬러 독점 체크
         if (hasColorMonopoly(ownerIndex, city.colorGroup)) {
             toll = (int)(toll * colorMonopolyMultiplier);
+        }
+
+        // 올림픽 효과로 통행료 2배
+        if (city.hasOlympicBoost) {
+            toll *= 2;
         }
 
         return toll;
@@ -134,25 +140,20 @@ public class RuleEngine {
     }
 
     /**
-     * 도시 인수 비용 계산
-     * 기존 소유자에게 지불할 금액 = 매입가 + (업그레이드 비용 × 레벨)
-     */
-    public int calculateTakeoverCost(City city) {
-        int baseCost = city.price;
-        int upgradeCost = city.getUpgradeCost();
-        return baseCost + (upgradeCost * city.level);
-    }
-
-    /**
      * 도시 인수 처리
-     * 기존 소유자에게 인수 비용을 지불하고 소유권 이전
+     * 랜드마크는 인수 불가능
+     * 기존 소유자에게 인수 비용(원래 가격 + 모든 업그레이드 비용)을 지불하고 소유권 이전
      */
     public boolean takeoverCity(Player buyer, Player seller, City city, int buyerIndex) {
         if (!city.isOwned()) {
-            return false;
+            return false; // 미소유 도시는 인수 불가 (구매만 가능)
         }
 
-        int takeoverCost = calculateTakeoverCost(city);
+        if (city.isLandmark()) {
+            return false; // 랜드마크는 인수 불가능
+        }
+
+        int takeoverCost = city.getTakeoverPrice();
         if (!buyer.canAfford(takeoverCost)) {
             return false;
         }
@@ -162,6 +163,37 @@ public class RuleEngine {
         city.owner = buyerIndex;
 
         return true;
+    }
+
+    /**
+     * 올림픽 효과 적용 - 선택한 도시의 통행료를 2배로 만듦
+     * (다음 통행료 지불 시 자동으로 해제됨)
+     */
+    public void applyOlympicBoost(City city) {
+        city.hasOlympicBoost = true;
+    }
+
+    /**
+     * 올림픽 효과 해제
+     */
+    public void removeOlympicBoost(City city) {
+        city.hasOlympicBoost = false;
+    }
+
+    /**
+     * 국세청 세금 계산 (보유 금액의 10%)
+     */
+    public int calculateTax(Player player) {
+        return (int)(player.cash * taxRate);
+    }
+
+    /**
+     * 국세청 세금 납부 처리
+     */
+    public void payTax(Player player) {
+        int tax = calculateTax(player);
+        player.pay(tax);
+        // 세금은 소멸 (어느 플레이어에게도 지급되지 않음)
     }
 
     /**

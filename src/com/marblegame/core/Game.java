@@ -233,7 +233,7 @@ public class Game {
             }
 
             if (!player.bankrupt) {
-                int takeoverCost = ruleEngine.calculateTakeoverCost(city);
+                int takeoverCost = city.getTakeoverPrice();
                 System.out.println("인수 비용은 " + String.format("%,d", takeoverCost) + "원입니다.");
                 System.out.print("이 땅을 인수하시겠습니까? (Y/N): ");
 

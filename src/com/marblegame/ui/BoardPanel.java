@@ -152,9 +152,15 @@ public class BoardPanel extends JPanel {
         g.setColor(bgColor);
         g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
-        // 타일 테두리
-        g.setColor(new Color(236, 240, 241));
-        g.setStroke(new BasicStroke(2));
+        // 타일 테두리 (랜드마크는 금색)
+        boolean isLandmark = (tile instanceof City) && ((City) tile).isLandmark();
+        if (isLandmark) {
+            g.setColor(new Color(255, 215, 0)); // 금색 테두리
+            g.setStroke(new BasicStroke(4)); // 더 두꺼운 테두리
+        } else {
+            g.setColor(new Color(236, 240, 241));
+            g.setStroke(new BasicStroke(2));
+        }
         g.drawRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
         // 도시인 경우 소유자 및 레벨 표시
@@ -192,13 +198,20 @@ public class BoardPanel extends JPanel {
                 g.setFont(new Font("Arial", Font.BOLD, 10));
                 g.drawString(String.valueOf((char)('A' + city.owner)), x + 11, y + 27);
 
-                // 레벨 표시 (별)
+                // 건물 이모지 표시 (도시 이름 위에)
                 if (city.level > 0) {
-                    g.setColor(new Color(241, 196, 15)); // 금색
-                    g.setFont(new Font("Arial", Font.BOLD, 9));
-                    for (int i = 0; i < city.level; i++) {
-                        g.drawString("★", x + 24 + i * 10, y + 27);
-                    }
+                    String buildingEmoji = city.getBuildingEmoji();
+                    g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+                    FontMetrics fm = g.getFontMetrics();
+                    int emojiWidth = fm.stringWidth(buildingEmoji);
+                    g.drawString(buildingEmoji, x + (BASE_TILE_SIZE - emojiWidth) / 2, y + BASE_TILE_SIZE / 2);
+                }
+
+                // 올림픽 효과 표시 (2배 아이콘)
+                if (city.hasOlympicBoost) {
+                    g.setFont(new Font("Arial", Font.BOLD, 14));
+                    g.setColor(new Color(231, 76, 60)); // 빨간색
+                    g.drawString("×2", x + BASE_TILE_SIZE - 28, y + 16);
                 }
             }
         } else if (tile instanceof TouristSpot) {

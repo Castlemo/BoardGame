@@ -5,6 +5,7 @@ import com.marblegame.ui.*;
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 /**
  * UI 버전 게임 컨트롤러
@@ -275,6 +276,22 @@ public class GameUI {
                 player.hasRailroadTicket = true;
                 endTurn();
                 break;
+
+            case TAX:
+                handleTaxTile();
+                break;
+
+            case OLYMPIC:
+                handleOlympicTile();
+                break;
+
+            case WORLD_TOUR:
+                frame.getBoardPanel().showNotification("세계여행", "도착!", new java.awt.Color(135, 206, 235));
+                log("세계여행에 도착했습니다!");
+                log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
+                player.hasRailroadTicket = true; // 전국철도와 동일한 효과
+                endTurn();
+                break;
         }
 
         updateDisplay();
@@ -315,21 +332,38 @@ public class GameUI {
             log(city.name + "은(는) " + owner.name + "의 소유입니다. (레벨: " + city.level + ")");
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
+            // 올림픽 효과 표시
+            if (city.hasOlympicBoost) {
+                log("⚡ 올림픽 효과로 통행료 2배!");
+            }
+
             // 통행료 지불 알림
             frame.getBoardPanel().showNotification("통행료", String.format("%,d원 지불", toll), new java.awt.Color(231, 76, 60));
 
             ruleEngine.payToll(player, owner, toll);
 
+            // 올림픽 효과 해제 (한 번 통행료 지불 후)
+            if (city.hasOlympicBoost) {
+                ruleEngine.removeOlympicBoost(city);
+                log("올림픽 효과가 해제되었습니다.");
+            }
+
             if (player.bankrupt) {
                 log(player.name + "이(가) 파산했습니다!");
                 endTurn();
             } else {
-                // 통행료 지불 후 인수 선택지 제공
-                int takeoverCost = ruleEngine.calculateTakeoverCost(city);
-                log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
-                log("이 땅을 인수하거나 패스하세요.");
-                state = GameState.WAITING_FOR_ACTION;
-                frame.getControlPanel().setButtonsEnabled(false, false, false, true, true, false);
+                // 랜드마크는 인수 불가
+                if (city.isLandmark()) {
+                    log("🏛️ 랜드마크는 인수할 수 없습니다.");
+                    endTurn();
+                } else {
+                    // 통행료 지불 후 인수 선택지 제공
+                    int takeoverCost = city.getTakeoverPrice();
+                    log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
+                    log("이 땅을 인수하거나 패스하세요.");
+                    state = GameState.WAITING_FOR_ACTION;
+                    frame.getControlPanel().setButtonsEnabled(false, false, false, true, true, false);
+                }
             }
         }
     }
@@ -381,7 +415,10 @@ public class GameUI {
         if (currentTile instanceof City) {
             City city = (City) currentTile;
             if (ruleEngine.purchaseCity(player, city, currentPlayerIndex)) {
+                // 첫 구매 시 자동으로 레벨 1로 설정 (집 건설)
+                city.level = 1;
                 log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
+                log("🏠 집이 건설되었습니다! (레벨 1)");
                 frame.getBoardPanel().showNotification(city.name, "구매 완료!", new java.awt.Color(46, 204, 113));
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
@@ -404,7 +441,17 @@ public class GameUI {
         City city = (City) currentTile;
 
         if (ruleEngine.upgradeCity(player, city)) {
-            log(city.name + "을(를) 레벨 " + city.level + "로 업그레이드했습니다!");
+            String levelEmoji = city.getBuildingEmoji();
+            String levelName = "";
+            switch (city.level) {
+                case 2: levelName = "아파트"; break;
+                case 3: levelName = "건물"; break;
+                case 4: levelName = "랜드마크"; break;
+            }
+            log(city.name + "을(를) 레벨 " + city.level + "(" + levelName + " " + levelEmoji + ")로 업그레이드했습니다!");
+            if (city.isLandmark()) {
+                log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
+            }
             frame.getBoardPanel().showNotification(city.name, "레벨 " + city.level + " 업그레이드!", new java.awt.Color(52, 152, 219));
         } else {
             log("자금이 부족하여 업그레이드할 수 없습니다.");
@@ -418,13 +465,15 @@ public class GameUI {
         City city = (City) currentTile;
         Player seller = players[city.owner];
 
-        int takeoverCost = ruleEngine.calculateTakeoverCost(city);
+        int takeoverCost = city.getTakeoverPrice();
 
         if (ruleEngine.takeoverCity(buyer, seller, city, currentPlayerIndex)) {
             log(buyer.name + "이(가) " + seller.name + "으로부터 " + city.name + "을(를) " +
                 String.format("%,d", takeoverCost) + "원에 인수했습니다!");
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
             frame.getBoardPanel().showNotification(city.name, "인수 완료!", new java.awt.Color(230, 126, 34));
+        } else if (city.isLandmark()) {
+            log("🏛️ 랜드마크는 인수할 수 없습니다.");
         } else {
             log("자금이 부족하여 인수할 수 없습니다.");
         }
@@ -499,6 +548,67 @@ public class GameUI {
         // 선택한 타일 처리
         log("선택한 칸에서 이벤트를 처리합니다.");
         handleTileLanding();
+    }
+
+    private void handleTaxTile() {
+        Player player = players[currentPlayerIndex];
+        int tax = ruleEngine.calculateTax(player);
+
+        frame.getBoardPanel().showNotification("국세청", "세금 납부!", new java.awt.Color(128, 128, 128));
+        log("국세청에 도착했습니다!");
+        log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
+
+        ruleEngine.payTax(player);
+
+        if (player.bankrupt) {
+            log(player.name + "이(가) 파산했습니다!");
+        }
+
+        endTurn();
+    }
+
+    private void handleOlympicTile() {
+        Player player = players[currentPlayerIndex];
+
+        frame.getBoardPanel().showNotification("올림픽", "도착!", new java.awt.Color(135, 206, 235));
+        log("올림픽에 도착했습니다!");
+
+        // 플레이어가 소유한 도시 찾기
+        List<City> ownedCities = new java.util.ArrayList<>();
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof City) {
+                City city = (City) tile;
+                if (city.isOwned() && city.owner == currentPlayerIndex && !city.isDeleted) {
+                    ownedCities.add(city);
+                }
+            }
+        }
+
+        if (ownedCities.isEmpty()) {
+            log("소유한 도시가 없어 올림픽 효과를 사용할 수 없습니다.");
+            endTurn();
+            return;
+        }
+
+        log("소유한 도시 중 하나를 선택하여 통행료를 2배로 만들 수 있습니다.");
+        log("(다음 통행료 지불 시 자동으로 해제됩니다)");
+
+        // 소유한 도시 목록 표시
+        for (int i = 0; i < ownedCities.size(); i++) {
+            City city = ownedCities.get(i);
+            log((i + 1) + ". " + city.name + " (레벨 " + city.level + ")");
+        }
+
+        // TODO: UI에서 도시 선택 기능 추가 필요
+        // 임시로 첫 번째 도시에 적용
+        if (!ownedCities.isEmpty()) {
+            City selectedCity = ownedCities.get(0);
+            ruleEngine.applyOlympicBoost(selectedCity);
+            log("⚡ " + selectedCity.name + "에 올림픽 효과가 적용되었습니다! (통행료 2배)");
+            frame.getBoardPanel().showNotification("올림픽 효과", selectedCity.name + " 통행료 2배!", new java.awt.Color(241, 196, 15));
+        }
+
+        endTurn();
     }
 
     private void endTurn() {
