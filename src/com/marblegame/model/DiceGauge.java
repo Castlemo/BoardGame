@@ -2,16 +2,18 @@ package com.marblegame.model;
 
 /**
  * 주사위 게이지 시스템
- * 3구간(S1, S2, S3)을 왕복하며 편향된 확률로 주사위 결과 생성
+ * 4구간(S1, S2, S3, S4)을 왕복하며 편향된 확률로 주사위 결과 생성
  */
 public class DiceGauge {
     // 게이지 파라미터
     private static final double PERIOD = 2.0; // 주기 2초
     private static final double BIAS = 0.6; // 우대 확률 60%
 
-    // 구간 경계
-    private static final double SECTION1_END = 0.333;
-    private static final double SECTION2_END = 0.666;
+    // 구간 경계 (4등분)
+    private static final double SECTION1_END = 0.25;  // 0-25%: 노란색
+    private static final double SECTION2_END = 0.50;  // 25-50%: 연주황색
+    private static final double SECTION3_END = 0.75;  // 50-75%: 주황색
+                                                       // 75-100%: 빨간색
 
     // 게이지 상태
     private boolean running = false;
@@ -71,54 +73,66 @@ public class DiceGauge {
     }
 
     /**
-     * 현재 구간 반환 (1, 2, 3)
+     * 현재 구간 반환 (1, 2, 3, 4)
      */
     public int getCurrentSection() {
         if (currentPosition < SECTION1_END) {
             return 1;
         } else if (currentPosition < SECTION2_END) {
             return 2;
-        } else {
+        } else if (currentPosition < SECTION3_END) {
             return 3;
+        } else {
+            return 4;
         }
     }
 
     /**
      * 구간별 편향 확률로 2D6 주사위 굴리기
-     * @param section 구간 (1, 2, 3)
+     * @param section 구간 (1, 2, 3, 4)
      * @return 주사위 합 (2~12)
      */
     private int rollBiased(int section) {
         if (section == 1) {
-            // S1: 2~5가 60% 확률
+            // S1 (0-25%, 노란색): 2~4가 60% 확률
             if (Math.random() < BIAS) {
-                int sum = 2 + (int)(Math.random() * 4); // 2, 3, 4, 5 중 선택
+                int sum = 2 + (int)(Math.random() * 3); // 2, 3, 4 중 선택
                 return sum;
             } else {
-                // 나머지 40%: 6~12 균등 분배
-                int sum = 6 + (int)(Math.random() * 7); // 6, 7, 8, 9, 10, 11, 12 중 선택
+                // 나머지 40%: 5~12 균등 분배
+                int sum = 5 + (int)(Math.random() * 8); // 5, 6, 7, 8, 9, 10, 11, 12 중 선택
                 return sum;
             }
         } else if (section == 2) {
-            // S2: 6~9가 60% 확률
+            // S2 (25-50%, 연주황색): 5~7이 60% 확률
             if (Math.random() < BIAS) {
-                int sum = 6 + (int)(Math.random() * 4); // 6, 7, 8, 9 중 선택
+                int sum = 5 + (int)(Math.random() * 3); // 5, 6, 7 중 선택
                 return sum;
             } else {
-                // 나머지 40%: 2~5, 10~12 균등 분배
-                // 2~5: 4개, 10~12: 3개 = 총 7개
-                int[] others = {2, 3, 4, 5, 10, 11, 12};
+                // 나머지 40%: 2~4, 8~12 균등 분배
+                int[] others = {2, 3, 4, 8, 9, 10, 11, 12};
+                int sum = others[(int)(Math.random() * others.length)];
+                return sum;
+            }
+        } else if (section == 3) {
+            // S3 (50-75%, 주황색): 8~10이 60% 확률
+            if (Math.random() < BIAS) {
+                int sum = 8 + (int)(Math.random() * 3); // 8, 9, 10 중 선택
+                return sum;
+            } else {
+                // 나머지 40%: 2~7, 11~12 균등 분배
+                int[] others = {2, 3, 4, 5, 6, 7, 11, 12};
                 int sum = others[(int)(Math.random() * others.length)];
                 return sum;
             }
         } else {
-            // S3: 10~12가 60% 확률
+            // S4 (75-100%, 빨간색): 11~12가 60% 확률
             if (Math.random() < BIAS) {
-                int sum = 10 + (int)(Math.random() * 3); // 10, 11, 12 중 선택
+                int sum = 11 + (int)(Math.random() * 2); // 11, 12 중 선택
                 return sum;
             } else {
-                // 나머지 40%: 2~9 균등 분배
-                int sum = 2 + (int)(Math.random() * 8); // 2, 3, 4, 5, 6, 7, 8, 9 중 선택
+                // 나머지 40%: 2~10 균등 분배
+                int sum = 2 + (int)(Math.random() * 9); // 2, 3, 4, 5, 6, 7, 8, 9, 10 중 선택
                 return sum;
             }
         }

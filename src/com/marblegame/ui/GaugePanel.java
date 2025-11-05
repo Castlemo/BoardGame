@@ -6,17 +6,19 @@ import java.awt.*;
 
 /**
  * 주사위 게이지 시각화 패널
- * 3구간을 색상으로 구분하고 현재 위치를 표시
+ * 4구간을 색상으로 구분하고 현재 위치를 표시
  */
 public class GaugePanel extends JPanel {
     private DiceGauge gauge;
     private Timer animationTimer;
 
-    // 연료 게이지 색상
-    private static final Color YELLOW_COLOR = new Color(255, 235, 59);   // 노란색 (0~33%)
-    private static final Color ORANGE_COLOR = new Color(255, 152, 0);    // 주황색 (33~67%)
-    private static final Color RED_COLOR = new Color(244, 67, 54);       // 빨간색 (67~100%)
-    private static final Color EMPTY_GAUGE_COLOR = new Color(60, 60, 60); // 빈 부분 배경
+    // 연료 게이지 색상 (4단계)
+    private static final Color YELLOW_COLOR = new Color(255, 235, 59);       // 노란색 (0-25%)
+    private static final Color LIGHT_ORANGE_COLOR = new Color(255, 193, 7);  // 연주황색 (25-50%)
+    private static final Color ORANGE_COLOR = new Color(255, 152, 0);        // 주황색 (50-75%)
+    private static final Color RED_COLOR = new Color(244, 67, 54);           // 빨간색 (75-100%)
+    private static final Color EMPTY_GAUGE_COLOR = new Color(60, 60, 60);    // 빈 부분 배경
+    private static final Color TICK_MARK_COLOR = new Color(220, 220, 220);   // 눈금 색상
 
     public GaugePanel(DiceGauge gauge) {
         this.gauge = gauge;
@@ -60,7 +62,7 @@ public class GaugePanel extends JPanel {
     }
 
     /**
-     * 연료 게이지 스타일로 채워지는 바 그리기
+     * 연료 게이지 스타일로 채워지는 바 그리기 (4단계 색상)
      */
     private void drawFuelGauge(Graphics2D g, int x, int y, int width, int height) {
         double position = gauge.getCurrentPosition();
@@ -71,19 +73,29 @@ public class GaugePanel extends JPanel {
         g.setColor(EMPTY_GAUGE_COLOR);
         g.fillRoundRect(x, y, width, height, corner, corner);
 
-        // 채워진 부분 그리기 (위치에 따라 색상 변경)
+        // 채워진 부분 그리기 (위치에 따라 4단계 색상 변경)
         if (filledWidth > 0) {
             Color fillColor;
-            if (position < 0.333) {
-                fillColor = YELLOW_COLOR;  // 0~33%: 노란색
-            } else if (position < 0.666) {
-                fillColor = ORANGE_COLOR;  // 33~67%: 주황색
+            if (position < 0.25) {
+                fillColor = YELLOW_COLOR;  // 0-25%: 노란색
+            } else if (position < 0.50) {
+                fillColor = LIGHT_ORANGE_COLOR;  // 25-50%: 연주황색
+            } else if (position < 0.75) {
+                fillColor = ORANGE_COLOR;  // 50-75%: 주황색
             } else {
-                fillColor = RED_COLOR;     // 67~100%: 빨간색
+                fillColor = RED_COLOR;     // 75-100%: 빨간색
             }
 
             g.setColor(fillColor);
             g.fillRoundRect(x, y, filledWidth, height, corner, corner);
+        }
+
+        // 눈금 표시 (25%, 50%, 75% 위치에 세로선)
+        g.setColor(TICK_MARK_COLOR);
+        g.setStroke(new BasicStroke(2f));
+        int[] tickPositions = {width / 4, width / 2, width * 3 / 4};
+        for (int tickX : tickPositions) {
+            g.drawLine(x + tickX, y, x + tickX, y + height);
         }
 
         // 외곽 테두리
