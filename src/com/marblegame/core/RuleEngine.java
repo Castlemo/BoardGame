@@ -83,6 +83,51 @@ public class RuleEngine {
     }
 
     /**
+     * 선택한 레벨로 도시 구매
+     * @param player 플레이어
+     * @param city 도시 타일
+     * @param level 선택한 레벨 (1, 2, 3)
+     * @param playerIndex 플레이어 인덱스
+     * @return 구매 성공 여부
+     */
+    public boolean purchaseCityWithLevel(Player player, City city, int level, int playerIndex) {
+        if (city.isOwned()) {
+            return false;
+        }
+
+        if (level < 1 || level > 3) {
+            return false; // 잘못된 레벨
+        }
+
+        // 누적 비용 계산
+        int totalCost = calculateLevelCost(city.price, level);
+
+        if (!player.canAfford(totalCost)) {
+            return false;
+        }
+
+        player.pay(totalCost);
+        city.owner = playerIndex;
+        city.level = level; // 선택한 레벨로 설정
+        return true;
+    }
+
+    /**
+     * 레벨별 누적 건설 비용 계산
+     * @param basePrice 기본 가격
+     * @param level 목표 레벨 (1, 2, 3)
+     * @return 누적 건설 비용
+     */
+    public int calculateLevelCost(int basePrice, int level) {
+        switch (level) {
+            case 1: return basePrice;                    // 레벨 1: 기본가
+            case 2: return (int)(basePrice * 1.3);       // 레벨 2: 기본가 + 30%
+            case 3: return (int)(basePrice * 1.6);       // 레벨 3: 기본가 + 60%
+            default: return basePrice;
+        }
+    }
+
+    /**
      * 관광지(TouristSpot) 매입 처리
      */
     public boolean purchaseTouristSpot(Player player, TouristSpot touristSpot, int playerIndex) {

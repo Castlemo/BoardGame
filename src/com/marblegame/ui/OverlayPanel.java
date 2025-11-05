@@ -30,9 +30,6 @@ public class OverlayPanel extends JPanel {
     private GaugePanel gaugePanel;
     private DiceGauge diceGauge; // 추가됨: 게이지 모델
     private JPanel actionButtonPanel;
-    private JLabel purchasePriceLabel;
-    private JLabel upgradePriceLabel;
-    private JLabel takeoverPriceLabel;
     private JLabel taxInfoLabel;
 
     // 추가됨: 플레이어 카드
@@ -134,9 +131,6 @@ public class OverlayPanel extends JPanel {
         takeoverButton = createStyledButton("💰 인수하기", BUTTON_TAKEOVER);
         skipButton = createStyledButton("⏭ 패스", BUTTON_SKIP);
         escapeButton = createStyledButton("🔓 탈출하기", BUTTON_ESCAPE);
-        purchasePriceLabel = createPriceLabel();
-        upgradePriceLabel = createPriceLabel();
-        takeoverPriceLabel = createPriceLabel();
         taxInfoLabel = createPriceLabel();
 
         // 모든 버튼을 패널에 추가 (초기 상태는 숨김)
@@ -152,13 +146,9 @@ public class OverlayPanel extends JPanel {
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(rollDiceButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        actionButtonPanel.add(purchasePriceLabel);
         actionButtonPanel.add(purchaseButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        actionButtonPanel.add(upgradePriceLabel);
         actionButtonPanel.add(upgradeButton);
-        actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-        actionButtonPanel.add(takeoverPriceLabel);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(takeoverButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -499,7 +489,6 @@ public class OverlayPanel extends JPanel {
         escapeButton.setVisible(escape);
         escapeButton.setEnabled(escape);
 
-        refreshPriceLabelVisibility();
     }
 
     /**
@@ -557,13 +546,10 @@ public class OverlayPanel extends JPanel {
         int labelHeight = (int)(18 * scaleFactor);
         Font labelFont = new Font("Malgun Gothic", Font.PLAIN, labelFontSize);
         Dimension labelSize = new Dimension(buttonWidth, labelHeight);
-        JLabel[] priceLabels = {purchasePriceLabel, upgradePriceLabel, takeoverPriceLabel, taxInfoLabel};
-        for (JLabel label : priceLabels) {
-            if (label != null) {
-                label.setFont(labelFont);
-                label.setMaximumSize(labelSize);
-                label.setPreferredSize(labelSize);
-            }
+        if (taxInfoLabel != null) {
+            taxInfoLabel.setFont(labelFont);
+            taxInfoLabel.setMaximumSize(labelSize);
+            taxInfoLabel.setPreferredSize(labelSize);
         }
     }
 
@@ -589,48 +575,6 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 매입 가격 정보 표시
-     */
-    public void setPurchasePrice(Integer price) {
-        if (purchasePriceLabel == null) return;
-
-        if (price == null) {
-            purchasePriceLabel.setText("");
-        } else {
-            purchasePriceLabel.setText("매입 비용: " + String.format("%,d원", price));
-        }
-        refreshPriceLabelVisibility();
-    }
-
-    /**
-     * 업그레이드 비용 정보 표시
-     */
-    public void setUpgradePrice(Integer price) {
-        if (upgradePriceLabel == null) return;
-
-        if (price == null) {
-            upgradePriceLabel.setText("");
-        } else {
-            upgradePriceLabel.setText("업그레이드 비용: " + String.format("%,d원", price));
-        }
-        refreshPriceLabelVisibility();
-    }
-
-    /**
-     * 인수 비용 정보 표시
-     */
-    public void setTakeoverPrice(Integer price) {
-        if (takeoverPriceLabel == null) return;
-
-        if (price == null) {
-            takeoverPriceLabel.setText("");
-        } else {
-            takeoverPriceLabel.setText("인수 비용: " + String.format("%,d원", price));
-        }
-        refreshPriceLabelVisibility();
-    }
-
-    /**
      * 세금 정보 표시 (국세청)
      */
     public void setTaxAmount(Integer amount) {
@@ -638,52 +582,27 @@ public class OverlayPanel extends JPanel {
 
         if (amount == null) {
             taxInfoLabel.setText("");
+            taxInfoLabel.setVisible(false);
         } else {
             taxInfoLabel.setText("세금 부과: " + String.format("%,d원", amount));
-        }
-        refreshPriceLabelVisibility();
-    }
-
-    /**
-     * 가격 라벨 초기화
-     */
-    public void clearPriceLabels() {
-        if (purchasePriceLabel != null) {
-            purchasePriceLabel.setText("");
-        }
-        if (upgradePriceLabel != null) {
-            upgradePriceLabel.setText("");
-        }
-        if (takeoverPriceLabel != null) {
-            takeoverPriceLabel.setText("");
-        }
-        if (taxInfoLabel != null) {
-            taxInfoLabel.setText("");
-        }
-        refreshPriceLabelVisibility();
-    }
-
-    private void refreshPriceLabelVisibility() {
-        if (purchasePriceLabel != null && purchaseButton != null) {
-            purchasePriceLabel.setVisible(purchaseButton.isVisible() && hasText(purchasePriceLabel));
-        }
-        if (upgradePriceLabel != null && upgradeButton != null) {
-            upgradePriceLabel.setVisible(upgradeButton.isVisible() && hasText(upgradePriceLabel));
-        }
-        if (takeoverPriceLabel != null && takeoverButton != null) {
-            takeoverPriceLabel.setVisible(takeoverButton.isVisible() && hasText(takeoverPriceLabel));
-        }
-        if (taxInfoLabel != null) {
-            taxInfoLabel.setVisible(hasText(taxInfoLabel));
+            taxInfoLabel.setVisible(true);
         }
         actionButtonPanel.revalidate();
         actionButtonPanel.repaint();
         repositionComponents();
     }
 
-    private boolean hasText(JLabel label) {
-        String text = label.getText();
-        return text != null && !text.isBlank();
+    /**
+     * 가격 라벨 초기화
+     */
+    public void clearPriceLabels() {
+        if (taxInfoLabel != null) {
+            taxInfoLabel.setText("");
+            taxInfoLabel.setVisible(false);
+        }
+        actionButtonPanel.revalidate();
+        actionButtonPanel.repaint();
+        repositionComponents();
     }
 
     /**

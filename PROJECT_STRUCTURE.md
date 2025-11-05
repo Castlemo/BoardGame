@@ -2032,8 +2032,391 @@ System.out.println("OverlayPanel scaleFactor: " + overlayPanel.scaleFactor);
 
 ---
 
+## 13. 다이얼로그 UI 디자인 가이드라인
+
+### 13.1 다이얼로그 사용 원칙
+
+**다이얼로그를 사용해야 하는 경우:**
+- ✅ 사용자의 **확인이나 선택이 필요한 경우** (매입, 레벨 선택 등)
+- ✅ 중요한 **정보를 명확히 표시**해야 하는 경우
+- ✅ 사용자가 **실수로 작업을 수행하지 않도록** 방지해야 하는 경우
+- ✅ **비용 정보**를 보여주고 확인받아야 하는 경우
+
+**다이얼로그를 사용하지 말아야 하는 경우:**
+- ❌ 단순 알림 메시지 (로그로 충분)
+- ❌ 게임 플로우를 방해하는 빈번한 팝업
+- ❌ 정보만 전달하고 사용자 액션이 필요 없는 경우
+
+### 13.2 다이얼로그 디자인 패턴
+
+#### 📐 레이아웃 구조
+
+```
+┌─────────────────────────────────────┐
+│  HEADER PANEL (헤더)                │
+│  - 제목 (20px, Bold)                │
+│  - 부제목/설명 (14px, Plain)         │
+│  - 보유 자금 정보 (13px, Bold, 노란색)│
+├─────────────────────────────────────┤
+│  CENTER PANEL (선택 옵션 또는 정보)  │
+│  - 레벨 선택 버튼 (도시)            │
+│  - 정보 행 (관광지)                 │
+│  - 최대 3-4개 옵션                  │
+├─────────────────────────────────────┤
+│  SOUTH PANEL (액션 버튼)            │
+│  - 확인 버튼 (녹색)                 │
+│  - 취소 버튼 (회색)                 │
+└─────────────────────────────────────┘
+```
+
+#### 🎨 색상 팔레트
+
+```java
+// 다크 테마 기본 색상
+private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
+private static final Color PANEL_DARK = new Color(44, 47, 51);
+private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
+private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
+
+// 버튼 색상
+private static final Color BUTTON_CONFIRM = new Color(39, 174, 96);   // 녹색 (확인)
+private static final Color BUTTON_LEVEL1 = new Color(39, 174, 96);    // 녹색 (레벨 1)
+private static final Color BUTTON_LEVEL2 = new Color(41, 128, 185);   // 파란색 (레벨 2)
+private static final Color BUTTON_LEVEL3 = new Color(142, 68, 173);   // 보라색 (레벨 3)
+private static final Color BUTTON_CANCEL = new Color(127, 140, 141);  // 회색 (취소)
+private static final Color BUTTON_DISABLED = new Color(60, 63, 65);   // 어두운 회색 (비활성)
+
+// 강조 색상
+private static final Color ACCENT_YELLOW = new Color(255, 193, 7);    // 노란색 (자금)
+```
+
+#### 📝 텍스트 스타일
+
+```java
+// 제목
+titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+titleLabel.setForeground(TEXT_PRIMARY);
+
+// 부제목/설명
+messageLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+messageLabel.setForeground(TEXT_SECONDARY);
+
+// 보유 자금 (강조)
+cashLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+cashLabel.setForeground(ACCENT_YELLOW);
+
+// 버튼
+button.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+```
+
+#### 🔘 버튼 디자인
+
+```java
+private JButton createButton(String text, Color bgColor) {
+    JButton button = new JButton(text);
+    button.setPreferredSize(new Dimension(120, 40));
+    button.setBackground(bgColor);
+    button.setForeground(TEXT_PRIMARY);
+    button.setFocusPainted(false);
+    button.setBorderPainted(false);
+    button.setOpaque(true);
+    button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+    // 호버 효과
+    Color hoverColor = bgColor.brighter();
+    button.addMouseListener(new java.awt.event.MouseAdapter() {
+        public void mouseEntered(java.awt.event.MouseEvent evt) {
+            if (button.isEnabled()) {
+                button.setBackground(hoverColor);
+            }
+        }
+        public void mouseExited(java.awt.event.MouseEvent evt) {
+            if (button.isEnabled()) {
+                button.setBackground(bgColor);
+            }
+        }
+    });
+
+    return button;
+}
+```
+
+#### 💡 자금 부족 처리
+
+```java
+boolean canAfford = playerCash >= price;
+button.setEnabled(canAfford);
+
+if (!canAfford) {
+    button.setBackground(BUTTON_DISABLED);
+    button.setForeground(new Color(150, 150, 150));
+}
+```
+
+### 13.3 구현된 다이얼로그 예시
+
+#### 1. LevelSelectionDialog.java (도시 레벨 선택)
+
+**용도:** 도시 매입 시 레벨 1-3 중 선택
+
+**특징:**
+- 3개 레벨 버튼 (🏠 집, 🏢 아파트, 🏬 건물)
+- 각 레벨의 누적 건설 비용 표시
+- 자금 부족 시 버튼 자동 비활성화
+- 취소 옵션 제공
+
+**사용 위치:** `GameUI.purchaseCity()` - 도시 타일 매입 시
+
+#### 2. TouristSpotPurchaseDialog.java (관광지 매입 확인)
+
+**용도:** 관광지 매입 확인
+
+**특징:**
+- 매입 가격, 보유 자금, 매입 후 잔액 표시
+- "관광지는 업그레이드 불가" 안내 문구
+- 자금 부족 시 매입하기 버튼 비활성화
+- 취소 옵션 제공
+
+**사용 위치:** `GameUI.purchaseCity()` - 관광지 타일 매입 시
+
+### 13.4 새 다이얼로그 추가 시 체크리스트
+
+#### ✅ 필수 구현 사항
+
+1. **Modal Dialog 설정**
+   ```java
+   super(parent, "제목", true); // true = modal
+   ```
+
+2. **다크 테마 색상 사용**
+   - BACKGROUND_DARK, PANEL_DARK
+   - TEXT_PRIMARY, TEXT_SECONDARY
+
+3. **자금 정보 표시** (금액 관련 경우)
+   - 보유 자금 (노란색 강조)
+   - 필요 금액
+   - 잔액 계산
+
+4. **호버 효과**
+   - 버튼에 마우스 올렸을 때 색상 밝게
+   - 커서 HAND_CURSOR로 변경
+
+5. **비활성화 처리**
+   - 자금 부족 시 버튼 비활성화
+   - 회색 배경 + 회색 텍스트
+
+6. **취소 옵션**
+   - 항상 취소 버튼 제공
+   - ESC 키로 닫기 (기본)
+
+7. **중앙 정렬**
+   ```java
+   setLocationRelativeTo(parent);
+   ```
+
+8. **크기 조정 비활성화**
+   ```java
+   setResizable(false);
+   ```
+
+#### 📋 코드 템플릿
+
+```java
+public class MyDialog extends JDialog {
+    private boolean confirmed = false;
+
+    public MyDialog(JFrame parent, String title, int playerCash) {
+        super(parent, title, true);
+        initComponents();
+        pack();
+        setLocationRelativeTo(parent);
+        setResizable(false);
+    }
+
+    private void initComponents() {
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(BACKGROUND_DARK);
+
+        add(createHeaderPanel(), BorderLayout.NORTH);
+        add(createContentPanel(), BorderLayout.CENTER);
+        add(createButtonPanel(), BorderLayout.SOUTH);
+    }
+
+    public boolean isConfirmed() {
+        return confirmed;
+    }
+}
+```
+
+---
+
+## 14. 최근 세션 업데이트 (2025-01-XX)
+
+### 14.1 주사위 게이지 4단계 분할
+
+**변경 내용:**
+- 게이지 구간을 **3단계 → 4단계**로 변경
+- 눈금 표시 추가 (25%, 50%, 75% 위치)
+
+**수정 파일:**
+- `DiceGauge.java`: 섹션 경계 및 확률 분포 변경
+- `GaugePanel.java`: 4단계 색상 및 눈금 표시 추가
+
+**색상 및 주사위 값 매핑:**
+
+| 구간 | 색상 | 주사위 값 (60% 확률) |
+|------|------|---------------------|
+| 0-25% | 노란색 | 2, 3, 4 |
+| 25-50% | 연주황색 | 5, 6, 7 |
+| 50-75% | 주황색 | 8, 9, 10 |
+| 75-100% | 빨간색 | 11, 12 |
+
+**코드 변경:**
+
+```java
+// DiceGauge.java
+private static final double SECTION1_END = 0.25;  // 0-25%
+private static final double SECTION2_END = 0.50;  // 25-50%
+private static final double SECTION3_END = 0.75;  // 50-75%
+                                                   // 75-100%
+
+// GaugePanel.java
+// 눈금 표시 (25%, 50%, 75%)
+g.setColor(TICK_MARK_COLOR);
+g.setStroke(new BasicStroke(2f));
+int[] tickPositions = {width / 4, width / 2, width * 3 / 4};
+for (int tickX : tickPositions) {
+    g.drawLine(x + tickX, y, x + tickX, y + height);
+}
+```
+
+### 14.2 도시 즉시 레벨 선택 건설 시스템
+
+**변경 내용:**
+- 도시 매입 시 레벨 1부터 시작하는 대신 **레벨 1, 2, 3 중 선택** 가능
+- 레벨 선택 다이얼로그 UI 추가
+- 누적 건설 비용 계산 시스템
+
+**신규 파일:**
+- `LevelSelectionDialog.java`: 레벨 선택 다이얼로그 UI
+
+**수정 파일:**
+- `RuleEngine.java`: `purchaseCityWithLevel()`, `calculateLevelCost()` 메서드 추가
+- `GameUI.java`: `purchaseCity()` 메서드 수정, `getLevelName()` 헬퍼 추가
+
+**비용 계산 공식:**
+
+| 레벨 | 건물 | 비용 공식 | 예시 (base = 150,000원) |
+|------|------|-----------|------------------------|
+| 1 | 🏠 집 | basePrice | 150,000원 |
+| 2 | 🏢 아파트 | basePrice × 1.3 | 195,000원 |
+| 3 | 🏬 건물 | basePrice × 1.6 | 240,000원 |
+
+**주요 코드:**
+
+```java
+// RuleEngine.java
+public int calculateLevelCost(int basePrice, int level) {
+    switch (level) {
+        case 1: return basePrice;
+        case 2: return (int)(basePrice * 1.3);
+        case 3: return (int)(basePrice * 1.6);
+        default: return basePrice;
+    }
+}
+
+// GameUI.java
+LevelSelectionDialog dialog = new LevelSelectionDialog(
+    frame, city.name, city.price, player.cash
+);
+dialog.setVisible(true);
+int selectedLevel = dialog.getSelectedLevel();
+```
+
+### 14.3 관광지 매입 확인 다이얼로그
+
+**변경 내용:**
+- 관광지 매입 시 **확인 다이얼로그** 추가
+- 매입 가격, 보유 자금, 매입 후 잔액 표시
+- "관광지는 업그레이드 불가" 안내 문구
+
+**신규 파일:**
+- `TouristSpotPurchaseDialog.java`: 관광지 매입 확인 다이얼로그
+
+**수정 파일:**
+- `GameUI.java`: `purchaseCity()` 메서드에 관광지 다이얼로그 추가
+
+**주요 코드:**
+
+```java
+// GameUI.java
+TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
+    frame, touristSpot.name, touristSpot.price, player.cash
+);
+dialog.setVisible(true);
+
+if (!dialog.isConfirmed()) {
+    log("구매를 취소했습니다.");
+    endTurn();
+    return;
+}
+```
+
+### 14.4 가격 라벨 제거
+
+**변경 내용:**
+- 버튼 위에 표시되던 **가격 라벨 제거** (매입 비용, 업그레이드 비용, 인수 비용)
+- 다이얼로그에서 모든 비용 정보 확인 가능
+- 세금 라벨만 유지
+
+**수정 파일:**
+- `OverlayPanel.java`:
+  - `purchasePriceLabel`, `upgradePriceLabel`, `takeoverPriceLabel` 필드 제거
+  - `setPurchasePrice()`, `setUpgradePrice()`, `setTakeoverPrice()` 메서드 제거
+  - `refreshPriceLabelVisibility()`, `hasText()` 메서드 제거
+- `GameUI.java`:
+  - `setPurchasePrice()`, `setUpgradePrice()`, `setTakeoverPrice()` 호출 제거
+
+**기존 UI:**
+```
+┌─────────────────┐
+│ 매입 비용: 150,000원 │  ← 제거됨
+│ [🏠 매입하기]   │
+└─────────────────┘
+```
+
+**새 UI:**
+```
+┌─────────────────┐
+│ [🏠 매입하기]   │  ← 클릭 시 다이얼로그 표시
+└─────────────────┘
+```
+
+### 14.5 파일 변경 요약
+
+**신규 파일 (2개):**
+1. `LevelSelectionDialog.java` - 도시 레벨 선택 다이얼로그
+2. `TouristSpotPurchaseDialog.java` - 관광지 매입 확인 다이얼로그
+
+**수정 파일 (4개):**
+1. `DiceGauge.java` - 4단계 게이지 시스템
+2. `GaugePanel.java` - 4단계 색상 및 눈금 표시
+3. `RuleEngine.java` - 레벨별 구매 로직
+4. `GameUI.java` - 다이얼로그 통합, 가격 라벨 호출 제거
+5. `OverlayPanel.java` - 가격 라벨 UI 제거
+
+**삭제된 기능:**
+- 버튼 위 가격 라벨 (매입/업그레이드/인수 비용)
+
+**추가된 기능:**
+- 도시 즉시 레벨 선택 건설
+- 관광지 매입 확인 다이얼로그
+- 주사위 게이지 4단계 분할 + 눈금 표시
+
+---
+
 **마지막 업데이트:** 2025년 1월
 
-**버전:** 2.0 (2차 수정 완료)
+**버전:** 3.0 (3차 수정 완료 - 다이얼로그 시스템 추가)
 
 **문서 작성:** Claude Code 자동 생성

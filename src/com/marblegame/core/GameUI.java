@@ -341,7 +341,6 @@ public class GameUI {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
             state = GameState.WAITING_FOR_ACTION;
-            frame.getActionPanel().setPurchasePrice(city.price);
             frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (city.owner == currentPlayerIndex) {
             // 본인 소유 땅
@@ -351,7 +350,6 @@ public class GameUI {
                 int upgradeCost = city.getUpgradeCost();
                 log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
                 state = GameState.WAITING_FOR_ACTION;
-                frame.getActionPanel().setUpgradePrice(upgradeCost);
                 frame.getActionPanel().setButtonsEnabled(false, false, true, false, true, false);
             } else {
                 log("최대 레벨입니다. 더 이상 업그레이드할 수 없습니다.");
@@ -393,7 +391,6 @@ public class GameUI {
                     int takeoverCost = city.getTakeoverPrice();
                     log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 땅을 인수하거나 패스하세요.");
-                    frame.getActionPanel().setTakeoverPrice(takeoverCost);
                     state = GameState.WAITING_FOR_ACTION;
                     frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
                 }
@@ -409,7 +406,6 @@ public class GameUI {
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             log("(관광지는 업그레이드가 불가능합니다)");
             state = GameState.WAITING_FOR_ACTION;
-            frame.getActionPanel().setPurchasePrice(touristSpot.price);
             frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (touristSpot.owner == currentPlayerIndex) {
             // 본인 소유 관광지
@@ -441,18 +437,60 @@ public class GameUI {
 
         if (currentTile instanceof City) {
             City city = (City) currentTile;
-            if (ruleEngine.purchaseCity(player, city, currentPlayerIndex)) {
-                // 첫 구매 시 자동으로 레벨 1로 설정 (집 건설)
-                city.level = 1;
-                log(player.name + "이(가) " + city.name + "을(를) " + String.format("%,d", city.price) + "원에 매입했습니다!");
-                log("🏠 집이 건설되었습니다! (레벨 1)");
+
+            // 레벨 선택 다이얼로그 표시
+            LevelSelectionDialog dialog = new LevelSelectionDialog(
+                frame,
+                city.name,
+                city.price,
+                player.cash
+            );
+            dialog.setVisible(true);
+
+            int selectedLevel = dialog.getSelectedLevel();
+
+            if (selectedLevel == 0) {
+                // 취소 선택
+                log("구매를 취소했습니다.");
+                endTurn();
+                return;
+            }
+
+            // 선택한 레벨로 구매 시도
+            if (ruleEngine.purchaseCityWithLevel(player, city, selectedLevel, currentPlayerIndex)) {
+                int totalCost = ruleEngine.calculateLevelCost(city.price, selectedLevel);
+                String levelName = getLevelName(selectedLevel);
+                String emoji = city.getBuildingEmoji();
+
+                log(player.name + "이(가) " + city.name + "을(를) " +
+                    String.format("%,d", totalCost) + "원에 매입했습니다!");
+                log(emoji + " " + levelName + "이(가) 건설되었습니다! (레벨 " + selectedLevel + ")");
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
         } else if (currentTile instanceof TouristSpot) {
             TouristSpot touristSpot = (TouristSpot) currentTile;
+
+            // 관광지 매입 확인 다이얼로그 표시
+            TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
+                frame,
+                touristSpot.name,
+                touristSpot.price,
+                player.cash
+            );
+            dialog.setVisible(true);
+
+            if (!dialog.isConfirmed()) {
+                // 취소 선택
+                log("구매를 취소했습니다.");
+                endTurn();
+                return;
+            }
+
+            // 매입 시도
             if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
-                log(player.name + "이(가) " + touristSpot.name + "을(를) " + String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
+                log(player.name + "이(가) " + touristSpot.name + "을(를) " +
+                    String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
             } else {
                 log("자금이 부족하여 매입할 수 없습니다.");
             }
@@ -850,5 +888,18 @@ public class GameUI {
         frame.getOverlayPanel().getEvenButton().putClientProperty("selected", diceMode == DiceMode.EVEN);
         frame.getOverlayPanel().getOddButton().repaint();
         frame.getOverlayPanel().getEvenButton().repaint();
+    }
+
+    /**
+     * 레벨 번호에서 건물 이름으로 변환
+     */
+    private String getLevelName(int level) {
+        switch (level) {
+            case 1: return "집";
+            case 2: return "아파트";
+            case 3: return "건물";
+            case 4: return "랜드마크";
+            default: return "";
+        }
     }
 }
