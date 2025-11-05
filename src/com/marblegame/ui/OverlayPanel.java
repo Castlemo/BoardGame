@@ -35,6 +35,9 @@ public class OverlayPanel extends JPanel {
     private List<CompactPlayerCard> playerCards;
     private List<Player> players;
 
+    // 스케일 팩터 (보드와 동일한 비율로 스케일링)
+    private double scaleFactor = 1.0;
+
     // 추가됨: 행동 버튼들
     private JButton rollDiceButton;
     private JButton purchaseButton;
@@ -140,11 +143,12 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 스타일이 적용된 버튼 생성
+     * 스타일이 적용된 버튼 생성 (스케일 적용)
      */
     private JButton createStyledButton(String text, Color bgColor) {
         JButton button = new JButton(text);
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+        int fontSize = Math.max(10, (int)(14 * scaleFactor));
+        button.setFont(new Font("Malgun Gothic", Font.BOLD, fontSize));
         button.setForeground(TEXT_PRIMARY);
         button.setBackground(bgColor);
         button.setFocusPainted(false);
@@ -152,8 +156,10 @@ public class OverlayPanel extends JPanel {
         button.setOpaque(true);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setMaximumSize(new Dimension(260, 35));
-        button.setPreferredSize(new Dimension(260, 35));
+        int buttonWidth = (int)(260 * scaleFactor);
+        int buttonHeight = (int)(35 * scaleFactor);
+        button.setMaximumSize(new Dimension(buttonWidth, buttonHeight));
+        button.setPreferredSize(new Dimension(buttonWidth, buttonHeight));
 
         // 호버 효과
         Color hoverColor = bgColor.brighter();
@@ -203,24 +209,29 @@ public class OverlayPanel extends JPanel {
         int innerRight = offsetX + scaledBoardSize - scaledTileSize;
         int innerBottom = offsetY + scaledBoardSize - scaledTileSize;
 
+        // 스케일된 크기 계산
+        int scaledCardWidth = (int)(CARD_WIDTH * scaleFactor);
+        int scaledCardHeight = (int)(CARD_HEIGHT * scaleFactor);
+        int scaledCardMargin = (int)(CARD_MARGIN * scaleFactor);
+
         // === 플레이어 카드 배치 (보드 내부 좌측) ===
         if (playerCards.size() >= 1) {
             // Player 1: 내부 영역 좌측 상단
             playerCards.get(0).setBounds(
-                innerLeft + CARD_MARGIN,
-                innerTop + CARD_MARGIN,
-                CARD_WIDTH,
-                CARD_HEIGHT
+                innerLeft + scaledCardMargin,
+                innerTop + scaledCardMargin,
+                scaledCardWidth,
+                scaledCardHeight
             );
         }
 
         if (playerCards.size() >= 2) {
             // Player 2: 내부 영역 좌측 하단
             playerCards.get(1).setBounds(
-                innerLeft + CARD_MARGIN,
-                innerBottom - CARD_HEIGHT - CARD_MARGIN,
-                CARD_WIDTH,
-                CARD_HEIGHT
+                innerLeft + scaledCardMargin,
+                innerBottom - scaledCardHeight - scaledCardMargin,
+                scaledCardWidth,
+                scaledCardHeight
             );
         }
 
@@ -228,43 +239,48 @@ public class OverlayPanel extends JPanel {
         int cx = width / 2;  // 중심 X 좌표
         int cy = height / 2; // 중심 Y 좌표
 
-        // 컴포넌트 크기
-        final int TURN_LABEL_WIDTH = 200;
-        final int TURN_LABEL_HEIGHT = 50;
+        // 컴포넌트 크기 (스케일 적용)
+        final int TURN_LABEL_WIDTH = (int)(200 * scaleFactor);
+        final int TURN_LABEL_HEIGHT = (int)(50 * scaleFactor);
 
-        final int DICE_PANEL_WIDTH = 180;
-        final int DICE_PANEL_HEIGHT = 100;
+        final int DICE_PANEL_WIDTH = (int)(180 * scaleFactor);
+        final int DICE_PANEL_HEIGHT = (int)(100 * scaleFactor);
 
-        final int GAUGE_PANEL_WIDTH = 320;
-        final int GAUGE_PANEL_HEIGHT = 60;
+        final int GAUGE_PANEL_WIDTH = (int)(320 * scaleFactor);
+        final int GAUGE_PANEL_HEIGHT = (int)(60 * scaleFactor);
 
-        final int BUTTON_PANEL_WIDTH = 280;
-        final int BUTTON_PANEL_HEIGHT = 80;
+        final int BUTTON_PANEL_WIDTH = (int)(280 * scaleFactor);
+        final int BUTTON_PANEL_HEIGHT = (int)(80 * scaleFactor);
+
+        final int scaledSpacing = (int)(COMPONENT_SPACING * scaleFactor);
 
         // 전체 높이 계산
-        int totalHeight = TURN_LABEL_HEIGHT + COMPONENT_SPACING +
-                         DICE_PANEL_HEIGHT + 10 + // 주사위와 게이지 간격은 좁게
-                         GAUGE_PANEL_HEIGHT + COMPONENT_SPACING +
+        int totalHeight = TURN_LABEL_HEIGHT + scaledSpacing +
+                         DICE_PANEL_HEIGHT + (int)(10 * scaleFactor) + // 주사위와 게이지 간격은 좁게
+                         GAUGE_PANEL_HEIGHT + scaledSpacing +
                          BUTTON_PANEL_HEIGHT;
 
         // 시작 Y 좌표 (중앙 정렬)
         int startY = cy - (totalHeight / 2);
         int currentY = startY;
 
+        // 폰트 크기도 스케일 적용
+        turnLabel.setFont(new Font("Malgun Gothic", Font.BOLD, (int)(24 * scaleFactor)));
+
         // 1. 턴 라벨 배치
         turnLabel.setBounds(cx - TURN_LABEL_WIDTH / 2, currentY,
                            TURN_LABEL_WIDTH, TURN_LABEL_HEIGHT);
-        currentY += TURN_LABEL_HEIGHT + COMPONENT_SPACING;
+        currentY += TURN_LABEL_HEIGHT + scaledSpacing;
 
         // 2. 주사위 패널 배치
         dicePanel.setBounds(cx - DICE_PANEL_WIDTH / 2, currentY,
                            DICE_PANEL_WIDTH, DICE_PANEL_HEIGHT);
-        currentY += DICE_PANEL_HEIGHT + 10;
+        currentY += DICE_PANEL_HEIGHT + (int)(10 * scaleFactor);
 
         // 3. 게이지 패널 배치
         gaugePanel.setBounds(cx - GAUGE_PANEL_WIDTH / 2, currentY,
                             GAUGE_PANEL_WIDTH, GAUGE_PANEL_HEIGHT);
-        currentY += GAUGE_PANEL_HEIGHT + COMPONENT_SPACING;
+        currentY += GAUGE_PANEL_HEIGHT + scaledSpacing;
 
         // 4. 행동 버튼 패널 배치
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
@@ -396,6 +412,35 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
+     * 스케일 팩터 설정 (보드와 동일한 비율로 스케일링)
+     */
+    public void setScaleFactor(double scaleFactor) {
+        this.scaleFactor = scaleFactor;
+        updateButtonSizes();
+        repositionComponents();
+    }
+
+    /**
+     * 버튼 크기 및 폰트 업데이트
+     */
+    private void updateButtonSizes() {
+        int fontSize = Math.max(10, (int)(14 * scaleFactor));
+        int buttonWidth = (int)(260 * scaleFactor);
+        int buttonHeight = (int)(35 * scaleFactor);
+        Font buttonFont = new Font("Malgun Gothic", Font.BOLD, fontSize);
+        Dimension buttonSize = new Dimension(buttonWidth, buttonHeight);
+
+        JButton[] buttons = {rollDiceButton, purchaseButton, upgradeButton, takeoverButton, skipButton, escapeButton};
+        for (JButton button : buttons) {
+            if (button != null) {
+                button.setFont(buttonFont);
+                button.setMaximumSize(buttonSize);
+                button.setPreferredSize(buttonSize);
+            }
+        }
+    }
+
+    /**
      * 게이지 반환 (하위 호환성)
      */
     public DiceGauge getDiceGauge() {
@@ -469,36 +514,44 @@ public class OverlayPanel extends JPanel {
             int width = getWidth();
             int height = getHeight();
 
+            // 스케일에 맞춘 라운드 크기와 테두리 두께
+            int roundSize = Math.max(6, (int)(12 * scaleFactor));
+            float strokeWidth = Math.max(1.5f, (float)(3 * scaleFactor));
+
             // 카드 배경
             g2.setColor(CARD_BACKGROUND);
-            g2.fillRoundRect(0, 0, width, height, 12, 12);
+            g2.fillRoundRect(0, 0, width, height, roundSize, roundSize);
 
             // 테두리
             Color accent = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
             g2.setColor(accent);
-            g2.setStroke(new BasicStroke(3f));
-            g2.drawRoundRect(0, 0, width, height, 12, 12);
+            g2.setStroke(new BasicStroke(strokeWidth));
+            g2.drawRoundRect(0, 0, width, height, roundSize, roundSize);
 
-            // 플레이어 이름
+            // 플레이어 이름 (스케일 적용 폰트)
             g2.setColor(TEXT_PRIMARY);
-            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 12);
+            int nameFontSize = Math.max(8, (int)(12 * scaleFactor));
+            Font nameFont = new Font("Malgun Gothic", Font.BOLD, nameFontSize);
             g2.setFont(nameFont);
-            g2.drawString(player.name, 10, 20);
+            int nameX = (int)(10 * scaleFactor);
+            int nameY = (int)(20 * scaleFactor);
+            g2.drawString(player.name, nameX, nameY);
 
-            // 정보 텍스트
-            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, 11);
+            // 정보 텍스트 (스케일 적용 폰트)
+            int infoFontSize = Math.max(7, (int)(11 * scaleFactor));
+            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, infoFontSize);
             g2.setFont(infoFont);
             g2.setColor(TEXT_PRIMARY);
-            int infoY = 38;
-            int lineHeight = 16;
+            int infoY = (int)(38 * scaleFactor);
+            int lineHeight = (int)(16 * scaleFactor);
 
             // 항상 표시: 보유금액
-            g2.drawString(String.format("💰 %,d원", player.cash), 10, infoY);
+            g2.drawString(String.format("💰 %,d원", player.cash), nameX, infoY);
             infoY += lineHeight;
 
             // 조건부 표시: 무인도에 있을 때만 남은 턴 수 표시
             if (player.isInJail()) {
-                g2.drawString(String.format("🏝 %d턴", player.jailTurns), 10, infoY);
+                g2.drawString(String.format("🏝 %d턴", player.jailTurns), nameX, infoY);
             }
 
             g2.dispose();

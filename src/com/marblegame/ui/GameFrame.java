@@ -76,6 +76,11 @@ public class GameFrame extends JFrame {
                 int h = layeredPane.getHeight();
                 boardPanel.setBounds(0, 0, w, h);
                 overlayPanel.setBounds(0, 0, w, h);
+
+                // BoardPanel이 repaint된 후 scaleFactor를 OverlayPanel에 전달
+                SwingUtilities.invokeLater(() -> {
+                    overlayPanel.setScaleFactor(boardPanel.getScaleFactor());
+                });
             }
         });
 

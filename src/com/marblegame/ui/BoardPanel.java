@@ -240,7 +240,7 @@ public class BoardPanel extends JPanel {
                 icon = "🏝";
                 break;
             case CHANCE:
-                icon = "🎁";
+                icon = "🎊";
                 break;
             case OLYMPIC:
                 icon = "🏆";
@@ -397,6 +397,13 @@ public class BoardPanel extends JPanel {
 
     public void updateBoard() {
         repaint();
+    }
+
+    /**
+     * 현재 스케일 팩터 반환
+     */
+    public double getScaleFactor() {
+        return scaleFactor;
     }
 
     /**
