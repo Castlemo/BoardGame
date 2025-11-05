@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -27,6 +28,7 @@ public class BoardPanel extends JPanel {
 
     private Board board;
     private List<Player> players;
+    private Point2D.Double[] playerAnimationPositions;
 
     // 타일 클릭 리스너
     private Consumer<Integer> tileClickListener = null;
@@ -39,6 +41,7 @@ public class BoardPanel extends JPanel {
     public BoardPanel(Board board, List<Player> players) {
         this.board = board;
         this.players = players;
+        this.playerAnimationPositions = new Point2D.Double[players.size()];
         setPreferredSize(new Dimension(BASE_BOARD_SIZE, BASE_BOARD_SIZE));
         setBackground(new Color(44, 62, 80)); // 다크 네이비
 
@@ -311,13 +314,23 @@ public class BoardPanel extends JPanel {
             Player player = players.get(i);
             if (player.bankrupt) continue;
 
-            Point pos = getTilePosition(player.pos);
+            Point2D.Double animPos = (playerAnimationPositions != null && i < playerAnimationPositions.length)
+                ? playerAnimationPositions[i]
+                : null;
 
-            // 플레이어 위치 조정 (타일 크기 60px에 맞게)
-            int offsetX = (i % 2) * 20 + 5;
-            int offsetY = (i / 2) * 25 + 35;
+            double drawX;
+            double drawY;
 
-            drawPlayerIcon(g, pos.x + offsetX, pos.y + offsetY, PLAYER_COLORS[i], (char)('A' + i));
+            if (animPos != null) {
+                drawX = animPos.x;
+                drawY = animPos.y;
+            } else {
+                Point2D.Double anchor = getPlayerAnchorForTile(player.pos, i);
+                drawX = anchor.x;
+                drawY = anchor.y;
+            }
+
+            drawPlayerIcon(g, (int)Math.round(drawX), (int)Math.round(drawY), PLAYER_COLORS[i], (char)('A' + i));
         }
     }
 
@@ -371,6 +384,12 @@ public class BoardPanel extends JPanel {
         g.drawString(labelStr, x + 12 - labelWidth/2, y + 8);
     }
 
+    private Point getPlayerOffset(int playerIndex) {
+        int offsetX = (playerIndex % 2) * 20 + 5;
+        int offsetY = (playerIndex / 2) * 25 + 35;
+        return new Point(offsetX, offsetY);
+    }
+
     private Point getTilePosition(int tileIndex) {
         // 32칸 보드 위치 계산 (9x9 그리드)
         // 하단 (우→좌): 0-8
@@ -397,6 +416,33 @@ public class BoardPanel extends JPanel {
 
     public void updateBoard() {
         repaint();
+    }
+
+    /**
+     * 특정 플레이어의 애니메이션 위치 설정
+     */
+    public void setPlayerAnimationPosition(int playerIndex, double x, double y) {
+        if (playerIndex < 0 || playerIndex >= playerAnimationPositions.length) return;
+        playerAnimationPositions[playerIndex] = new Point2D.Double(x, y);
+        repaint();
+    }
+
+    /**
+     * 특정 플레이어의 애니메이션 해제
+     */
+    public void clearPlayerAnimation(int playerIndex) {
+        if (playerIndex < 0 || playerIndex >= playerAnimationPositions.length) return;
+        playerAnimationPositions[playerIndex] = null;
+        repaint();
+    }
+
+    /**
+     * 타일 기준 플레이어 아이콘 기준 좌표 반환
+     */
+    public Point2D.Double getPlayerAnchorForTile(int tileIndex, int playerIndex) {
+        Point tilePos = getTilePosition(tileIndex);
+        Point offset = getPlayerOffset(playerIndex);
+        return new Point2D.Double(tilePos.x + offset.x, tilePos.y + offset.y);
     }
 
     /**

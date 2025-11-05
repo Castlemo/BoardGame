@@ -5,6 +5,7 @@ import com.marblegame.ui.*;
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.util.List;
 
 /**
@@ -26,6 +27,7 @@ public class GameUI {
         WAITING_FOR_ACTION,
         WAITING_FOR_JAIL_CHOICE,
         WAITING_FOR_RAILROAD_SELECTION,
+        ANIMATING_MOVEMENT,
         GAME_OVER
     }
 
@@ -38,6 +40,19 @@ public class GameUI {
     private DiceMode diceMode = DiceMode.NORMAL;
 
     private Tile currentTile;
+    private static final int MOVEMENT_ANIMATION_INTERVAL = 16;
+    private static final int MOVEMENT_SUB_STEPS = 12;
+    private static final int MOVEMENT_HOLD_STEPS = 6;
+    private static final double MOVEMENT_HOP_HEIGHT = 16.0;
+    private Timer movementTimer;
+    private Player movementPlayer;
+    private int movementPlayerIndex;
+    private int movementStepsRemaining;
+    private int movementCurrentTile;
+    private int movementNextTile;
+    private int movementSubStep;
+    private Point2D.Double movementStartPoint;
+    private Point2D.Double movementEndPoint;
 
     public GameUI(int numPlayers, int initialCash) {
         this.board = new Board();
@@ -230,7 +245,6 @@ public class GameUI {
             frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
                 log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
                 movePlayer(finalResult);
-                updateDisplay();
             });
         }
     }
@@ -249,20 +263,14 @@ public class GameUI {
 
     private void movePlayer(int steps) {
         Player player = players[currentPlayerIndex];
-        int oldPos = player.pos;
-
-        player.move(steps, board.getSize(), board);
-        currentTile = board.getTile(player.pos);
-
-        log(player.name + "이(가) " + currentTile.name + "에 도착했습니다.");
-
-        // 출발지 통과 체크
-        if (oldPos > player.pos || (oldPos != 0 && player.pos == 0)) {
-            ruleEngine.paySalary(player);
-            log("출발지를 통과하여 월급 " + String.format("%,d", ruleEngine.getSalary()) + "원을 받았습니다!");
+        if (steps <= 0) {
+            currentTile = board.getTile(player.pos);
+            log(player.name + "이(가) " + currentTile.name + "에 도착했습니다.");
+            handleTileLanding();
+            return;
         }
 
-        handleTileLanding();
+        startMovementAnimation(player, steps);
     }
 
     private void handleTileLanding() {
@@ -724,6 +732,106 @@ public class GameUI {
         SwingUtilities.invokeLater(() -> {
             new GameUI(players.length, 1000000);
         });
+    }
+
+    private void startMovementAnimation(Player player, int steps) {
+        if (movementTimer != null && movementTimer.isRunning()) {
+            movementTimer.stop();
+        }
+
+        movementPlayer = player;
+        movementPlayerIndex = currentPlayerIndex;
+        movementStepsRemaining = steps;
+        movementCurrentTile = player.pos;
+        movementSubStep = 0;
+        movementStartPoint = null;
+        movementEndPoint = null;
+
+        state = GameState.ANIMATING_MOVEMENT;
+        frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
+        frame.getBoardPanel().setTileClickEnabled(false);
+        frame.getActionPanel().clearPriceLabels();
+
+        prepareNextMovementStep();
+
+        movementTimer = new Timer(MOVEMENT_ANIMATION_INTERVAL, e -> updateMovementAnimation());
+        movementTimer.start();
+    }
+
+    private void prepareNextMovementStep() {
+        if (movementStepsRemaining <= 0) {
+            finishMovementAnimation();
+            return;
+        }
+
+        movementStartPoint = frame.getBoardPanel().getPlayerAnchorForTile(movementCurrentTile, movementPlayerIndex);
+        movementNextTile = (movementCurrentTile + 1) % board.getSize();
+        movementEndPoint = frame.getBoardPanel().getPlayerAnchorForTile(movementNextTile, movementPlayerIndex);
+        movementSubStep = 0;
+    }
+
+    private void updateMovementAnimation() {
+        if (movementPlayer == null || movementStartPoint == null || movementEndPoint == null) {
+            finishMovementAnimation();
+            return;
+        }
+
+        movementSubStep++;
+        double progress = Math.min(1.0, (double) movementSubStep / MOVEMENT_SUB_STEPS);
+        double easedProgress = Math.sin((Math.PI / 2.0) * progress); // ease-out for hop motion
+        double x = movementStartPoint.x + (movementEndPoint.x - movementStartPoint.x) * easedProgress;
+        double y = movementStartPoint.y + (movementEndPoint.y - movementStartPoint.y) * easedProgress;
+        double hopOffset = Math.sin(Math.PI * progress) * MOVEMENT_HOP_HEIGHT;
+        y -= hopOffset;
+
+        frame.getBoardPanel().setPlayerAnimationPosition(movementPlayerIndex, x, y);
+
+        if (movementSubStep >= MOVEMENT_SUB_STEPS + MOVEMENT_HOLD_STEPS) {
+            frame.getBoardPanel().clearPlayerAnimation(movementPlayerIndex);
+            movementCurrentTile = movementNextTile;
+            movementPlayer.pos = movementCurrentTile;
+            movementStepsRemaining--;
+
+            if (movementCurrentTile == 0) {
+                ruleEngine.paySalary(movementPlayer);
+                log("출발지를 통과하여 월급 " + String.format("%,d", ruleEngine.getSalary()) + "원을 받았습니다!");
+            }
+
+            frame.getBoardPanel().updateBoard();
+            frame.getOverlayPanel().updatePlayerInfo();
+
+            if (movementStepsRemaining <= 0) {
+                finishMovementAnimation();
+            } else {
+                prepareNextMovementStep();
+            }
+        }
+    }
+
+    private void finishMovementAnimation() {
+        if (movementTimer != null) {
+            movementTimer.stop();
+            movementTimer = null;
+        }
+
+        if (movementPlayer == null) {
+            state = GameState.WAITING_FOR_ACTION;
+            return;
+        }
+
+        frame.getBoardPanel().clearPlayerAnimation(movementPlayerIndex);
+        frame.getBoardPanel().updateBoard();
+        frame.getOverlayPanel().updatePlayerInfo();
+
+        currentTile = board.getTile(movementPlayer.pos);
+        log(movementPlayer.name + "이(가) " + currentTile.name + "에 도착했습니다.");
+
+        movementStartPoint = null;
+        movementEndPoint = null;
+        movementPlayer = null;
+
+        state = GameState.WAITING_FOR_ACTION;
+        handleTileLanding();
     }
 
     private void log(String message) {
