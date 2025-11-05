@@ -27,6 +27,7 @@ public class GameUI {
         WAITING_FOR_ACTION,
         WAITING_FOR_JAIL_CHOICE,
         WAITING_FOR_RAILROAD_SELECTION,
+        WAITING_FOR_LANDMARK_SELECTION,
         ANIMATING_MOVEMENT,
         GAME_OVER
     }
@@ -40,6 +41,7 @@ public class GameUI {
     private DiceMode diceMode = DiceMode.NORMAL;
 
     private Tile currentTile;
+    private City selectedLandmarkCity = null;
     private static final int MOVEMENT_ANIMATION_INTERVAL = 16;
     private static final int MOVEMENT_SUB_STEPS = 12;
     private static final int MOVEMENT_HOLD_STEPS = 6;
@@ -279,7 +281,7 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
-                endTurn();
+                handleStartTile();
                 break;
 
             case CITY:
@@ -361,15 +363,25 @@ public class GameUI {
             int toll = ruleEngine.calculateToll(city, city.owner);
 
             log(city.name + "은(는) " + owner.name + "의 소유입니다. (레벨: " + city.level + ")");
-            log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
 
             // 올림픽 효과 표시
             if (city.hasOlympicBoost) {
                 log("⚡ 올림픽 효과로 통행료 2배!");
             }
 
-            // 통행료 지불 알림
+            // 통행료 지불 확인 다이얼로그
+            TollPaymentDialog tollDialog = new TollPaymentDialog(
+                frame,
+                city.name,
+                owner.name,
+                city.level,
+                toll,
+                city.hasOlympicBoost,
+                player.cash
+            );
+            tollDialog.setVisible(true);
 
+            log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
 
             // 올림픽 효과 해제 (한 번 통행료 지불 후)
@@ -418,10 +430,20 @@ public class GameUI {
             int toll = ruleEngine.calculateTouristSpotToll(touristSpot);
 
             log(touristSpot.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+
+            // 통행료 지불 확인 다이얼로그 (관광지는 레벨 1로 표시)
+            TollPaymentDialog tollDialog = new TollPaymentDialog(
+                frame,
+                touristSpot.name,
+                owner.name,
+                1,  // 관광지는 레벨 개념 없음
+                toll,
+                false,  // 관광지는 올림픽 효과 없음
+                player.cash
+            );
+            tollDialog.setVisible(true);
+
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
-
-            // 통행료 지불 알림
-
             ruleEngine.payToll(player, owner, toll);
 
             if (player.bankrupt) {
@@ -577,27 +599,41 @@ public class GameUI {
      * 타일 선택 이벤트 (전국철도 티켓 사용)
      */
     private void onTileSelected(int tileIndex) {
-        // 전국철도 선택 상태가 아니면 무시
-        if (state != GameState.WAITING_FOR_RAILROAD_SELECTION) {
-            return;
-        }
-
         Player player = players[currentPlayerIndex];
         Tile selectedTile = board.getTile(tileIndex);
 
-        log(player.name + "이(가) " + selectedTile.name + " (칸 " + tileIndex + ")을(를) 선택했습니다!");
+        // 전국철도 선택 처리
+        if (state == GameState.WAITING_FOR_RAILROAD_SELECTION) {
+            log(player.name + "이(가) " + selectedTile.name + " (칸 " + tileIndex + ")을(를) 선택했습니다!");
 
-        // 선택한 칸으로 이동
-        player.pos = tileIndex;
-        player.hasRailroadTicket = false; // 티켓 사용
-        currentTile = selectedTile;
+            // 선택한 칸으로 이동
+            player.pos = tileIndex;
+            player.hasRailroadTicket = false; // 티켓 사용
+            currentTile = selectedTile;
 
-        // 타일 클릭 비활성화
-        frame.getBoardPanel().setTileClickEnabled(false);
+            // 타일 클릭 비활성화
+            frame.getBoardPanel().setTileClickEnabled(false);
 
-        // 선택한 타일 처리
-        log("선택한 칸에서 이벤트를 처리합니다.");
-        handleTileLanding();
+            // 선택한 타일 처리
+            log("선택한 칸에서 이벤트를 처리합니다.");
+            handleTileLanding();
+            return;
+        }
+
+        // 랜드마크 건설 확정 처리
+        if (state == GameState.WAITING_FOR_LANDMARK_SELECTION) {
+            // 클릭한 타일이 선택된 도시인지 확인
+            if (selectedTile == selectedLandmarkCity) {
+                log(player.name + "이(가) " + selectedTile.name + "에 랜드마크 건설을 확정했습니다!");
+                handleLandmarkConstruction();
+            } else {
+                log("다른 칸을 선택했습니다. 랜드마크 건설을 취소합니다.");
+                selectedLandmarkCity = null;
+                frame.getBoardPanel().setTileClickEnabled(false);
+                endTurn();
+            }
+            return;
+        }
     }
 
     private void handleTaxTile() {
@@ -605,9 +641,17 @@ public class GameUI {
         int tax = ruleEngine.calculateTax(player);
 
         log("국세청에 도착했습니다!");
-        log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         frame.getActionPanel().setTaxAmount(tax);
 
+        // 세금 납부 확인 다이얼로그
+        TaxPaymentDialog taxDialog = new TaxPaymentDialog(
+            frame,
+            player.cash,
+            tax
+        );
+        taxDialog.setVisible(true);
+
+        log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         ruleEngine.payTax(player);
 
         if (player.bankrupt) {
@@ -619,6 +663,83 @@ public class GameUI {
             frame.getBoardPanel().setTileClickEnabled(false);
             log("⏭ 패스를 눌러 턴을 종료하세요.");
         }
+    }
+
+    private void handleStartTile() {
+        Player player = players[currentPlayerIndex];
+        log("START 지점에 도착했습니다!");
+
+        // 레벨 3 도시 찾기
+        List<City> level3Cities = new java.util.ArrayList<>();
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof City) {
+                City city = (City) tile;
+                if (city.isOwned() && city.owner == currentPlayerIndex && city.level == 3 && !city.isLandmark()) {
+                    level3Cities.add(city);
+                }
+            }
+        }
+
+        if (level3Cities.isEmpty()) {
+            log("랜드마크를 건설할 수 있는 도시가 없습니다. (레벨 3 도시 필요)");
+            endTurn();
+            return;
+        }
+
+        // 랜드마크 건설 다이얼로그 표시
+        log("🏛️ 레벨 3 도시를 랜드마크로 업그레이드할 수 있습니다!");
+        LandmarkSelectionDialog dialog = new LandmarkSelectionDialog(
+            frame,
+            level3Cities,
+            player.cash
+        );
+        dialog.setVisible(true);
+
+        City selectedCity = dialog.getSelectedCity();
+        if (selectedCity == null) {
+            log("랜드마크 건설을 취소했습니다.");
+            endTurn();
+            return;
+        }
+
+        // 선택된 도시 저장 및 보드 클릭 대기 상태로 전환
+        selectedLandmarkCity = selectedCity;
+        state = GameState.WAITING_FOR_LANDMARK_SELECTION;
+        frame.getBoardPanel().setTileClickEnabled(true);
+        log("📍 " + selectedCity.name + "을(를) 클릭하여 랜드마크 건설을 확정하세요.");
+    }
+
+    private void handleLandmarkConstruction() {
+        Player player = players[currentPlayerIndex];
+
+        if (selectedLandmarkCity == null) {
+            log("오류: 선택된 도시가 없습니다.");
+            endTurn();
+            return;
+        }
+
+        int constructionCost = (int)(selectedLandmarkCity.price * 0.4);
+
+        if (!player.canAfford(constructionCost)) {
+            log("잔액이 부족하여 랜드마크를 건설할 수 없습니다.");
+            selectedLandmarkCity = null;
+            endTurn();
+            return;
+        }
+
+        // 랜드마크 건설
+        player.pay(constructionCost);
+        selectedLandmarkCity.level = 4;
+        log("🏛️ " + selectedLandmarkCity.name + "에 랜드마크를 건설했습니다!");
+        log("건설 비용: " + String.format("%,d", constructionCost) + "원");
+        log("남은 잔액: " + String.format("%,d", player.cash) + "원");
+
+        // 상태 초기화
+        selectedLandmarkCity = null;
+        state = GameState.WAITING_FOR_ROLL;
+        frame.getBoardPanel().setTileClickEnabled(false);
+
+        endTurn();
     }
 
     private void handleOlympicTile() {
