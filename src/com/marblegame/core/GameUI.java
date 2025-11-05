@@ -144,6 +144,7 @@ public class GameUI {
         }
 
         Player player = players[currentPlayerIndex];
+        frame.getActionPanel().clearPriceLabels();
 
         if (player.bankrupt) {
             nextPlayer();
@@ -266,6 +267,7 @@ public class GameUI {
 
     private void handleTileLanding() {
         Player player = players[currentPlayerIndex];
+        frame.getActionPanel().clearPriceLabels();
 
         switch (currentTile.type) {
             case START:
@@ -331,6 +333,7 @@ public class GameUI {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
             state = GameState.WAITING_FOR_ACTION;
+            frame.getActionPanel().setPurchasePrice(city.price);
             frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (city.owner == currentPlayerIndex) {
             // 본인 소유 땅
@@ -340,6 +343,7 @@ public class GameUI {
                 int upgradeCost = city.getUpgradeCost();
                 log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
                 state = GameState.WAITING_FOR_ACTION;
+                frame.getActionPanel().setUpgradePrice(upgradeCost);
                 frame.getActionPanel().setButtonsEnabled(false, false, true, false, true, false);
             } else {
                 log("최대 레벨입니다. 더 이상 업그레이드할 수 없습니다.");
@@ -381,6 +385,7 @@ public class GameUI {
                     int takeoverCost = city.getTakeoverPrice();
                     log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 땅을 인수하거나 패스하세요.");
+                    frame.getActionPanel().setTakeoverPrice(takeoverCost);
                     state = GameState.WAITING_FOR_ACTION;
                     frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
                 }
@@ -396,6 +401,7 @@ public class GameUI {
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
             log("(관광지는 업그레이드가 불가능합니다)");
             state = GameState.WAITING_FOR_ACTION;
+            frame.getActionPanel().setPurchasePrice(touristSpot.price);
             frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
         } else if (touristSpot.owner == currentPlayerIndex) {
             // 본인 소유 관광지
@@ -554,14 +560,19 @@ public class GameUI {
 
         log("국세청에 도착했습니다!");
         log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
+        frame.getActionPanel().setTaxAmount(tax);
 
         ruleEngine.payTax(player);
 
         if (player.bankrupt) {
             log(player.name + "이(가) 파산했습니다!");
+            endTurn();
+        } else {
+            state = GameState.WAITING_FOR_ACTION;
+            frame.getActionPanel().setButtonsEnabled(false, false, false, false, true, false);
+            frame.getBoardPanel().setTileClickEnabled(false);
+            log("⏭ 패스를 눌러 턴을 종료하세요.");
         }
-
-        endTurn();
     }
 
     private void handleOlympicTile() {
@@ -653,6 +664,7 @@ public class GameUI {
     private void endGame() {
         state = GameState.GAME_OVER;
         frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
+        frame.getActionPanel().clearPriceLabels();
 
         log("\n\n=== 게임 종료 ===");
 

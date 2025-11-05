@@ -30,6 +30,10 @@ public class OverlayPanel extends JPanel {
     private GaugePanel gaugePanel;
     private DiceGauge diceGauge; // 추가됨: 게이지 모델
     private JPanel actionButtonPanel;
+    private JLabel purchasePriceLabel;
+    private JLabel upgradePriceLabel;
+    private JLabel takeoverPriceLabel;
+    private JLabel taxInfoLabel;
 
     // 추가됨: 플레이어 카드
     private List<CompactPlayerCard> playerCards;
@@ -130,6 +134,10 @@ public class OverlayPanel extends JPanel {
         takeoverButton = createStyledButton("💰 인수하기", BUTTON_TAKEOVER);
         skipButton = createStyledButton("⏭ 패스", BUTTON_SKIP);
         escapeButton = createStyledButton("🔓 탈출하기", BUTTON_ESCAPE);
+        purchasePriceLabel = createPriceLabel();
+        upgradePriceLabel = createPriceLabel();
+        takeoverPriceLabel = createPriceLabel();
+        taxInfoLabel = createPriceLabel();
 
         // 모든 버튼을 패널에 추가 (초기 상태는 숨김)
         rollDiceButton.setVisible(false);
@@ -138,12 +146,19 @@ public class OverlayPanel extends JPanel {
         takeoverButton.setVisible(false);
         skipButton.setVisible(false);
         escapeButton.setVisible(false);
+        taxInfoLabel.setVisible(false);
 
+        actionButtonPanel.add(taxInfoLabel);
+        actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(rollDiceButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        actionButtonPanel.add(purchasePriceLabel);
         actionButtonPanel.add(purchaseButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        actionButtonPanel.add(upgradePriceLabel);
         actionButtonPanel.add(upgradeButton);
+        actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        actionButtonPanel.add(takeoverPriceLabel);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(takeoverButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -192,6 +207,19 @@ public class OverlayPanel extends JPanel {
         });
 
         return button;
+    }
+
+    /**
+     * 버튼 위에 표시할 가격 라벨 생성
+     */
+    private JLabel createPriceLabel() {
+        JLabel label = new JLabel("", SwingConstants.CENTER);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        label.setForeground(ACCENT_COLOR);
+        label.setFont(new Font("Malgun Gothic", Font.PLAIN, Math.max(10, (int)(12 * scaleFactor))));
+        label.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
+        label.setVisible(false);
+        return label;
     }
 
     /**
@@ -323,7 +351,13 @@ public class OverlayPanel extends JPanel {
         final int GAUGE_PANEL_HEIGHT = (int)(42 * scaleFactor);  // 60 * 0.7
 
         final int BUTTON_PANEL_WIDTH = (int)(216 * scaleFactor); // 280 * 0.7 * 1.1 (10% 증가)
-        final int BUTTON_PANEL_HEIGHT = (int)(62 * scaleFactor); // 80 * 0.7 * 1.1 (10% 증가)
+        final int BUTTON_PANEL_BASE_HEIGHT = (int)(62 * scaleFactor); // 80 * 0.7 * 1.1 (10% 증가)
+
+        int buttonPanelHeight = BUTTON_PANEL_BASE_HEIGHT;
+        Dimension actionPref = actionButtonPanel.getPreferredSize();
+        if (actionPref != null) {
+            buttonPanelHeight = Math.max(buttonPanelHeight, actionPref.height);
+        }
 
         final int scaledSpacing = (int)(COMPONENT_SPACING * scaleFactor);
 
@@ -332,7 +366,7 @@ public class OverlayPanel extends JPanel {
                          DICE_PANEL_HEIGHT + (int)(10 * scaleFactor) +
                          ODDEVEN_PANEL_HEIGHT + (int)(10 * scaleFactor) + // 홀짝 패널 추가
                          GAUGE_PANEL_HEIGHT + scaledSpacing +
-                         BUTTON_PANEL_HEIGHT;
+                         buttonPanelHeight;
 
         // 시작 Y 좌표 (중앙 정렬)
         int startY = cy - (totalHeight / 2);
@@ -367,7 +401,7 @@ public class OverlayPanel extends JPanel {
 
         // 5. 행동 버튼 패널 배치
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
-                                   BUTTON_PANEL_WIDTH, BUTTON_PANEL_HEIGHT);
+                                   BUTTON_PANEL_WIDTH, buttonPanelHeight);
     }
 
     /**
@@ -408,10 +442,8 @@ public class OverlayPanel extends JPanel {
      * 모든 행동 버튼 제거
      */
     public void clearActionButtons() {
-        actionButtonPanel.removeAll();
-        actionButtonPanel.revalidate();
-        actionButtonPanel.repaint();
-        repositionComponents();
+        setButtonsEnabled(false, false, false, false, false, false);
+        clearPriceLabels();
     }
 
     /**
@@ -467,8 +499,7 @@ public class OverlayPanel extends JPanel {
         escapeButton.setVisible(escape);
         escapeButton.setEnabled(escape);
 
-        actionButtonPanel.revalidate();
-        actionButtonPanel.repaint();
+        refreshPriceLabelVisibility();
     }
 
     /**
@@ -521,6 +552,19 @@ public class OverlayPanel extends JPanel {
                 button.setPreferredSize(buttonSize);
             }
         }
+
+        int labelFontSize = Math.max(8, (int)(10 * scaleFactor));
+        int labelHeight = (int)(18 * scaleFactor);
+        Font labelFont = new Font("Malgun Gothic", Font.PLAIN, labelFontSize);
+        Dimension labelSize = new Dimension(buttonWidth, labelHeight);
+        JLabel[] priceLabels = {purchasePriceLabel, upgradePriceLabel, takeoverPriceLabel, taxInfoLabel};
+        for (JLabel label : priceLabels) {
+            if (label != null) {
+                label.setFont(labelFont);
+                label.setMaximumSize(labelSize);
+                label.setPreferredSize(labelSize);
+            }
+        }
     }
 
     /**
@@ -542,6 +586,104 @@ public class OverlayPanel extends JPanel {
      */
     public DiceGauge getDiceGauge() {
         return diceGauge;
+    }
+
+    /**
+     * 매입 가격 정보 표시
+     */
+    public void setPurchasePrice(Integer price) {
+        if (purchasePriceLabel == null) return;
+
+        if (price == null) {
+            purchasePriceLabel.setText("");
+        } else {
+            purchasePriceLabel.setText("매입 비용: " + String.format("%,d원", price));
+        }
+        refreshPriceLabelVisibility();
+    }
+
+    /**
+     * 업그레이드 비용 정보 표시
+     */
+    public void setUpgradePrice(Integer price) {
+        if (upgradePriceLabel == null) return;
+
+        if (price == null) {
+            upgradePriceLabel.setText("");
+        } else {
+            upgradePriceLabel.setText("업그레이드 비용: " + String.format("%,d원", price));
+        }
+        refreshPriceLabelVisibility();
+    }
+
+    /**
+     * 인수 비용 정보 표시
+     */
+    public void setTakeoverPrice(Integer price) {
+        if (takeoverPriceLabel == null) return;
+
+        if (price == null) {
+            takeoverPriceLabel.setText("");
+        } else {
+            takeoverPriceLabel.setText("인수 비용: " + String.format("%,d원", price));
+        }
+        refreshPriceLabelVisibility();
+    }
+
+    /**
+     * 세금 정보 표시 (국세청)
+     */
+    public void setTaxAmount(Integer amount) {
+        if (taxInfoLabel == null) return;
+
+        if (amount == null) {
+            taxInfoLabel.setText("");
+        } else {
+            taxInfoLabel.setText("세금 부과: " + String.format("%,d원", amount));
+        }
+        refreshPriceLabelVisibility();
+    }
+
+    /**
+     * 가격 라벨 초기화
+     */
+    public void clearPriceLabels() {
+        if (purchasePriceLabel != null) {
+            purchasePriceLabel.setText("");
+        }
+        if (upgradePriceLabel != null) {
+            upgradePriceLabel.setText("");
+        }
+        if (takeoverPriceLabel != null) {
+            takeoverPriceLabel.setText("");
+        }
+        if (taxInfoLabel != null) {
+            taxInfoLabel.setText("");
+        }
+        refreshPriceLabelVisibility();
+    }
+
+    private void refreshPriceLabelVisibility() {
+        if (purchasePriceLabel != null && purchaseButton != null) {
+            purchasePriceLabel.setVisible(purchaseButton.isVisible() && hasText(purchasePriceLabel));
+        }
+        if (upgradePriceLabel != null && upgradeButton != null) {
+            upgradePriceLabel.setVisible(upgradeButton.isVisible() && hasText(upgradePriceLabel));
+        }
+        if (takeoverPriceLabel != null && takeoverButton != null) {
+            takeoverPriceLabel.setVisible(takeoverButton.isVisible() && hasText(takeoverPriceLabel));
+        }
+        if (taxInfoLabel != null) {
+            taxInfoLabel.setVisible(hasText(taxInfoLabel));
+        }
+        actionButtonPanel.revalidate();
+        actionButtonPanel.repaint();
+        repositionComponents();
+    }
+
+    private boolean hasText(JLabel label) {
+        String text = label.getText();
+        return text != null && !text.isBlank();
     }
 
     /**
