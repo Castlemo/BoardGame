@@ -29,6 +29,14 @@ public class GameUI {
         GAME_OVER
     }
 
+    // 홀수/짝수 주사위 모드
+    private enum DiceMode {
+        NORMAL,  // 일반 모드
+        ODD,     // 홀수만 (1, 3, 5)
+        EVEN     // 짝수만 (2, 4, 6)
+    }
+    private DiceMode diceMode = DiceMode.NORMAL;
+
     private Tile currentTile;
 
     public GameUI(int numPlayers, int initialCash) {
@@ -72,6 +80,31 @@ public class GameUI {
 
         // 보석금 탈출
         frame.getActionPanel().setEscapeListener(e -> escapeWithBail());
+
+        // 홀수/짝수 선택
+        frame.getOverlayPanel().getOddButton().addActionListener(e -> {
+            if (diceMode == DiceMode.ODD) {
+                // 이미 선택된 경우 해제
+                diceMode = DiceMode.NORMAL;
+                log("일반 주사위 모드");
+            } else {
+                diceMode = DiceMode.ODD;
+                log("🔢 홀수 주사위 모드 선택 (1, 3, 5만 나옴)");
+            }
+            updateOddEvenButtons();
+        });
+
+        frame.getOverlayPanel().getEvenButton().addActionListener(e -> {
+            if (diceMode == DiceMode.EVEN) {
+                // 이미 선택된 경우 해제
+                diceMode = DiceMode.NORMAL;
+                log("일반 주사위 모드");
+            } else {
+                diceMode = DiceMode.EVEN;
+                log("🔢 짝수 주사위 모드 선택 (2, 4, 6만 나옴)");
+            }
+            updateOddEvenButtons();
+        });
 
         // 보드 타일 클릭 (전국철도 선택용)
         frame.getBoardPanel().setTileClickListener(tileIndex -> onTileSelected(tileIndex));
@@ -157,6 +190,17 @@ public class GameUI {
             String sectionName = getSectionName(section);
 
             log("🎯 구간: " + sectionName);
+
+            // 홀수/짝수 필터 적용 (결과값 자체를 홀수/짝수로 조정)
+            if (diceMode == DiceMode.ODD && result % 2 == 0) {
+                // 짝수 결과를 홀수로 변경 (±1)
+                if (result > 2) result -= 1;  // 4→3, 6→5, 8→7, 10→9, 12→11
+                else result += 1;  // 2→3
+            } else if (diceMode == DiceMode.EVEN && result % 2 == 1) {
+                // 홀수 결과를 짝수로 변경 (±1)
+                if (result < 12) result += 1;  // 3→4, 5→6, 7→8, 9→10, 11→12
+                else result -= 1;  // 극히 드문 경우
+            }
 
             // 주사위 2개로 분할 (2~12 범위를 2D6로 변환)
             int tempD1, tempD2;
@@ -676,5 +720,15 @@ public class GameUI {
 
     private void updateDisplay() {
         frame.updateDisplay(turnCount);
+    }
+
+    /**
+     * 홀수/짝수 버튼 상태 업데이트
+     */
+    private void updateOddEvenButtons() {
+        frame.getOverlayPanel().getOddButton().putClientProperty("selected", diceMode == DiceMode.ODD);
+        frame.getOverlayPanel().getEvenButton().putClientProperty("selected", diceMode == DiceMode.EVEN);
+        frame.getOverlayPanel().getOddButton().repaint();
+        frame.getOverlayPanel().getEvenButton().repaint();
     }
 }

@@ -46,6 +46,11 @@ public class OverlayPanel extends JPanel {
     private JButton skipButton;
     private JButton escapeButton;
 
+    // 홀수/짝수 선택 패널
+    private JPanel oddEvenPanel;
+    private JButton oddButton;
+    private JButton evenButton;
+
     // 다크 테마 색상
     private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
     private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
@@ -95,18 +100,30 @@ public class OverlayPanel extends JPanel {
         dicePanel = new DiceAnimationPanel();
         add(dicePanel);
 
-        // 3. 게이지 패널 (DiceGauge 모델과 함께 생성)
+        // 3. 홀수/짝수 선택 패널
+        oddEvenPanel = new JPanel();
+        oddEvenPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        oddEvenPanel.setOpaque(false);
+
+        oddButton = createCircularToggleButton("홀수");
+        evenButton = createCircularToggleButton("짝수");
+
+        oddEvenPanel.add(oddButton);
+        oddEvenPanel.add(evenButton);
+        add(oddEvenPanel);
+
+        // 4. 게이지 패널 (DiceGauge 모델과 함께 생성)
         diceGauge = new DiceGauge();
         gaugePanel = new GaugePanel(diceGauge);
         add(gaugePanel);
 
-        // 4. 행동 버튼 패널
+        // 5. 행동 버튼 패널
         actionButtonPanel = new JPanel();
         actionButtonPanel.setLayout(new BoxLayout(actionButtonPanel, BoxLayout.Y_AXIS));
         actionButtonPanel.setOpaque(false);
         add(actionButtonPanel);
 
-        // 5. 버튼 생성 (초기에는 숨김)
+        // 6. 버튼 생성 (초기에는 숨김)
         rollDiceButton = createStyledButton("🎲 주사위 굴리기", BUTTON_ROLL);
         purchaseButton = createStyledButton("🏠 매입하기", BUTTON_PURCHASE);
         upgradeButton = createStyledButton("⭐ 업그레이드", BUTTON_UPGRADE);
@@ -178,9 +195,62 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
+     * 원형 토글 버튼 생성 (홀수/짝수 선택용)
+     */
+    private JButton createCircularToggleButton(String text) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                int size = Math.min(getWidth(), getHeight());
+                int x = (getWidth() - size) / 2;
+                int y = (getHeight() - size) / 2;
+
+                // 선택 상태 확인
+                Boolean selected = (Boolean) getClientProperty("selected");
+                if (selected == null) selected = false;
+
+                // 배경 원
+                if (selected) {
+                    g2.setColor(new Color(52, 152, 219)); // 파란색 (선택)
+                } else {
+                    g2.setColor(new Color(127, 140, 141)); // 회색 (미선택)
+                }
+                g2.fillOval(x, y, size, size);
+
+                // 테두리
+                g2.setColor(new Color(236, 240, 241));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawOval(x, y, size, size);
+
+                // 텍스트
+                g2.setColor(Color.WHITE);
+                g2.setFont(getFont());
+                FontMetrics fm = g2.getFontMetrics();
+                int textX = (getWidth() - fm.stringWidth(text)) / 2;
+                int textY = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+                g2.drawString(text, textX, textY);
+
+                g2.dispose();
+            }
+        };
+
+        button.setPreferredSize(new Dimension(60, 60));
+        button.setContentAreaFilled(false);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.putClientProperty("selected", false);
+
+        return button;
+    }
+
+    /**
      * 창 크기 변경 시 모든 컴포넌트를 재배치
      * 플레이어 카드: 보드 내부(타일 안쪽) 좌측 상단/하단
-     * 중앙 컴포넌트: 턴/주사위/게이지/버튼
+     * 중앙 컴포넌트: 턴/주사위/홀짝/게이지/버튼
      */
     private void repositionComponents() {
         int width = getWidth();
@@ -239,24 +309,28 @@ public class OverlayPanel extends JPanel {
         int cx = width / 2;  // 중심 X 좌표
         int cy = height / 2; // 중심 Y 좌표
 
-        // 컴포넌트 크기 (스케일 적용)
-        final int TURN_LABEL_WIDTH = (int)(200 * scaleFactor);
-        final int TURN_LABEL_HEIGHT = (int)(50 * scaleFactor);
+        // 컴포넌트 크기 (스케일 적용, 30% 축소 = 0.7배)
+        final int TURN_LABEL_WIDTH = (int)(140 * scaleFactor);   // 200 * 0.7
+        final int TURN_LABEL_HEIGHT = (int)(35 * scaleFactor);   // 50 * 0.7
 
-        final int DICE_PANEL_WIDTH = (int)(180 * scaleFactor);
-        final int DICE_PANEL_HEIGHT = (int)(100 * scaleFactor);
+        final int DICE_PANEL_WIDTH = (int)(126 * scaleFactor);   // 180 * 0.7
+        final int DICE_PANEL_HEIGHT = (int)(70 * scaleFactor);   // 100 * 0.7
 
-        final int GAUGE_PANEL_WIDTH = (int)(320 * scaleFactor);
-        final int GAUGE_PANEL_HEIGHT = (int)(60 * scaleFactor);
+        final int ODDEVEN_PANEL_WIDTH = (int)(140 * scaleFactor); // 가로 배치를 위해 너비 증가
+        final int ODDEVEN_PANEL_HEIGHT = (int)(49 * scaleFactor);// 70 * 0.7
 
-        final int BUTTON_PANEL_WIDTH = (int)(280 * scaleFactor);
-        final int BUTTON_PANEL_HEIGHT = (int)(80 * scaleFactor);
+        final int GAUGE_PANEL_WIDTH = (int)(224 * scaleFactor);  // 320 * 0.7
+        final int GAUGE_PANEL_HEIGHT = (int)(42 * scaleFactor);  // 60 * 0.7
+
+        final int BUTTON_PANEL_WIDTH = (int)(216 * scaleFactor); // 280 * 0.7 * 1.1 (10% 증가)
+        final int BUTTON_PANEL_HEIGHT = (int)(62 * scaleFactor); // 80 * 0.7 * 1.1 (10% 증가)
 
         final int scaledSpacing = (int)(COMPONENT_SPACING * scaleFactor);
 
-        // 전체 높이 계산
+        // 전체 높이 계산 (홀짝 패널 추가)
         int totalHeight = TURN_LABEL_HEIGHT + scaledSpacing +
-                         DICE_PANEL_HEIGHT + (int)(10 * scaleFactor) + // 주사위와 게이지 간격은 좁게
+                         DICE_PANEL_HEIGHT + (int)(10 * scaleFactor) +
+                         ODDEVEN_PANEL_HEIGHT + (int)(10 * scaleFactor) + // 홀짝 패널 추가
                          GAUGE_PANEL_HEIGHT + scaledSpacing +
                          BUTTON_PANEL_HEIGHT;
 
@@ -264,8 +338,8 @@ public class OverlayPanel extends JPanel {
         int startY = cy - (totalHeight / 2);
         int currentY = startY;
 
-        // 폰트 크기도 스케일 적용
-        turnLabel.setFont(new Font("Malgun Gothic", Font.BOLD, (int)(24 * scaleFactor)));
+        // 폰트 크기도 스케일 적용 (30% 축소)
+        turnLabel.setFont(new Font("Malgun Gothic", Font.BOLD, (int)(17 * scaleFactor))); // 24 * 0.7
 
         // 1. 턴 라벨 배치
         turnLabel.setBounds(cx - TURN_LABEL_WIDTH / 2, currentY,
@@ -277,12 +351,21 @@ public class OverlayPanel extends JPanel {
                            DICE_PANEL_WIDTH, DICE_PANEL_HEIGHT);
         currentY += DICE_PANEL_HEIGHT + (int)(10 * scaleFactor);
 
-        // 3. 게이지 패널 배치
+        // 3. 홀수/짝수 선택 패널 배치
+        oddEvenPanel.setBounds(cx - ODDEVEN_PANEL_WIDTH / 2, currentY,
+                              ODDEVEN_PANEL_WIDTH, ODDEVEN_PANEL_HEIGHT);
+        // 버튼 크기도 스케일 적용 (30% 축소)
+        int buttonSize = (int)(42 * scaleFactor); // 60 * 0.7
+        oddButton.setPreferredSize(new Dimension(buttonSize, buttonSize));
+        evenButton.setPreferredSize(new Dimension(buttonSize, buttonSize));
+        currentY += ODDEVEN_PANEL_HEIGHT + (int)(10 * scaleFactor);
+
+        // 4. 게이지 패널 배치
         gaugePanel.setBounds(cx - GAUGE_PANEL_WIDTH / 2, currentY,
                             GAUGE_PANEL_WIDTH, GAUGE_PANEL_HEIGHT);
         currentY += GAUGE_PANEL_HEIGHT + scaledSpacing;
 
-        // 4. 행동 버튼 패널 배치
+        // 5. 행동 버튼 패널 배치
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
                                    BUTTON_PANEL_WIDTH, BUTTON_PANEL_HEIGHT);
     }
@@ -421,12 +504,12 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 버튼 크기 및 폰트 업데이트
+     * 버튼 크기 및 폰트 업데이트 (30% 축소 후 10% 증가)
      */
     private void updateButtonSizes() {
-        int fontSize = Math.max(10, (int)(14 * scaleFactor));
-        int buttonWidth = (int)(260 * scaleFactor);
-        int buttonHeight = (int)(35 * scaleFactor);
+        int fontSize = Math.max(9, (int)(11 * scaleFactor));  // 14 * 0.7 * 1.1
+        int buttonWidth = (int)(200 * scaleFactor);   // 260 * 0.7 * 1.1
+        int buttonHeight = (int)(28 * scaleFactor);   // 35 * 0.7 * 1.1
         Font buttonFont = new Font("Malgun Gothic", Font.BOLD, fontSize);
         Dimension buttonSize = new Dimension(buttonWidth, buttonHeight);
 
@@ -438,6 +521,20 @@ public class OverlayPanel extends JPanel {
                 button.setPreferredSize(buttonSize);
             }
         }
+    }
+
+    /**
+     * 홀수 버튼 반환
+     */
+    public JButton getOddButton() {
+        return oddButton;
+    }
+
+    /**
+     * 짝수 버튼 반환
+     */
+    public JButton getEvenButton() {
+        return evenButton;
     }
 
     /**
