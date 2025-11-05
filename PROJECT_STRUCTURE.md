@@ -439,6 +439,12 @@ protected void paintComponent(Graphics g) {
 - 플레이어별 색상
 - 그림자 효과
 
+**플레이어 이동 애니메이션:**
+- `GameUI`에서 Timer(16ms) 기반으로 이동 상태를 관리
+- 타일당 12개의 보간 스텝과 6프레임 정지 구간으로 “한 칸씩 점프” 느낌 연출
+- `sin` 이징을 사용해 수평 이동을 부드럽게, 수직으로는 최대 16px까지 살짝 띄워 입체감 부여
+- 이동 중에는 행동 버튼/보드 클릭이 비활성화되며, 도착 후 타일 이벤트를 처리
+
 **스케일 계산:**
 ```java
 private void updateTransform() {
@@ -468,10 +474,14 @@ OverlayPanel (투명)
   ├── dicePanel (중앙)
   ├── oddEvenPanel (중앙) - 홀수/짝수 버튼
   ├── gaugePanel (중앙)
-  └── actionButtonPanel (중앙 하단)
+  └── actionButtonPanel (중앙 하단, 가변 높이)
+        ├── taxInfoLabel (세금 텍스트)
         ├── rollDiceButton
+        ├── purchasePriceLabel
         ├── purchaseButton
+        ├── upgradePriceLabel
         ├── upgradeButton
+        ├── takeoverPriceLabel
         ├── takeoverButton
         ├── skipButton
         └── escapeButton
@@ -492,7 +502,14 @@ private void repositionComponents() {
     // 3. 중앙 컴포넌트 수직 배치 (cx, cy 기준)
     int cx = width / 2;
     int cy = height / 2;
-    int totalHeight = 모든_컴포넌트_높이_합;
+    int buttonPanelBase = (int)(62 * scaleFactor);
+    int buttonPanelHeight = Math.max(buttonPanelBase, actionButtonPanel.getPreferredSize().height);
+
+    int totalHeight = TURN_LABEL_HEIGHT + spacing +
+                      DICE_PANEL_HEIGHT + spacing +
+                      ODDEVEN_PANEL_HEIGHT + spacing +
+                      GAUGE_PANEL_HEIGHT + spacing +
+                      buttonPanelHeight;
     int currentY = cy - totalHeight / 2;
 
     turnLabel.setBounds(cx - width/2, currentY, ...);
@@ -507,7 +524,7 @@ private void repositionComponents() {
     gaugePanel.setBounds(cx - width/2, currentY, ...);
     currentY += height + spacing;
 
-    actionButtonPanel.setBounds(cx - width/2, currentY, ...);
+    actionButtonPanel.setBounds(cx - width/2, currentY, BUTTON_PANEL_WIDTH, buttonPanelHeight);
 }
 ```
 
@@ -519,6 +536,8 @@ ODDEVEN_PANEL: 140 × 49   (버튼 42×42)
 GAUGE_PANEL:   224 × 42
 BUTTON_PANEL:  216 × 62
 BUTTON_SIZE:   200 × 28   (폰트 11px)
+PRICE_LABELS:  버튼 폭과 동일, 폰트 10px (스케일 반영), 세금/매입/업그레이드/인수 정보 노출
+※ actionButtonPanel 높이는 가변 (라벨이 노출될 때 자동 확장)
 ```
 
 **CompactPlayerCard (내부 클래스):**
@@ -1127,7 +1146,40 @@ if (diceMode == DiceMode.ODD && result % 2 == 0) {
 - `ui/OverlayPanel.createCircularToggleButton()` - 원형 버튼
 - `core/GameUI.setupEventHandlers()` - 버튼 리스너
 
-### 6.3 플레이어 카드 오버레이 이동
+### 6.3 액션 패널 비용 표시 강화
+
+**배경:** 로그 패널 제거 이후 버튼을 누르기 전까지 비용을 확인하기 어려웠음
+
+**UI 변경 사항:**
+- `actionButtonPanel` 상단에 4개의 텍스트 라벨 추가
+  - `taxInfoLabel`: 국세청 진입 시 즉시 세금 금액 안내
+  - `purchasePriceLabel`: 매입 버튼 노출 시 가격 표시
+  - `upgradePriceLabel`: 업그레이드 가능 시 단계별 비용 표시
+  - `takeoverPriceLabel`: 인수 선택지 제공 시 인수 금액 안내
+- 모든 라벨은 버튼과 동일한 폭/스케일을 가지며, 표시 여부에 따라 자동으로 숨김
+- 패널 높이를 `preferredSize` 기반으로 재계산하여 패스 버튼이 잘리지 않음
+
+**로직 연동:**
+- `GameUI.handleCityTile`, `handleTouristSpotTile`, `handleTaxTile` 등에서 상황별 금액 전달
+- 턴 시작/타일 이동 시 `clearPriceLabels()` 호출로 잔여 정보 제거
+- 버튼 상태 변화마다 `refreshPriceLabelVisibility()`가 수행되어 레이아웃을 즉시 갱신
+
+### 6.4 플레이어 점프 이동 애니메이션
+
+**배경:** “즉시 이동” 방식에서 한 칸씩 이동하는 연출로 몰입감 향상
+
+**구현:** 
+1. `GameUI`에 이동 전용 상태(`ANIMATING_MOVEMENT`)와 Timer(16ms) 추가
+2. 칸당 12개의 보간 스텝 + 6프레임 휴지기로 자연스러운 착/이륙 타이밍 구현
+3. `sin` 이징을 적용해 수평 이동은 부드럽게, 수직으로는 최대 16px까지 살짝 들어 올려 점프 느낌 연출
+4. 이동 중에는 행동 버튼과 타일 선택을 비활성화하고, 각 칸 통과 시 급여/플레이어 카드 정보를 즉시 갱신
+5. 최종 도착 후 `handleTileLanding()`을 호출하여 기존 타일 이벤트 흐름 유지
+
+**커스터마이징 포인트:**
+- `MOVEMENT_SUB_STEPS`, `MOVEMENT_HOLD_STEPS`, `MOVEMENT_HOP_HEIGHT` 상수로 속도·점프 높이 조절 가능
+- Timer 해제/재시작 로직을 분리하여 다른 애니메이션과 충돌하지 않음
+
+### 6.5 플레이어 카드 오버레이 이동
 
 **변경 전:** 플레이어 정보가 좌측 사이드바(InfoPanel, WEST)에 표시
 **변경 후:** 플레이어 정보가 보드 내부(inner board) 좌측 상하단에 표시
@@ -1155,7 +1207,7 @@ if (diceMode == DiceMode.ODD && result % 2 == 0) {
 - `ui/OverlayPanel.repositionComponents()` - 배치 로직
 - `ui/GameFrame.initComponents()` - InfoPanel 제거
 
-### 6.4 연료 게이지 스타일 변경
+### 6.6 연료 게이지 스타일 변경
 
 **변경 전:** 3개 구간 배경(초록/파랑/노랑) + 빨간 선 인디케이터
 **변경 후:** 채워지는 막대 + 3색 그라데이션
@@ -1185,7 +1237,7 @@ g2.setColor(BORDER_COLOR);
 g2.drawRoundRect(x, y, width, height, corner, corner);
 ```
 
-### 6.5 랜드마크 시스템 (도시 레벨 4)
+### 6.7 랜드마크 시스템 (도시 레벨 4)
 
 **특징:**
 - 레벨 4 = 랜드마크 (이모지: 🏛️)
@@ -1215,7 +1267,7 @@ if (city.level == 4) {
 }
 ```
 
-### 6.6 올림픽 부스트 (×2 통행료)
+### 6.8 올림픽 부스트 (×2 통행료)
 
 **동작:**
 1. 플레이어가 올림픽 타일(16번)에 착지
@@ -1255,7 +1307,7 @@ public int calculateToll(City city) {
 }
 ```
 
-### 6.7 관광지 타일 (TouristSpot)
+### 6.9 관광지 타일 (TouristSpot)
 
 **특징:**
 - 새로운 타일 타입
@@ -1285,7 +1337,7 @@ case TOURIST_SPOT:
     break;
 ```
 
-### 6.8 승리 조건 3가지
+### 6.10 승리 조건 3가지
 
 **구현 위치:** `core/GameUI.checkVictory()`
 
@@ -1384,7 +1436,7 @@ if (victory) {
 }
 ```
 
-### 6.9 UI 크기 조정
+### 6.11 UI 크기 조정
 
 **배경:** 원본 UI가 너무 커서 보드를 가림
 
@@ -1840,9 +1892,9 @@ private static final int SALARY = 300000; // 200,000 → 300,000
 - javax.sound.sampled 사용
 
 ### 11.5 플레이어 이동 애니메이션
-- 현재: 즉시 이동
-- 개선: 타일별로 순차 이동
-- Timer + interpolation
+- 상태: **구현됨**
+- 방식: Timer(16ms) + sin 이징으로 타일별 점프 이동 (12 스텝 + 착지 딜레이)
+- 효과: 주사위 결과만큼 한 칸씩 뛰며 이동, 출발지 통과 시 급여 자동 처리, 이동 중 입력 잠금
 
 ### 11.6 통계 시스템
 - 게임 기록 추적
