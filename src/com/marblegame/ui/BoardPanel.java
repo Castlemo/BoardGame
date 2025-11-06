@@ -168,57 +168,123 @@ public class BoardPanel extends JPanel {
 
     private void drawTile(Graphics2D g, int tileIndex, int x, int y) {
         Tile tile = board.getTile(tileIndex);
+        int arc = 15; // 둥근 모서리 반경
+        int padding = 2;
+        int tileWidth = BASE_TILE_SIZE - 4;
+        int tileHeight = BASE_TILE_SIZE - 4;
 
-        // 타일 배경
+        // 1. 외부 그림자 (drop shadow)
+        g.setColor(new Color(0, 0, 0, 50));
+        g.fillRoundRect(x + padding + 2, y + padding + 2, tileWidth, tileHeight, arc, arc);
+
+        // 2. 그라데이션 배경
         Color bgColor = getTileColor(tile);
-        g.setColor(bgColor);
-        g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
+        boolean isHovered = tileClickEnabled && tileIndex == hoveredTileIndex;
+        Color color1 = isHovered ? bgColor.brighter() : bgColor;
+        Color color2 = isHovered ? bgColor : bgColor.darker();
 
-        // 호버 효과 (타일 클릭 가능할 때만)
-        if (tileClickEnabled && tileIndex == hoveredTileIndex) {
-            // 반투명 하이라이트 오버레이
-            g.setColor(new Color(52, 152, 219, 100)); // 파란색 반투명
-            g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
+        GradientPaint gradient = new GradientPaint(
+            x + padding, y + padding, color1,
+            x + padding, y + padding + tileHeight, color2
+        );
+        g.setPaint(gradient);
+        g.fillRoundRect(x + padding, y + padding, tileWidth, tileHeight, arc, arc);
+
+        // 3. 내부 그림자 (상단, 깊이감)
+        GradientPaint insetShadow = new GradientPaint(
+            x + padding, y + padding, new Color(0, 0, 0, 40),
+            x + padding, y + padding + 8, new Color(0, 0, 0, 0)
+        );
+        g.setPaint(insetShadow);
+        g.fillRoundRect(x + padding, y + padding, tileWidth, 8, arc, arc);
+
+        // 4. 광택 효과 (상단 30%)
+        int glossHeight = tileHeight / 3;
+        GradientPaint gloss = new GradientPaint(
+            x + padding, y + padding, new Color(255, 255, 255, 40),
+            x + padding, y + padding + glossHeight, new Color(255, 255, 255, 0)
+        );
+        g.setPaint(gloss);
+        g.fillRoundRect(x + padding, y + padding, tileWidth, glossHeight, arc, arc);
+
+        // 5. 호버 효과 강화
+        if (isHovered) {
+            g.setColor(new Color(255, 255, 255, 60));
+            g.fillRoundRect(x + padding, y + padding, tileWidth, tileHeight, arc, arc);
         }
 
-        // 타일 테두리 (랜드마크는 금색)
+        // 6. 테두리
         boolean isLandmark = (tile instanceof City) && ((City) tile).isLandmark();
         if (isLandmark) {
-            g.setColor(new Color(255, 215, 0)); // 금색 테두리
-            g.setStroke(new BasicStroke(4)); // 더 두꺼운 테두리
+            // 랜드마크 금색 빛나는 테두리
+            drawLandmarkBorder(g, x + padding, y + padding, tileWidth, tileHeight, arc);
         } else {
-            g.setColor(new Color(0, 0, 0));
-            g.setStroke(new BasicStroke(3));
+            // 일반 테두리 + 하이라이트
+            g.setStroke(new BasicStroke(2.5f));
+            g.setColor(new Color(0, 0, 0, 150));
+            g.drawRoundRect(x + padding, y + padding, tileWidth - 1, tileHeight - 1, arc, arc);
+
+            // 내부 하이라이트
+            g.setColor(new Color(255, 255, 255, 30));
+            g.setStroke(new BasicStroke(1.0f));
+            g.drawRoundRect(x + padding + 1, y + padding + 1, tileWidth - 3, tileHeight - 3, arc - 2, arc - 2);
         }
-        g.drawRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
         // 도시인 경우 소유자 및 레벨 표시
         if (tile instanceof City) {
             City city = (City) tile;
 
             if (city.isOwned()) {
-                // 소유자 표시 (좌측 상단 원)
-                g.setColor(PLAYER_COLORS[city.owner]);
-                g.fillOval(x + 6, y + 16, 16, 16);
+                // 개선된 소유자 배지 (둥근 사각형 + 그림자 + 광택)
+                drawOwnerBadge(g, x + 6, y + 10, city.owner);
 
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 10));
-                g.drawString(String.valueOf((char)('A' + city.owner)), x + 11, y + 27);
-
-                // 건물 이모지 표시 (도시 이름 위에)
+                // 건물 이모지 배경 + 이모지
                 if (city.level > 0) {
+                    int centerX = x + BASE_TILE_SIZE / 2;
+                    int centerY = y + BASE_TILE_SIZE / 2;
+
+                    // 반투명 원형 배경
+                    g.setColor(new Color(255, 255, 255, 80));
+                    g.fillOval(centerX - 20, centerY - 20, 40, 40);
+
+                    // 배경 그라데이션
+                    GradientPaint bgGradient = new GradientPaint(
+                        centerX, centerY - 20, new Color(255, 255, 255, 100),
+                        centerX, centerY + 20, new Color(255, 255, 255, 20)
+                    );
+                    g.setPaint(bgGradient);
+                    g.fillOval(centerX - 18, centerY - 18, 36, 36);
+
+                    // 건물 이모지
                     String buildingEmoji = city.getBuildingEmoji();
                     g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
                     FontMetrics fm = g.getFontMetrics();
                     int emojiWidth = fm.stringWidth(buildingEmoji);
-                    g.drawString(buildingEmoji, x + (BASE_TILE_SIZE - emojiWidth) / 2, y + BASE_TILE_SIZE / 2);
+
+                    // 이모지 그림자
+                    g.setColor(new Color(0, 0, 0, 60));
+                    g.drawString(buildingEmoji, centerX - emojiWidth / 2 + 1, centerY + 8 + 1);
+
+                    // 이모지
+                    g.setColor(Color.BLACK);
+                    g.drawString(buildingEmoji, centerX - emojiWidth / 2, centerY + 8);
                 }
 
-                // 올림픽 효과 표시 (2배 아이콘)
+                // 올림픽 효과 표시 (개선된 디자인)
                 if (city.hasOlympicBoost) {
-                    g.setFont(new Font("Arial", Font.BOLD, 14));
-                    g.setColor(new Color(231, 76, 60)); // 빨간색
-                    g.drawString("×2", x + BASE_TILE_SIZE - 28, y + 16);
+                    // 배경 원
+                    g.setColor(new Color(231, 76, 60, 200));
+                    g.fillOval(x + BASE_TILE_SIZE - 32, y + 8, 24, 24);
+
+                    // 테두리
+                    g.setColor(new Color(192, 57, 43));
+                    g.setStroke(new BasicStroke(2f));
+                    g.drawOval(x + BASE_TILE_SIZE - 32, y + 8, 24, 24);
+
+                    // ×2 텍스트
+                    g.setFont(new Font("Arial", Font.BOLD, 12));
+                    g.setColor(Color.WHITE);
+                    g.drawString("×2", x + BASE_TILE_SIZE - 28, y + 23);
                 }
             }
         } else if (tile instanceof TouristSpot) {
@@ -226,45 +292,121 @@ public class BoardPanel extends JPanel {
             TouristSpot touristSpot = (TouristSpot) tile;
 
             if (touristSpot.isOwned()) {
-                // 소유자 표시 (좌측 상단 원)
-                g.setColor(PLAYER_COLORS[touristSpot.owner]);
-                g.fillOval(x + 6, y + 16, 16, 16);
-
-                g.setColor(Color.WHITE);
-                g.setFont(new Font("Arial", Font.BOLD, 10));
-                g.drawString(String.valueOf((char)('A' + touristSpot.owner)), x + 11, y + 27);
+                // 개선된 소유자 배지
+                drawOwnerBadge(g, x + 6, y + 10, touristSpot.owner);
             }
         }
 
         // 특수 타일 아이콘
         drawTileIcon(g, tile, x, y);
 
-        // 타일 이름
+        // 타일 이름 (그림자 추가)
         Color textColor = Color.WHITE;
-        if (tile.type == Tile.Type.ISLAND || tile.type == Tile.Type.OLYMPIC ||
-            tile.type == Tile.Type.WORLD_TOUR || tile.type == Tile.Type.CHANCE ||
-            tile.type == Tile.Type.TAX) {
-            textColor = Color.BLACK; // 특수 타일은 검은색 텍스트
-        }
-        g.setColor(textColor);
+        Color shadowColor = new Color(0, 0, 0, 100);
+        boolean isSpecialTile = tile.type == Tile.Type.ISLAND || tile.type == Tile.Type.OLYMPIC ||
+                                tile.type == Tile.Type.WORLD_TOUR || tile.type == Tile.Type.CHANCE ||
+                                tile.type == Tile.Type.TAX;
+
         g.setFont(new Font("맑은 고딕", Font.BOLD, 13));
         String name = tile.name;
         FontMetrics fm = g.getFontMetrics();
         int textWidth = fm.stringWidth(name);
 
-        // 특수 타일은 이모지 아래에 텍스트 배치
-        if (tile.type == Tile.Type.ISLAND || tile.type == Tile.Type.OLYMPIC ||
-            tile.type == Tile.Type.WORLD_TOUR || tile.type == Tile.Type.CHANCE ||
-            tile.type == Tile.Type.TAX) {
-            g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE / 2 + 28);
-        } else {
-            g.drawString(name, x + (BASE_TILE_SIZE - textWidth) / 2, y + BASE_TILE_SIZE - 20);
-        }
+        int textX = x + (BASE_TILE_SIZE - textWidth) / 2;
+        int textY = isSpecialTile ? y + BASE_TILE_SIZE / 2 + 28 : y + BASE_TILE_SIZE - 20;
 
-        // 타일 번호
-        g.setColor(new Color(189, 195, 199));
+        // 텍스트 그림자
+        g.setColor(shadowColor);
+        g.drawString(name, textX + 1, textY + 1);
+
+        // 텍스트
+        g.setColor(textColor);
+        g.drawString(name, textX, textY);
+
+        // 타일 번호 (그림자 추가)
         g.setFont(new Font("Arial", Font.PLAIN, 9));
+        g.setColor(new Color(0, 0, 0, 80));
+        g.drawString(String.valueOf(tileIndex), x + 9, y + BASE_TILE_SIZE - 7);
+        g.setColor(new Color(189, 195, 199));
         g.drawString(String.valueOf(tileIndex), x + 8, y + BASE_TILE_SIZE - 8);
+    }
+
+    private void drawLandmarkBorder(Graphics2D g, int x, int y, int width, int height, int arc) {
+        // 랜드마크 타일에 대한 애니메이션 금색 테두리
+        // 3겹의 레이어로 빛나는 효과 생성
+        int padding = 2;
+
+        // 외부 빛나는 효과 (가장 밝은 금색)
+        g.setColor(new Color(241, 196, 15, 100));
+        g.setStroke(new BasicStroke(3.0f));
+        g.drawRoundRect(x + padding - 1, y + padding - 1, width + 2, height + 2, arc, arc);
+
+        // 중간 레이어 (진한 금색)
+        g.setColor(new Color(243, 156, 18, 180));
+        g.setStroke(new BasicStroke(2.5f));
+        g.drawRoundRect(x + padding, y + padding, width, height, arc, arc);
+
+        // 내부 하이라이트 (밝은 금색)
+        g.setColor(new Color(255, 215, 0, 220));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawRoundRect(x + padding + 1, y + padding + 1, width - 2, height - 2, arc, arc);
+    }
+
+    private void drawOwnerBadge(Graphics2D g, int x, int y, int ownerIndex) {
+        // 소유자 배지: 둥근 사각형 배지 + 그림자 + 광택
+        int badgeWidth = 24;
+        int badgeHeight = 20;
+        int arc = 8;
+
+        // 배지 그림자
+        g.setColor(new Color(0, 0, 0, 80));
+        g.fillRoundRect(x + 2, y + 2, badgeWidth, badgeHeight, arc, arc);
+
+        // 배지 그라데이션 배경
+        Color[] ownerColors = {
+            new Color(231, 76, 60),   // 플레이어 1: 빨강
+            new Color(52, 152, 219),  // 플레이어 2: 파랑
+            new Color(46, 204, 113),  // 플레이어 3: 초록
+            new Color(241, 196, 15)   // 플레이어 4: 금색
+        };
+
+        Color badgeColor = ownerColors[ownerIndex % ownerColors.length];
+        GradientPaint badgeGradient = new GradientPaint(
+            x, y, badgeColor.brighter(),
+            x, y + badgeHeight, badgeColor.darker()
+        );
+        g.setPaint(badgeGradient);
+        g.fillRoundRect(x, y, badgeWidth, badgeHeight, arc, arc);
+
+        // 배지 광택 효과 (상단 50%)
+        int glossHeight = badgeHeight / 2;
+        GradientPaint gloss = new GradientPaint(
+            x, y, new Color(255, 255, 255, 100),
+            x, y + glossHeight, new Color(255, 255, 255, 0)
+        );
+        g.setPaint(gloss);
+        g.fillRoundRect(x, y, badgeWidth, glossHeight, arc, arc);
+
+        // 배지 테두리
+        g.setColor(new Color(0, 0, 0, 150));
+        g.setStroke(new BasicStroke(1.5f));
+        g.drawRoundRect(x, y, badgeWidth, badgeHeight, arc, arc);
+
+        // 플레이어 번호 텍스트
+        g.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
+        String playerText = "P" + (ownerIndex + 1);
+        FontMetrics fm = g.getFontMetrics();
+        int textWidth = fm.stringWidth(playerText);
+        int textX = x + (badgeWidth - textWidth) / 2;
+        int textY = y + badgeHeight / 2 + fm.getAscent() / 2 - 1;
+
+        // 텍스트 그림자
+        g.setColor(new Color(0, 0, 0, 150));
+        g.drawString(playerText, textX + 1, textY + 1);
+
+        // 텍스트
+        g.setColor(Color.WHITE);
+        g.drawString(playerText, textX, textY);
     }
 
     private void drawTileIcon(Graphics2D g, Tile tile, int x, int y) {
