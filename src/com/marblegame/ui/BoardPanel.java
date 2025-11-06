@@ -151,8 +151,8 @@ public class BoardPanel extends JPanel {
             g.setColor(new Color(255, 215, 0)); // 금색 테두리
             g.setStroke(new BasicStroke(4)); // 더 두꺼운 테두리
         } else {
-            g.setColor(new Color(236, 240, 241));
-            g.setStroke(new BasicStroke(2));
+            g.setColor(new Color(0, 0, 0));
+            g.setStroke(new BasicStroke(3));
         }
         g.drawRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
 
@@ -243,7 +243,7 @@ public class BoardPanel extends JPanel {
                 icon = "🏝";
                 break;
             case CHANCE:
-                icon = "🎊";
+                icon = "🃏";
                 break;
             case OLYMPIC:
                 icon = "🏆";

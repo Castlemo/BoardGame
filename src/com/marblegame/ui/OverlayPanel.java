@@ -30,7 +30,6 @@ public class OverlayPanel extends JPanel {
     private GaugePanel gaugePanel;
     private DiceGauge diceGauge; // 추가됨: 게이지 모델
     private JPanel actionButtonPanel;
-    private JLabel taxInfoLabel;
 
     // 추가됨: 플레이어 카드
     private List<CompactPlayerCard> playerCards;
@@ -131,7 +130,6 @@ public class OverlayPanel extends JPanel {
         takeoverButton = createStyledButton("💰 인수하기", BUTTON_TAKEOVER);
         skipButton = createStyledButton("⏭ 패스", BUTTON_SKIP);
         escapeButton = createStyledButton("🔓 탈출하기", BUTTON_ESCAPE);
-        taxInfoLabel = createPriceLabel();
 
         // 모든 버튼을 패널에 추가 (초기 상태는 숨김)
         rollDiceButton.setVisible(false);
@@ -140,10 +138,7 @@ public class OverlayPanel extends JPanel {
         takeoverButton.setVisible(false);
         skipButton.setVisible(false);
         escapeButton.setVisible(false);
-        taxInfoLabel.setVisible(false);
 
-        actionButtonPanel.add(taxInfoLabel);
-        actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(rollDiceButton);
         actionButtonPanel.add(Box.createRigidArea(new Dimension(0, 5)));
         actionButtonPanel.add(purchaseButton);
@@ -197,19 +192,6 @@ public class OverlayPanel extends JPanel {
         });
 
         return button;
-    }
-
-    /**
-     * 버튼 위에 표시할 가격 라벨 생성
-     */
-    private JLabel createPriceLabel() {
-        JLabel label = new JLabel("", SwingConstants.CENTER);
-        label.setAlignmentX(Component.CENTER_ALIGNMENT);
-        label.setForeground(ACCENT_COLOR);
-        label.setFont(new Font("Malgun Gothic", Font.PLAIN, Math.max(10, (int)(12 * scaleFactor))));
-        label.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
-        label.setVisible(false);
-        return label;
     }
 
     /**
@@ -541,16 +523,6 @@ public class OverlayPanel extends JPanel {
                 button.setPreferredSize(buttonSize);
             }
         }
-
-        int labelFontSize = Math.max(8, (int)(10 * scaleFactor));
-        int labelHeight = (int)(18 * scaleFactor);
-        Font labelFont = new Font("Malgun Gothic", Font.PLAIN, labelFontSize);
-        Dimension labelSize = new Dimension(buttonWidth, labelHeight);
-        if (taxInfoLabel != null) {
-            taxInfoLabel.setFont(labelFont);
-            taxInfoLabel.setMaximumSize(labelSize);
-            taxInfoLabel.setPreferredSize(labelSize);
-        }
     }
 
     /**
@@ -575,34 +547,10 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 세금 정보 표시 (국세청)
-     */
-    public void setTaxAmount(Integer amount) {
-        if (taxInfoLabel == null) return;
-
-        if (amount == null) {
-            taxInfoLabel.setText("");
-            taxInfoLabel.setVisible(false);
-        } else {
-            taxInfoLabel.setText("세금 부과: " + String.format("%,d원", amount));
-            taxInfoLabel.setVisible(true);
-        }
-        actionButtonPanel.revalidate();
-        actionButtonPanel.repaint();
-        repositionComponents();
-    }
-
-    /**
-     * 가격 라벨 초기화
+     * 가격 라벨 초기화 (더 이상 사용되지 않지만 호환성 유지)
      */
     public void clearPriceLabels() {
-        if (taxInfoLabel != null) {
-            taxInfoLabel.setText("");
-            taxInfoLabel.setVisible(false);
-        }
-        actionButtonPanel.revalidate();
-        actionButtonPanel.repaint();
-        repositionComponents();
+        // taxInfoLabel 제거됨 - 메서드는 호환성을 위해 유지
     }
 
     /**

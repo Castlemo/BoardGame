@@ -219,11 +219,16 @@ public class RuleEngine {
 
     /**
      * 국세청 세금 납부 처리
+     * 파산 체크 포함
      */
     public void payTax(Player player) {
         int tax = calculateTax(player);
         player.pay(tax);
         // 세금은 소멸 (어느 플레이어에게도 지급되지 않음)
+
+        if (player.cash < 0) {
+            player.bankrupt = true;
+        }
     }
 
     /**
