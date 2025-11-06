@@ -181,8 +181,12 @@ public class GameUI {
             state = GameState.WAITING_FOR_RAILROAD_SELECTION;
             frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
             frame.getBoardPanel().setTileClickEnabled(true);
-            log("🚆 전국철도 티켓이 있습니다!");
+            log("🚆 전국철도/세계여행 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
+
+            // 도시 선택 안내 다이얼로그 표시
+            CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
+            selectionDialog.setVisible(true);
         } else {
             state = GameState.WAITING_FOR_ROLL;
             frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);

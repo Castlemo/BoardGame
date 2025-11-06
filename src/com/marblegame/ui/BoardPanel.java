@@ -34,6 +34,9 @@ public class BoardPanel extends JPanel {
     private Consumer<Integer> tileClickListener = null;
     private boolean tileClickEnabled = false;
 
+    // 호버 효과
+    private int hoveredTileIndex = -1;
+
     private double scaleFactor = 1.0;
     private int translateX = 0;
     private int translateY = 0;
@@ -54,6 +57,32 @@ public class BoardPanel extends JPanel {
                     if (tileIndex >= 0) {
                         tileClickListener.accept(tileIndex);
                     }
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                // 마우스가 패널을 벗어나면 호버 효과 제거
+                if (hoveredTileIndex != -1) {
+                    hoveredTileIndex = -1;
+                    repaint();
+                }
+            }
+        });
+
+        // 마우스 모션 리스너 추가 (호버 효과)
+        addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                if (tileClickEnabled) {
+                    int tileIndex = getTileIndexAt(e.getX(), e.getY());
+                    if (tileIndex != hoveredTileIndex) {
+                        hoveredTileIndex = tileIndex;
+                        repaint();
+                    }
+                } else if (hoveredTileIndex != -1) {
+                    hoveredTileIndex = -1;
+                    repaint();
                 }
             }
         });
@@ -144,6 +173,13 @@ public class BoardPanel extends JPanel {
         Color bgColor = getTileColor(tile);
         g.setColor(bgColor);
         g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
+
+        // 호버 효과 (타일 클릭 가능할 때만)
+        if (tileClickEnabled && tileIndex == hoveredTileIndex) {
+            // 반투명 하이라이트 오버레이
+            g.setColor(new Color(52, 152, 219, 100)); // 파란색 반투명
+            g.fillRoundRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4, 10, 10);
+        }
 
         // 타일 테두리 (랜드마크는 금색)
         boolean isLandmark = (tile instanceof City) && ((City) tile).isLandmark();
@@ -468,6 +504,8 @@ public class BoardPanel extends JPanel {
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         } else {
             setCursor(Cursor.getDefaultCursor());
+            // 타일 클릭 비활성화 시 호버 효과 제거
+            hoveredTileIndex = -1;
         }
         repaint();
     }
