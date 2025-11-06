@@ -297,8 +297,13 @@ public class GameUI {
                 break;
 
             case ISLAND:
-                log("무인도에 도착했습니다!");
                 player.jailTurns = 2; // 2턴 갇힘
+
+                // 무인도 다이얼로그 표시
+                IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
+                islandDialog.setVisible(true);
+
+                log("무인도에 도착했습니다!");
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
                 endTurn();
                 break;
