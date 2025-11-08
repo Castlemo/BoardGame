@@ -429,4 +429,90 @@ public class RuleEngine {
         return "승리 조건 미달성";
     }
 
+    /**
+     * 듀얼 마그네틱 코어: 양옆 4칸 이내의 거리 계산
+     * 삭제된 땅은 카운트에서 제외
+     *
+     * @param fromPos 시작 위치
+     * @param toPos 목표 위치
+     * @param clockwise 시계방향 여부
+     * @return 실제 거리 (삭제된 도시 제외)
+     */
+    private int calculateDistanceExcludingDeleted(int fromPos, int toPos, boolean clockwise) {
+        int boardSize = board.getSize();
+        int distance = 0;
+        int currentPos = fromPos;
+
+        while (currentPos != toPos && distance < boardSize) {
+            // 다음 위치로 이동
+            if (clockwise) {
+                currentPos = (currentPos + 1) % boardSize;
+            } else {
+                currentPos = (currentPos - 1 + boardSize) % boardSize;
+            }
+
+            // 삭제되지 않은 타일만 카운트
+            Tile tile = board.getTile(currentPos);
+            if (!(tile instanceof City) || !((City) tile).isDeleted) {
+                distance++;
+            }
+
+            // 목표 위치 도달
+            if (currentPos == toPos) {
+                break;
+            }
+        }
+
+        return distance;
+    }
+
+    /**
+     * 듀얼 마그네틱 코어: 양옆 4칸 이내의 플레이어를 끌어당김
+     *
+     * @param landmarkPos 랜드마크 위치
+     * @param players 모든 플레이어 배열
+     * @param ownerIndex 랜드마크 소유자 인덱스
+     * @return 끌려온 플레이어 수
+     */
+    public int applyDualMagneticCore(int landmarkPos, Player[] players, int ownerIndex) {
+        int pulledCount = 0;
+        final int MAGNETIC_RANGE = 4;
+
+        for (int i = 0; i < players.length; i++) {
+            // 본인은 제외
+            if (i == ownerIndex) {
+                continue;
+            }
+
+            Player player = players[i];
+
+            // 무인도에 갇힌 플레이어는 면역
+            if (player.isInJail()) {
+                continue;
+            }
+
+            // 파산한 플레이어 제외
+            if (player.bankrupt) {
+                continue;
+            }
+
+            int playerPos = player.pos;
+
+            // 양옆 거리 계산 (삭제된 도시 제외)
+            int clockwiseDistance = calculateDistanceExcludingDeleted(landmarkPos, playerPos, true);
+            int counterClockwiseDistance = calculateDistanceExcludingDeleted(landmarkPos, playerPos, false);
+
+            // 더 짧은 거리 선택
+            int minDistance = Math.min(clockwiseDistance, counterClockwiseDistance);
+
+            // 4칸 이내면 끌어당김
+            if (minDistance <= MAGNETIC_RANGE && minDistance > 0) {
+                player.pos = landmarkPos;
+                pulledCount++;
+            }
+        }
+
+        return pulledCount;
+    }
+
 }

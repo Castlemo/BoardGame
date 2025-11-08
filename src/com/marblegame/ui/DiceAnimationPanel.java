@@ -11,6 +11,7 @@ public class DiceAnimationPanel extends JPanel {
     private int dice1 = 1;
     private int dice2 = 1;
     private boolean animating = false;
+    private boolean isDouble = false;  // 더블 여부
     private Timer animationTimer;
     private long animationStartTime;
     private int finalDice1;
@@ -42,6 +43,7 @@ public class DiceAnimationPanel extends JPanel {
     public void startAnimation(int finalValue1, int finalValue2, Runnable onComplete) {
         this.finalDice1 = finalValue1;
         this.finalDice2 = finalValue2;
+        this.isDouble = (finalValue1 == finalValue2);  // 더블 판정
         this.animating = true;
         this.animationStartTime = System.currentTimeMillis();
 
@@ -132,6 +134,32 @@ public class DiceAnimationPanel extends JPanel {
             int corner = Math.max(8, (int) Math.round(10 * scale));
             g2d.drawRoundRect(startX - highlightPad, y - highlightPad, diceSize + highlightPad * 2, diceSize + highlightPad * 2, corner, corner);
             g2d.drawRoundRect(startX + diceSize + spacing - highlightPad, y - highlightPad, diceSize + highlightPad * 2, diceSize + highlightPad * 2, corner, corner);
+        }
+
+        // 더블이면 금색 테두리 표시
+        if (!animating && isDouble) {
+            g2d.setColor(new Color(255, 215, 0, 200));  // 금색
+            g2d.setStroke(new BasicStroke(Math.max(2f, (float) (3f * scale))));
+            int doublePad = Math.max(3, (int) Math.round(4 * scale));
+            int corner = Math.max(8, (int) Math.round(10 * scale));
+            g2d.drawRoundRect(startX - doublePad, y - doublePad, diceSize + doublePad * 2, diceSize + doublePad * 2, corner, corner);
+            g2d.drawRoundRect(startX + diceSize + spacing - doublePad, y - doublePad, diceSize + doublePad * 2, diceSize + doublePad * 2, corner, corner);
+
+            // "DOUBLE!" 텍스트
+            g2d.setFont(new Font("Malgun Gothic", Font.BOLD, Math.max(10, (int)(14 * scale))));
+            String doubleText = "DOUBLE!";
+            FontMetrics fm = g2d.getFontMetrics();
+            int textWidth = fm.stringWidth(doubleText);
+            int textX = (width - textWidth) / 2;
+            int textY = y - Math.max(8, (int)(10 * scale));
+
+            // 텍스트 그림자
+            g2d.setColor(new Color(0, 0, 0, 150));
+            g2d.drawString(doubleText, textX + 1, textY + 1);
+
+            // 텍스트
+            g2d.setColor(new Color(255, 215, 0));
+            g2d.drawString(doubleText, textX, textY);
         }
     }
 

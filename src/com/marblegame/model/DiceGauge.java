@@ -94,47 +94,21 @@ public class DiceGauge {
      */
     private int rollBiased(int section) {
         if (section == 1) {
-            // S1 (0-25%, 노란색): 2~4가 60% 확률
-            if (Math.random() < BIAS) {
-                int sum = 2 + (int)(Math.random() * 3); // 2, 3, 4 중 선택
-                return sum;
-            } else {
-                // 나머지 40%: 5~12 균등 분배
-                int sum = 5 + (int)(Math.random() * 8); // 5, 6, 7, 8, 9, 10, 11, 12 중 선택
-                return sum;
-            }
+            // S1 (0-25%, 노란색): 2~4만 100% 확률
+            int sum = 2 + (int)(Math.random() * 3); // 2, 3, 4 중 선택
+            return sum;
         } else if (section == 2) {
-            // S2 (25-50%, 연주황색): 5~7이 60% 확률
-            if (Math.random() < BIAS) {
-                int sum = 5 + (int)(Math.random() * 3); // 5, 6, 7 중 선택
-                return sum;
-            } else {
-                // 나머지 40%: 2~4, 8~12 균등 분배
-                int[] others = {2, 3, 4, 8, 9, 10, 11, 12};
-                int sum = others[(int)(Math.random() * others.length)];
-                return sum;
-            }
+            // S2 (25-50%, 연주황색): 5~7만 100% 확률
+            int sum = 5 + (int)(Math.random() * 3); // 5, 6, 7 중 선택
+            return sum;
         } else if (section == 3) {
-            // S3 (50-75%, 주황색): 8~10이 60% 확률
-            if (Math.random() < BIAS) {
-                int sum = 8 + (int)(Math.random() * 3); // 8, 9, 10 중 선택
-                return sum;
-            } else {
-                // 나머지 40%: 2~7, 11~12 균등 분배
-                int[] others = {2, 3, 4, 5, 6, 7, 11, 12};
-                int sum = others[(int)(Math.random() * others.length)];
-                return sum;
-            }
+            // S3 (50-75%, 주황색): 8~10만 100% 확률
+            int sum = 8 + (int)(Math.random() * 3); // 8, 9, 10 중 선택
+            return sum;
         } else {
-            // S4 (75-100%, 빨간색): 11~12가 60% 확률
-            if (Math.random() < BIAS) {
-                int sum = 11 + (int)(Math.random() * 2); // 11, 12 중 선택
-                return sum;
-            } else {
-                // 나머지 40%: 2~10 균등 분배
-                int sum = 2 + (int)(Math.random() * 9); // 2, 3, 4, 5, 6, 7, 8, 9, 10 중 선택
-                return sum;
-            }
+            // S4 (75-100%, 빨간색): 11~12만 100% 확률
+            int sum = 11 + (int)(Math.random() * 2); // 11, 12 중 선택
+            return sum;
         }
     }
 

@@ -28,6 +28,7 @@ public class GameUI {
         WAITING_FOR_JAIL_CHOICE,
         WAITING_FOR_RAILROAD_SELECTION,
         WAITING_FOR_LANDMARK_SELECTION,
+        WAITING_FOR_DOUBLE_ROLL,  // 더블 발생 후 추가 주사위 대기
         ANIMATING_MOVEMENT,
         GAME_OVER
     }
@@ -39,6 +40,11 @@ public class GameUI {
         EVEN     // 짝수만 (2, 4, 6)
     }
     private DiceMode diceMode = DiceMode.NORMAL;
+
+    // 더블 시스템
+    private int consecutiveDoubles = 0;  // 현재 턴에서 연속 더블 횟수
+    private int lastD1 = 0;  // 마지막 주사위 1
+    private int lastD2 = 0;  // 마지막 주사위 2
 
     private Tile currentTile;
     private City selectedLandmarkCity = null;
@@ -208,7 +214,7 @@ public class GameUI {
     private void rollDiceWithGauge() {
         Player player = players[currentPlayerIndex];
 
-        if (state == GameState.WAITING_FOR_ROLL) {
+        if (state == GameState.WAITING_FOR_ROLL || state == GameState.WAITING_FOR_DOUBLE_ROLL) {
             // 게이지 정지 및 결과 생성
             int result = frame.getActionPanel().getDiceGauge().stop();
             frame.getActionPanel().stopGaugeAnimation();
@@ -230,31 +236,82 @@ public class GameUI {
             }
 
             // 주사위 2개로 분할 (2~12 범위를 2D6로 변환)
+            // 더블 가능한 합계는 우선적으로 더블로 배정
             int tempD1, tempD2;
-            if (result <= 7) {
-                // 2~7: d1 = 1~6, d2 = result - d1
-                tempD1 = 1 + (int)(Math.random() * Math.min(6, result - 1));
-                tempD2 = result - tempD1;
-                if (tempD2 > 6) {
-                    tempD1 = result - 6;
-                    tempD2 = 6;
-                }
+            boolean isDouble = false;
+
+            // 더블 가능한 합계: 2(1,1), 4(2,2), 6(3,3), 8(4,4), 10(5,5), 12(6,6)
+            if (result == 2) {
+                tempD1 = tempD2 = 1;
+                isDouble = true;
+            } else if (result == 4) {
+                tempD1 = tempD2 = 2;
+                isDouble = true;
+            } else if (result == 6) {
+                tempD1 = tempD2 = 3;
+                isDouble = true;
+            } else if (result == 8) {
+                tempD1 = tempD2 = 4;
+                isDouble = true;
+            } else if (result == 10) {
+                tempD1 = tempD2 = 5;
+                isDouble = true;
+            } else if (result == 12) {
+                tempD1 = tempD2 = 6;
+                isDouble = true;
             } else {
-                // 8~12: d1 = result - 6 ~ 6
-                tempD1 = Math.max(result - 6, 1 + (int)(Math.random() * 6));
-                tempD2 = result - tempD1;
-                if (tempD1 > 6) tempD1 = 6;
-                if (tempD2 > 6) tempD2 = 6;
+                // 더블 불가능한 합계는 랜덤 분할
+                if (result <= 7) {
+                    // 2~7: d1 = 1~6, d2 = result - d1
+                    tempD1 = 1 + (int)(Math.random() * Math.min(6, result - 1));
+                    tempD2 = result - tempD1;
+                    if (tempD2 > 6) {
+                        tempD1 = result - 6;
+                        tempD2 = 6;
+                    }
+                } else {
+                    // 8~12: d1 = result - 6 ~ 6
+                    tempD1 = Math.max(result - 6, 1 + (int)(Math.random() * 6));
+                    tempD2 = result - tempD1;
+                    if (tempD1 > 6) tempD1 = 6;
+                    if (tempD2 > 6) tempD2 = 6;
+                }
+            }
+
+            // 더블 확률 억제 시스템 (연속 더블 횟수에 따라)
+            if (isDouble && consecutiveDoubles >= 1) {
+                double suppressProbability = getDoubleSuppressProbability(consecutiveDoubles);
+                if (Math.random() < suppressProbability) {
+                    // 강제로 비더블로 변환 (±1 조정)
+                    if (tempD1 > 1) {
+                        tempD1 -= 1;
+                        tempD2 += 1;
+                    } else {
+                        tempD1 += 1;
+                        tempD2 -= 1;
+                    }
+                    isDouble = false;
+                    log("🎲 더블 억제 발동! (" + consecutiveDoubles + "연속)");
+                }
             }
 
             // final 변수로 복사 (람다 사용을 위해)
             final int finalD1 = tempD1;
             final int finalD2 = tempD2;
             final int finalResult = result;
+            final boolean finalIsDouble = isDouble;
+
+            // 주사위 값 저장 (나중에 더블 체크용)
+            lastD1 = finalD1;
+            lastD2 = finalD2;
 
             // 주사위 애니메이션 시작
             frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
-                log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
+                if (finalIsDouble) {
+                    log("🎲 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
+                } else {
+                    log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
+                }
                 movePlayer(finalResult);
             });
         }
@@ -269,6 +326,34 @@ public class GameUI {
             case 2: return "S2 (6~9 우대)";
             case 3: return "S3 (10~12 우대)";
             default: return "Unknown";
+        }
+    }
+
+    /**
+     * 더블 억제 확률 계산
+     * @param consecutiveCount 연속 더블 횟수
+     * @return 억제 확률 (0.0 ~ 1.0)
+     */
+    private double getDoubleSuppressProbability(int consecutiveCount) {
+        switch (consecutiveCount) {
+            case 0: return 0.0;    // 1차 더블: 억제 없음 (100% 더블 가능)
+            case 1: return 0.3;    // 2차 더블: 30% 억제 (70% 더블 가능)
+            case 2: return 0.8;    // 3차 더블: 80% 억제 (20% 더블 가능)
+            default: return 1.0;   // 4차 이상: 100% 억제 (0% 더블 가능)
+        }
+    }
+
+    /**
+     * 더블 체크 및 처리
+     */
+    private boolean checkAndHandleDouble() {
+        boolean isDouble = (lastD1 == lastD2 && lastD1 > 0);
+
+        if (isDouble) {
+            consecutiveDoubles++;
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -304,11 +389,22 @@ public class GameUI {
             case ISLAND:
                 player.jailTurns = 2; // 2턴 갇힘
 
+                // 더블이었는지 체크 (무효화 전에)
+                boolean wasDouble = (lastD1 == lastD2 && lastD1 > 0);
+
+                // 더블 무효화 (무인도에 갇히면 더블 효과 사라짐)
+                lastD1 = 0;
+                lastD2 = 0;
+                consecutiveDoubles = 0;
+
                 // 무인도 다이얼로그 표시
                 IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
                 islandDialog.setVisible(true);
 
                 log("무인도에 도착했습니다!");
+                if (wasDouble) {
+                    log("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
+                }
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
                 endTurn();
                 break;
@@ -371,6 +467,28 @@ public class GameUI {
         } else if (city.owner == currentPlayerIndex) {
             // 본인 소유 땅
             log(city.name + "은(는) 본인 소유입니다. (레벨: " + city.level + ")");
+
+            // 본인 랜드마크 도착 시 듀얼 마그네틱 코어 발동
+            if (city.isLandmark()) {
+                int landmarkPos = city.id;
+                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+
+                // 다이얼로그 표시
+                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                magneticDialog.setVisible(true);
+
+                if (pulledCount > 0) {
+                    log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+
+                    // 끌려온 플레이어들에게 통행료 징수
+                    handleMagneticTollCollection(city);
+                } else {
+                    log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+                }
+
+                endTurn();
+                return;
+            }
 
             if (city.canUpgrade()) {
                 int upgradeCost = city.getUpgradeCost();
@@ -666,38 +784,32 @@ public class GameUI {
         if (state == GameState.WAITING_FOR_LANDMARK_SELECTION) {
             // 클릭한 타일이 도시인지 확인
             if (!(selectedTile instanceof City)) {
-                log("도시가 아닌 칸을 선택했습니다. 랜드마크 건설을 취소합니다.");
-                frame.getBoardPanel().setTileClickEnabled(false);
-                endTurn();
-                return;
+                log("도시가 아닌 칸을 선택했습니다.");
+                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "도시가 아닌 칸을 선택했습니다.");
+                errorDialog.setVisible(true);
+                return; // 재선택 가능하도록 상태 유지
             }
 
             City city = (City) selectedTile;
 
-            // 레벨 3 본인 소유 도시인지 확인
+            // 본인 소유 도시인지 확인
             if (!city.isOwned() || city.owner != currentPlayerIndex) {
-                log("본인 소유 도시가 아닙니다. 랜드마크 건설을 취소합니다.");
-                frame.getBoardPanel().setTileClickEnabled(false);
-                endTurn();
-                return;
+                log("본인 소유 도시가 아닙니다.");
+                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "본인 소유 도시가 아닙니다.");
+                errorDialog.setVisible(true);
+                return; // 재선택 가능
             }
 
-            if (city.level != 3) {
-                log("레벨 3 도시가 아닙니다. 랜드마크 건설을 취소합니다.");
-                frame.getBoardPanel().setTileClickEnabled(false);
-                endTurn();
-                return;
+            // 레벨 1~3인지 확인 (업그레이드 가능한지)
+            if (city.level < 1 || city.level >= 4) {
+                log("업그레이드할 수 없는 도시입니다. (레벨 1~3만 가능)");
+                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "업그레이드할 수 없는 도시입니다.");
+                errorDialog.setVisible(true);
+                return; // 재선택 가능
             }
 
-            if (city.isLandmark()) {
-                log("이미 랜드마크인 도시입니다. 랜드마크 건설을 취소합니다.");
-                frame.getBoardPanel().setTileClickEnabled(false);
-                endTurn();
-                return;
-            }
-
-            // 조건을 만족하면 랜드마크 건설
-            log(player.name + "이(가) " + selectedTile.name + "에 랜드마크 건설을 확정했습니다!");
+            // 조건을 만족하면 업그레이드 진행
+            log(player.name + "이(가) " + selectedTile.name + " 업그레이드를 확정했습니다!");
             selectedLandmarkCity = city;  // 선택된 도시 저장
             handleLandmarkConstruction();
             return;
@@ -733,38 +845,38 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
         log("START 지점에 도착했습니다!");
 
-        // 레벨 3 도시가 있는지 확인
-        boolean hasLevel3City = false;
+        // 업그레이드 가능한 도시가 있는지 확인 (레벨 1~3인 본인 소유 도시)
+        boolean hasUpgradeableCity = false;
         for (Tile tile : board.getAllTiles()) {
             if (tile instanceof City) {
                 City city = (City) tile;
-                if (city.isOwned() && city.owner == currentPlayerIndex && city.level == 3 && !city.isLandmark()) {
-                    hasLevel3City = true;
+                if (city.isOwned() && city.owner == currentPlayerIndex && city.level >= 1 && city.level < 4) {
+                    hasUpgradeableCity = true;
                     break;
                 }
             }
         }
 
-        if (!hasLevel3City) {
-            log("랜드마크를 건설할 수 있는 도시가 없습니다. (레벨 3 도시 필요)");
+        if (!hasUpgradeableCity) {
+            log("업그레이드할 수 있는 도시가 없습니다. (레벨 1~3 도시 필요)");
             endTurn();
             return;
         }
 
         // 간단한 안내 메시지 다이얼로그 표시
-        log("🏛️ 레벨 3 도시를 랜드마크로 업그레이드할 수 있습니다!");
+        log("⬆️ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
         JOptionPane.showMessageDialog(
             frame,
-            "원하는 도시를 선택해주세요!\n\n보드에서 레벨 3 도시를 클릭하면 랜드마크가 건설됩니다.",
-            "랜드마크 건설",
+            "원하는 도시를 선택해주세요!\n\n보드에서 본인 소유 도시(레벨 1~3)를 클릭하면 1단계 업그레이드됩니다.",
+            "도시 업그레이드",
             JOptionPane.INFORMATION_MESSAGE
         );
 
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;
         frame.getBoardPanel().setTileClickEnabled(true);
-        log("📍 레벨 3 도시를 클릭하여 랜드마크를 건설하세요.");
+        log("📍 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
     }
 
     private void handleLandmarkConstruction() {
@@ -776,21 +888,51 @@ public class GameUI {
             return;
         }
 
-        int constructionCost = (int)(selectedLandmarkCity.price * 0.4);
+        // 업그레이드 비용 계산 (City.getUpgradeCost() 사용)
+        int upgradeCost = selectedLandmarkCity.getUpgradeCost();
 
-        if (!player.canAfford(constructionCost)) {
-            log("잔액이 부족하여 랜드마크를 건설할 수 없습니다.");
+        if (!player.canAfford(upgradeCost)) {
+            log("잔액이 부족하여 업그레이드할 수 없습니다.");
+            ErrorDialog errorDialog = new ErrorDialog(frame, "잔액 부족", "업그레이드 비용이 부족합니다.");
+            errorDialog.setVisible(true);
             selectedLandmarkCity = null;
+            frame.getBoardPanel().setTileClickEnabled(false);
             endTurn();
             return;
         }
 
-        // 랜드마크 건설
-        player.pay(constructionCost);
-        selectedLandmarkCity.level = 4;
-        log("🏛️ " + selectedLandmarkCity.name + "에 랜드마크를 건설했습니다!");
-        log("건설 비용: " + String.format("%,d", constructionCost) + "원");
+        // 현재 레벨 저장
+        int previousLevel = selectedLandmarkCity.level;
+
+        // 업그레이드 실행
+        player.pay(upgradeCost);
+        selectedLandmarkCity.upgrade();
+
+        // 업그레이드 메시지
+        String[] levelNames = {"", "🏠 집", "🏢 아파트", "🏬 건물", "🏛️ 랜드마크"};
+        log("⬆️ " + selectedLandmarkCity.name + "을(를) 업그레이드했습니다!");
+        log(levelNames[previousLevel] + " → " + levelNames[selectedLandmarkCity.level]);
+        log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
         log("남은 잔액: " + String.format("%,d", player.cash) + "원");
+
+        // 랜드마크 건설 시 듀얼 마그네틱 코어 발동
+        if (selectedLandmarkCity.level == 4) {
+            int landmarkPos = selectedLandmarkCity.id;
+            int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+
+            // 다이얼로그 표시
+            DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
+            magneticDialog.setVisible(true);
+
+            if (pulledCount > 0) {
+                log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+
+                // 끌려온 플레이어들에게 통행료 징수
+                handleMagneticTollCollection(selectedLandmarkCity);
+            } else {
+                log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+            }
+        }
 
         // 상태 초기화
         selectedLandmarkCity = null;
@@ -846,6 +988,35 @@ public class GameUI {
         endTurn();
     }
 
+    private void handleMagneticTollCollection(City landmark) {
+        // 랜드마크에 끌려온 플레이어들에게 통행료 징수
+        Player owner = players[currentPlayerIndex];
+        int toll = ruleEngine.calculateToll(landmark, currentPlayerIndex);
+
+        for (int i = 0; i < players.length; i++) {
+            // 본인은 제외
+            if (i == currentPlayerIndex) {
+                continue;
+            }
+
+            Player player = players[i];
+
+            // 랜드마크 위치에 있는 플레이어만 통행료 징수
+            if (player.pos == landmark.id && !player.bankrupt) {
+                log("💸 " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+                ruleEngine.payToll(player, owner, toll);
+
+                if (player.bankrupt) {
+                    log(player.name + "이(가) 파산했습니다!");
+                }
+            }
+        }
+
+        // 보드 업데이트 (플레이어 위치 변경 반영)
+        frame.getBoardPanel().updateBoard();
+        frame.getOverlayPanel().updatePlayerInfo();
+    }
+
     private void executePhaseDelete() {
         // 빈 도시(미소유 도시) 필터링
         List<City> emptyCities = new java.util.ArrayList<>();
@@ -880,6 +1051,39 @@ public class GameUI {
     }
 
     private void endTurn() {
+        Player player = players[currentPlayerIndex];
+
+        // 파산 시 더블 무효화
+        if (player.bankrupt) {
+            log("💀 파산으로 인해 더블이 무효가 되었습니다.");
+            consecutiveDoubles = 0;
+            lastD1 = 0;
+            lastD2 = 0;
+            // 파산이면 더블 체크 생략하고 바로 턴 종료
+        } else {
+            // 더블 체크: 행동 완료 후 더블이면 추가 주사위 기회
+            if (checkAndHandleDouble()) {
+                log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
+
+                // 더블 다이얼로그 표시
+                DoubleDialog doubleDialog = new DoubleDialog(frame, lastD1, consecutiveDoubles);
+                doubleDialog.setVisible(true);
+
+                // 더블 상태로 전환 (다시 주사위 굴리기 가능)
+                state = GameState.WAITING_FOR_DOUBLE_ROLL;
+                frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
+                frame.getBoardPanel().setTileClickEnabled(false);
+
+                updateDisplay();
+                return; // 턴 종료하지 않음
+            }
+        }
+
+        // 더블이 아니면 턴 종료 및 연속 더블 카운터 리셋
+        consecutiveDoubles = 0;
+        lastD1 = 0;
+        lastD2 = 0;
+
         // 승리 조건 체크 (턴 종료 시)
         if (ruleEngine.checkVictory(players, currentPlayerIndex)) {
             endGame();
