@@ -68,9 +68,23 @@ public class InfoPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * 특정 플레이어의 자산 변동 표시
+     * @param playerIndex 플레이어 인덱스
+     * @param change 변동 금액 (양수: 수입, 음수: 지출)
+     */
+    public void showMoneyChange(int playerIndex, int change) {
+        if (playerIndex >= 0 && playerIndex < playerPanels.size()) {
+            playerPanels.get(playerIndex).showMoneyChange(change);
+        }
+    }
+
     private class PlayerInfoPanel extends JPanel {
         private Player player;
         private final int playerIndex;
+        private int moneyChange = 0;
+        private long moneyChangeStartTime = 0;
+        private static final long MONEY_CHANGE_DURATION = 2000; // 2초
 
         PlayerInfoPanel(Player player, int index) {
             this.player = player;
@@ -82,6 +96,28 @@ public class InfoPanel extends JPanel {
         void setPlayer(Player player) {
             this.player = player;
             repaint();
+        }
+
+        /**
+         * 자산 변동 표시
+         * @param change 변동 금액 (양수: 수입, 음수: 지출)
+         */
+        void showMoneyChange(int change) {
+            if (change == 0) return;
+            this.moneyChange = change;
+            this.moneyChangeStartTime = System.currentTimeMillis();
+
+            // 2초 동안 표시
+            Timer timer = new Timer(50, null);
+            timer.addActionListener(e -> {
+                long elapsed = System.currentTimeMillis() - moneyChangeStartTime;
+                if (elapsed >= MONEY_CHANGE_DURATION) {
+                    moneyChange = 0;
+                    timer.stop();
+                }
+                repaint();
+            });
+            timer.start();
         }
 
         @Override
@@ -118,6 +154,36 @@ public class InfoPanel extends JPanel {
             int lineHeight = 22;
 
             g2.drawString(String.format("💰 %,d원", player.cash), 20, infoY);
+
+            // 자산 변동 표시 (보유금액 바로 아래)
+            if (moneyChange != 0 && System.currentTimeMillis() - moneyChangeStartTime < MONEY_CHANGE_DURATION) {
+                String changeText;
+                Color changeColor;
+                if (moneyChange > 0) {
+                    // 수입: 초록색
+                    changeText = String.format("+%,d원", moneyChange);
+                    changeColor = new Color(46, 204, 113);
+                } else {
+                    // 지출: 빨간색
+                    changeText = String.format("%,d원", moneyChange);
+                    changeColor = new Color(231, 76, 60);
+                }
+
+                // 페이드 아웃 효과
+                long elapsed = System.currentTimeMillis() - moneyChangeStartTime;
+                float alpha = 1.0f - ((float) elapsed / MONEY_CHANGE_DURATION);
+                alpha = Math.max(0, Math.min(1, alpha));
+
+                g2.setColor(new Color(changeColor.getRed(), changeColor.getGreen(), changeColor.getBlue(),
+                    (int)(alpha * 255)));
+                Font changeFont = new Font("Malgun Gothic", Font.BOLD, 14);
+                g2.setFont(changeFont);
+                g2.drawString(changeText, 160, infoY);
+
+                g2.setFont(infoFont); // 원래 폰트로 복구
+                g2.setColor(TEXT_PRIMARY); // 원래 색상으로 복구
+            }
+
             infoY += lineHeight;
 
             g2.drawString(String.format("📍 %d번 칸", player.pos), 20, infoY);

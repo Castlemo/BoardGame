@@ -565,6 +565,9 @@ public class GameUI {
                 int chanceReward = ruleEngine.getChanceReward();
                 ruleEngine.processChance(player);
 
+                // 자산 변동 표시
+                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, chanceReward);
+
                 // 찬스 다이얼로그 표시
                 ChanceDialog chanceDialog = new ChanceDialog(frame, chanceReward);
                 chanceDialog.setVisible(true);
@@ -701,6 +704,10 @@ public class GameUI {
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
 
+            // 자산 변동 표시
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
+            frame.getOverlayPanel().showMoneyChange(city.owner, toll);
+
             // 올림픽 효과 해제 (한 번 통행료 지불 후)
             if (city.hasOlympicBoost) {
                 ruleEngine.removeOlympicBoost(city);
@@ -763,6 +770,10 @@ public class GameUI {
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
 
+            // 자산 변동 표시
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
+            frame.getOverlayPanel().showMoneyChange(touristSpot.owner, toll);
+
             if (player.bankrupt) {
                 log(player.name + "이(가) 파산했습니다!");
             }
@@ -801,6 +812,9 @@ public class GameUI {
                 String levelName = getLevelName(selectedLevel);
                 String emoji = city.getBuildingEmoji();
 
+                // 자산 변동 표시
+                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -totalCost);
+
                 log(player.name + "이(가) " + city.name + "을(를) " +
                     String.format("%,d", totalCost) + "원에 매입했습니다!");
                 log(emoji + " " + levelName + "이(가) 건설되었습니다! (레벨 " + selectedLevel + ")");
@@ -828,6 +842,9 @@ public class GameUI {
 
             // 매입 시도
             if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
+                // 자산 변동 표시
+                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
+
                 log(player.name + "이(가) " + touristSpot.name + "을(를) " +
                     String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
             } else {
@@ -842,7 +859,11 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
         City city = (City) currentTile;
 
+        int upgradeCost = city.getUpgradeCost();
         if (ruleEngine.upgradeCity(player, city)) {
+            // 자산 변동 표시
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -upgradeCost);
+
             String levelEmoji = city.getBuildingEmoji();
             String levelName = "";
             switch (city.level) {
@@ -1008,6 +1029,9 @@ public class GameUI {
         log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         ruleEngine.payTax(player);
 
+        // 자산 변동 표시
+        frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -tax);
+
         if (player.bankrupt) {
             log(player.name + "이(가) 파산했습니다!");
         }
@@ -1082,6 +1106,9 @@ public class GameUI {
         // 업그레이드 실행
         player.pay(upgradeCost);
         selectedLandmarkCity.upgrade();
+
+        // 자산 변동 표시
+        frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -upgradeCost);
 
         // 업그레이드 메시지
         String[] levelNames = {"", "🏠 집", "🏢 아파트", "🏬 건물", "🏛️ 랜드마크"};
@@ -1180,6 +1207,10 @@ public class GameUI {
             if (player.pos == landmark.id && !player.bankrupt) {
                 log("💸 " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
                 ruleEngine.payToll(player, owner, toll);
+
+                // 자산 변동 표시
+                frame.getOverlayPanel().showMoneyChange(i, -toll);
+                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, toll);
 
                 if (player.bankrupt) {
                     log(player.name + "이(가) 파산했습니다!");
