@@ -11,6 +11,7 @@ public class City extends Tile {
     public int level = 0; // 0: 미소유, 1: 집, 2: 아파트, 3: 건물, 4: 랜드마크
     public Integer owner = null; // 플레이어 인덱스 (null이면 미소유)
     public boolean hasOlympicBoost = false; // 올림픽 효과로 통행료 2배
+    public boolean isDeleted = false; // 페이즈 딜리트로 삭제된 도시
 
     public City(int id, String name, String colorGroup, int price, int baseToll) {
         super(id, name, Type.CITY, colorGroup);

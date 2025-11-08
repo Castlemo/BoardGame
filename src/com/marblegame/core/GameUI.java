@@ -168,6 +168,11 @@ public class GameUI {
             return;
         }
 
+        // 페이즈 딜리트: 3의 배수 턴마다 발동
+        if (turnCount % 3 == 0 && currentPlayerIndex == 0) {
+            executePhaseDelete();
+        }
+
         log("\n--- " + player.name + "의 차례 ---");
         log(String.format("%s (현금: %,d원, 위치: %d)", player.name, player.cash, player.pos));
 
@@ -841,6 +846,39 @@ public class GameUI {
         endTurn();
     }
 
+    private void executePhaseDelete() {
+        // 빈 도시(미소유 도시) 필터링
+        List<City> emptyCities = new java.util.ArrayList<>();
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof City) {
+                City city = (City) tile;
+                if (!city.isOwned() && !city.isDeleted) {
+                    emptyCities.add(city);
+                }
+            }
+        }
+
+        // 빈 도시가 없으면 발동 안 함
+        if (emptyCities.isEmpty()) {
+            log("⚠️ 페이즈 딜리트: 삭제할 수 있는 빈 도시가 없습니다.");
+            return;
+        }
+
+        // 무작위로 1개 선택
+        int randomIndex = (int)(Math.random() * emptyCities.size());
+        City deletedCity = emptyCities.get(randomIndex);
+        deletedCity.isDeleted = true;
+
+        log("⚠️ 페이즈 딜리트 발동! " + deletedCity.name + "가 삭제됩니다!");
+
+        // 삭제 다이얼로그 표시
+        PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, deletedCity.name);
+        deleteDialog.setVisible(true);
+
+        // 보드 업데이트
+        frame.getBoardPanel().repaint();
+    }
+
     private void endTurn() {
         // 승리 조건 체크 (턴 종료 시)
         if (ruleEngine.checkVictory(players, currentPlayerIndex)) {
@@ -981,7 +1019,17 @@ public class GameUI {
         }
 
         movementStartPoint = frame.getBoardPanel().getPlayerAnchorForTile(movementCurrentTile, movementPlayerIndex);
+
+        // 다음 타일 계산 (삭제된 도시는 건너뜀)
         movementNextTile = (movementCurrentTile + 1) % board.getSize();
+        Tile nextTile = board.getTile(movementNextTile);
+
+        // 삭제된 도시면 추가로 건너뜀 (카운트하지 않음)
+        while (nextTile instanceof City && ((City) nextTile).isDeleted) {
+            movementNextTile = (movementNextTile + 1) % board.getSize();
+            nextTile = board.getTile(movementNextTile);
+        }
+
         movementEndPoint = frame.getBoardPanel().getPlayerAnchorForTile(movementNextTile, movementPlayerIndex);
         movementSubStep = 0;
     }

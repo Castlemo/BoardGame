@@ -173,13 +173,16 @@ public class BoardPanel extends JPanel {
         int tileWidth = BASE_TILE_SIZE - 4;
         int tileHeight = BASE_TILE_SIZE - 4;
 
+        // 삭제된 도시 체크
+        boolean isDeleted = (tile instanceof City) && ((City) tile).isDeleted;
+
         // 1. 외부 그림자 (drop shadow)
         g.setColor(new Color(0, 0, 0, 50));
         g.fillRoundRect(x + padding + 2, y + padding + 2, tileWidth, tileHeight, arc, arc);
 
         // 2. 그라데이션 배경
         Color bgColor = getTileColor(tile);
-        boolean isHovered = tileClickEnabled && tileIndex == hoveredTileIndex;
+        boolean isHovered = tileClickEnabled && tileIndex == hoveredTileIndex && !isDeleted;
         Color color1 = isHovered ? bgColor.brighter() : bgColor;
         Color color2 = isHovered ? bgColor : bgColor.darker();
 
@@ -329,6 +332,21 @@ public class BoardPanel extends JPanel {
         g.drawString(String.valueOf(tileIndex), x + 9, y + BASE_TILE_SIZE - 7);
         g.setColor(new Color(189, 195, 199));
         g.drawString(String.valueOf(tileIndex), x + 8, y + BASE_TILE_SIZE - 8);
+
+        // 삭제된 도시 오버레이 (반투명 회색)
+        if (isDeleted) {
+            g.setColor(new Color(40, 40, 40, 200)); // 어두운 회색, 높은 투명도
+            g.fillRoundRect(x + padding, y + padding, tileWidth, tileHeight, arc, arc);
+
+            // 삭제 표시 "X" 마크
+            g.setColor(new Color(231, 76, 60, 220)); // 빨간색
+            g.setStroke(new BasicStroke(3.0f));
+            int centerX = x + BASE_TILE_SIZE / 2;
+            int centerY = y + BASE_TILE_SIZE / 2;
+            int crossSize = 15;
+            g.drawLine(centerX - crossSize, centerY - crossSize, centerX + crossSize, centerY + crossSize);
+            g.drawLine(centerX - crossSize, centerY + crossSize, centerX + crossSize, centerY - crossSize);
+        }
     }
 
     private void drawLandmarkBorder(Graphics2D g, int x, int y, int width, int height, int arc) {
