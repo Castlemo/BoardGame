@@ -4,19 +4,20 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * 더블 알림 다이얼로그
+ * 더블 억제 알림 다이얼로그
+ * 연속 더블 또는 합계 2/12로 인해 더블 효과가 무효화된 경우 표시
  */
-public class DoubleDialog extends JDialog {
+public class DoubleSuppressedDialog extends JDialog {
     // 다크 테마 색상
     private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
     private static final Color PANEL_DARK = new Color(44, 47, 51);
     private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
     private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
-    private static final Color BUTTON_CONFIRM = new Color(241, 196, 15);  // 금색
-    private static final Color HIGHLIGHT_COLOR = new Color(255, 215, 0); // 밝은 금색
+    private static final Color BUTTON_CONFIRM = new Color(52, 152, 219);  // 파란색
+    private static final Color HIGHLIGHT_COLOR = new Color(231, 76, 60); // 빨강
 
-    public DoubleDialog(JFrame parent, int diceValue, int consecutiveCount) {
-        super(parent, "더블!", true);
+    public DoubleSuppressedDialog(JFrame parent, int diceValue, int consecutiveCount) {
+        super(parent, "더블 억제", true);
 
         initComponents(diceValue, consecutiveCount);
         pack();
@@ -47,12 +48,19 @@ public class DoubleDialog extends JDialog {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🎲 더블! (" + diceValue + ", " + diceValue + ")");
+        JLabel titleLabel = new JLabel("🚫 더블 억제");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 26));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel diceLabel = new JLabel("주사위: (" + diceValue + ", " + diceValue + ")");
+        diceLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 16));
+        diceLabel.setForeground(TEXT_SECONDARY);
+        diceLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         panel.add(titleLabel);
+        panel.add(Box.createVerticalStrut(8));
+        panel.add(diceLabel);
 
         return panel;
     }
@@ -63,24 +71,33 @@ public class DoubleDialog extends JDialog {
         panel.setBackground(BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
-        JLabel messageLabel = new JLabel("한 번 더 굴릴 수 있습니다!");
+        JLabel messageLabel = new JLabel("더블 효과가 적용되지 않습니다");
         messageLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
         messageLabel.setForeground(TEXT_PRIMARY);
         messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // 연속 더블 횟수 표시
-        if (consecutiveCount > 0) {
-            JLabel countLabel = new JLabel("연속 더블: " + consecutiveCount + "회");
-            countLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
-            countLabel.setForeground(HIGHLIGHT_COLOR);
-            countLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            panel.add(countLabel);
-            panel.add(Box.createVerticalStrut(10));
-        }
-
         panel.add(messageLabel);
+        panel.add(Box.createVerticalStrut(15));
+
+        // 억제 이유 표시
+        String reasonText = getSuppressionReasonText(consecutiveCount);
+        JLabel reasonLabel = new JLabel(reasonText);
+        reasonLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+        reasonLabel.setForeground(TEXT_SECONDARY);
+        reasonLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(reasonLabel);
 
         return panel;
+    }
+
+    private String getSuppressionReasonText(int consecutiveCount) {
+        if (consecutiveCount >= 2) {
+            return "연속 " + consecutiveCount + "회 더블로 인해 억제되었습니다";
+        } else if (consecutiveCount == 1) {
+            return "연속 더블 확률 감소로 억제되었습니다";
+        } else {
+            return "더블 확률 조정으로 억제되었습니다";
+        }
     }
 
     private JPanel createButtonPanel() {
@@ -102,7 +119,7 @@ public class DoubleDialog extends JDialog {
         button.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
         button.setPreferredSize(new Dimension(120, 40));
         button.setBackground(bgColor);
-        button.setForeground(Color.BLACK); // 금색 배경에는 검은 글씨
+        button.setForeground(TEXT_PRIMARY);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setOpaque(true);

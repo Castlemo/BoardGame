@@ -240,58 +240,189 @@ public class GameUI {
             int tempD1, tempD2;
             boolean isDouble = false;
 
-            // 더블 가능한 합계: 2(1,1), 4(2,2), 6(3,3), 8(4,4), 10(5,5), 12(6,6)
+            // 스마트 주사위 조합 선택: 각 합계에 대해 가능한 조합 중 랜덤 선택
+            // 더블은 자연스럽게 ~16-20% 확률로 나타남
             if (result == 2) {
+                // 2: (1,1)만 가능
                 tempD1 = tempD2 = 1;
                 isDouble = true;
+            } else if (result == 3) {
+                // 3: (1,2), (2,1)
+                double rand = Math.random();
+                if (rand < 0.5) {
+                    tempD1 = 1; tempD2 = 2;
+                } else {
+                    tempD1 = 2; tempD2 = 1;
+                }
+                isDouble = false;
             } else if (result == 4) {
-                tempD1 = tempD2 = 2;
-                isDouble = true;
+                // 4: (2,2) 33%, (1,3) 33%, (3,1) 33%
+                double rand = Math.random();
+                if (rand < 0.33) {
+                    tempD1 = tempD2 = 2;
+                    isDouble = true;
+                } else if (rand < 0.66) {
+                    tempD1 = 1; tempD2 = 3;
+                    isDouble = false;
+                } else {
+                    tempD1 = 3; tempD2 = 1;
+                    isDouble = false;
+                }
+            } else if (result == 5) {
+                // 5: (1,4), (2,3), (3,2), (4,1)
+                double rand = Math.random();
+                if (rand < 0.25) {
+                    tempD1 = 1; tempD2 = 4;
+                } else if (rand < 0.5) {
+                    tempD1 = 2; tempD2 = 3;
+                } else if (rand < 0.75) {
+                    tempD1 = 3; tempD2 = 2;
+                } else {
+                    tempD1 = 4; tempD2 = 1;
+                }
+                isDouble = false;
             } else if (result == 6) {
-                tempD1 = tempD2 = 3;
-                isDouble = true;
+                // 6: (3,3) 20%, (1,5) 20%, (2,4) 20%, (4,2) 20%, (5,1) 20%
+                double rand = Math.random();
+                if (rand < 0.2) {
+                    tempD1 = tempD2 = 3;
+                    isDouble = true;
+                } else if (rand < 0.4) {
+                    tempD1 = 1; tempD2 = 5;
+                    isDouble = false;
+                } else if (rand < 0.6) {
+                    tempD1 = 2; tempD2 = 4;
+                    isDouble = false;
+                } else if (rand < 0.8) {
+                    tempD1 = 4; tempD2 = 2;
+                    isDouble = false;
+                } else {
+                    tempD1 = 5; tempD2 = 1;
+                    isDouble = false;
+                }
+            } else if (result == 7) {
+                // 7: (1,6), (2,5), (3,4), (4,3), (5,2), (6,1)
+                double rand = Math.random();
+                if (rand < 0.167) {
+                    tempD1 = 1; tempD2 = 6;
+                } else if (rand < 0.334) {
+                    tempD1 = 2; tempD2 = 5;
+                } else if (rand < 0.5) {
+                    tempD1 = 3; tempD2 = 4;
+                } else if (rand < 0.667) {
+                    tempD1 = 4; tempD2 = 3;
+                } else if (rand < 0.834) {
+                    tempD1 = 5; tempD2 = 2;
+                } else {
+                    tempD1 = 6; tempD2 = 1;
+                }
+                isDouble = false;
             } else if (result == 8) {
-                tempD1 = tempD2 = 4;
-                isDouble = true;
+                // 8: (4,4) 20%, (2,6) 20%, (3,5) 20%, (5,3) 20%, (6,2) 20%
+                double rand = Math.random();
+                if (rand < 0.2) {
+                    tempD1 = tempD2 = 4;
+                    isDouble = true;
+                } else if (rand < 0.4) {
+                    tempD1 = 2; tempD2 = 6;
+                    isDouble = false;
+                } else if (rand < 0.6) {
+                    tempD1 = 3; tempD2 = 5;
+                    isDouble = false;
+                } else if (rand < 0.8) {
+                    tempD1 = 5; tempD2 = 3;
+                    isDouble = false;
+                } else {
+                    tempD1 = 6; tempD2 = 2;
+                    isDouble = false;
+                }
+            } else if (result == 9) {
+                // 9: (3,6), (4,5), (5,4), (6,3)
+                double rand = Math.random();
+                if (rand < 0.25) {
+                    tempD1 = 3; tempD2 = 6;
+                } else if (rand < 0.5) {
+                    tempD1 = 4; tempD2 = 5;
+                } else if (rand < 0.75) {
+                    tempD1 = 5; tempD2 = 4;
+                } else {
+                    tempD1 = 6; tempD2 = 3;
+                }
+                isDouble = false;
             } else if (result == 10) {
-                tempD1 = tempD2 = 5;
-                isDouble = true;
+                // 10: (5,5) 33%, (4,6) 33%, (6,4) 33%
+                double rand = Math.random();
+                if (rand < 0.33) {
+                    tempD1 = tempD2 = 5;
+                    isDouble = true;
+                } else if (rand < 0.66) {
+                    tempD1 = 4; tempD2 = 6;
+                    isDouble = false;
+                } else {
+                    tempD1 = 6; tempD2 = 4;
+                    isDouble = false;
+                }
+            } else if (result == 11) {
+                // 11: (5,6), (6,5)
+                double rand = Math.random();
+                if (rand < 0.5) {
+                    tempD1 = 5; tempD2 = 6;
+                } else {
+                    tempD1 = 6; tempD2 = 5;
+                }
+                isDouble = false;
             } else if (result == 12) {
+                // 12: (6,6)만 가능
                 tempD1 = tempD2 = 6;
                 isDouble = true;
             } else {
-                // 더블 불가능한 합계는 랜덤 분할
-                if (result <= 7) {
-                    // 2~7: d1 = 1~6, d2 = result - d1
-                    tempD1 = 1 + (int)(Math.random() * Math.min(6, result - 1));
-                    tempD2 = result - tempD1;
-                    if (tempD2 > 6) {
-                        tempD1 = result - 6;
-                        tempD2 = 6;
-                    }
-                } else {
-                    // 8~12: d1 = result - 6 ~ 6
-                    tempD1 = Math.max(result - 6, 1 + (int)(Math.random() * 6));
-                    tempD2 = result - tempD1;
-                    if (tempD1 > 6) tempD1 = 6;
-                    if (tempD2 > 6) tempD2 = 6;
-                }
+                // 범위 밖 (안전장치)
+                tempD1 = 1; tempD2 = 1;
+                isDouble = true;
             }
 
             // 더블 확률 억제 시스템 (연속 더블 횟수에 따라)
-            if (isDouble && consecutiveDoubles >= 1) {
+            // 첫 번째 주사위: 60%, 두 번째: 20%, 세 번째: 0%
+            boolean showSuppressionDialog = false;
+            if (isDouble) {
                 double suppressProbability = getDoubleSuppressProbability(consecutiveDoubles);
                 if (Math.random() < suppressProbability) {
-                    // 강제로 비더블로 변환 (±1 조정)
-                    if (tempD1 > 1) {
-                        tempD1 -= 1;
-                        tempD2 += 1;
+                    // 합계 2(1,1) 또는 12(6,6)는 더블만 가능
+                    // 이 경우 주사위 값은 유지하되 더블로 간주하지 않음
+                    if (result == 2 || result == 12) {
+                        // 주사위 값은 그대로, isDouble 플래그만 false
+                        isDouble = false;
+
+                        // 연속 더블 2번 이후에만 억제 다이얼로그 표시
+                        if (consecutiveDoubles >= 2) {
+                            showSuppressionDialog = true;
+                        }
+
+                        if (consecutiveDoubles == 0) {
+                            log("🎲 더블 억제 발동! (60% 확률) - 합계 " + result);
+                        } else if (consecutiveDoubles == 1) {
+                            log("🎲 더블 억제 발동! (20% 확률) - 합계 " + result);
+                        } else {
+                            log("🎲 더블 억제 발동! (0% 확률) - 합계 " + result);
+                        }
                     } else {
-                        tempD1 += 1;
-                        tempD2 -= 1;
+                        // 강제로 비더블로 변환 (±1 조정)
+                        if (tempD1 > 1) {
+                            tempD1 -= 1;
+                            tempD2 += 1;
+                        } else {
+                            tempD1 += 1;
+                            tempD2 -= 1;
+                        }
+                        isDouble = false;
+                        if (consecutiveDoubles == 0) {
+                            log("🎲 더블 억제 발동! (60% 확률)");
+                        } else if (consecutiveDoubles == 1) {
+                            log("🎲 더블 억제 발동! (20% 확률)");
+                        } else {
+                            log("🎲 더블 억제 발동! (0% 확률)");
+                        }
                     }
-                    isDouble = false;
-                    log("🎲 더블 억제 발동! (" + consecutiveDoubles + "연속)");
                 }
             }
 
@@ -300,6 +431,8 @@ public class GameUI {
             final int finalD2 = tempD2;
             final int finalResult = result;
             final boolean finalIsDouble = isDouble;
+            final boolean finalShowSuppressionDialog = showSuppressionDialog;
+            final int finalConsecutiveDoubles = consecutiveDoubles;
 
             // 주사위 값 저장 (나중에 더블 체크용)
             lastD1 = finalD1;
@@ -312,6 +445,14 @@ public class GameUI {
                 } else {
                     log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
                 }
+
+                // 연속 더블 2번 후 합계 2 또는 12인 경우 억제 다이얼로그 표시
+                if (finalShowSuppressionDialog) {
+                    DoubleSuppressedDialog suppressedDialog = new DoubleSuppressedDialog(
+                        frame, finalD1, finalConsecutiveDoubles);
+                    suppressedDialog.setVisible(true);
+                }
+
                 movePlayer(finalResult);
             });
         }
@@ -336,10 +477,9 @@ public class GameUI {
      */
     private double getDoubleSuppressProbability(int consecutiveCount) {
         switch (consecutiveCount) {
-            case 0: return 0.0;    // 1차 더블: 억제 없음 (100% 더블 가능)
-            case 1: return 0.3;    // 2차 더블: 30% 억제 (70% 더블 가능)
-            case 2: return 0.8;    // 3차 더블: 80% 억제 (20% 더블 가능)
-            default: return 1.0;   // 4차 이상: 100% 억제 (0% 더블 가능)
+            case 0: return 0.4;    // 1차 더블: 40% 억제 (60% 더블 가능)
+            case 1: return 0.8;    // 2차 더블: 80% 억제 (20% 더블 가능)
+            default: return 1.0;   // 3차 이상: 100% 억제 (0% 더블 가능)
         }
     }
 
@@ -375,6 +515,18 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
+                // 더블이었는지 체크 (무효화 전에)
+                boolean wasDoubleAtStart = (lastD1 == lastD2 && lastD1 > 0);
+
+                // 더블 무효화 (START 칸에서는 더블 효과 사라짐)
+                lastD1 = 0;
+                lastD2 = 0;
+                consecutiveDoubles = 0;
+
+                if (wasDoubleAtStart) {
+                    log("🎲 더블이었지만 START 칸에서 무효가 되었습니다.");
+                }
+
                 handleStartTile();
                 break;
 
@@ -438,15 +590,38 @@ public class GameUI {
                 break;
 
             case OLYMPIC:
+                // 더블이었는지 체크 (무효화 전에)
+                boolean wasDoubleAtOlympic = (lastD1 == lastD2 && lastD1 > 0);
+
+                // 더블 무효화 (올림픽 칸에서는 더블 효과 사라짐)
+                lastD1 = 0;
+                lastD2 = 0;
+                consecutiveDoubles = 0;
+
+                if (wasDoubleAtOlympic) {
+                    log("🎲 더블이었지만 올림픽 칸에서 무효가 되었습니다.");
+                }
+
                 handleOlympicTile();
                 break;
 
             case WORLD_TOUR:
+                // 더블이었는지 체크 (무효화 전에)
+                boolean wasDoubleAtWorldTour = (lastD1 == lastD2 && lastD1 > 0);
+
+                // 더블 무효화 (세계여행 칸에서는 더블 효과 사라짐)
+                lastD1 = 0;
+                lastD2 = 0;
+                consecutiveDoubles = 0;
+
                 // 세계여행 다이얼로그 표시
                 WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
                 worldTourDialog.setVisible(true);
 
                 log("세계여행에 도착했습니다!");
+                if (wasDoubleAtWorldTour) {
+                    log("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
+                }
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true; // 전국철도와 동일한 효과
                 endTurn();
