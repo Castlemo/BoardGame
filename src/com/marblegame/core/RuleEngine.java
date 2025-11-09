@@ -152,6 +152,64 @@ public class RuleEngine {
     }
 
     /**
+     * 관광지 잠금 처리
+     */
+    public void lockTouristSpot(TouristSpot touristSpot, int playerIndex) {
+        touristSpot.setLocked(true);
+        touristSpot.lockedBy = playerIndex;
+    }
+
+    /**
+     * 관광지 잠금 해제 처리
+     */
+    public void unlockTouristSpot(TouristSpot touristSpot) {
+        touristSpot.setLocked(false);
+        touristSpot.lockedBy = null;
+    }
+
+    /**
+     * 특정 플레이어가 잠근 모든 관광지의 잠금 해제
+     */
+    public void unlockPlayerTouristSpots(int playerIndex) {
+        for (int i = 0; i < board.getSize(); i++) {
+            Tile tile = board.getTile(i);
+            if (tile instanceof TouristSpot) {
+                TouristSpot spot = (TouristSpot) tile;
+                // 해당 플레이어가 잠근 관광지만 해제
+                if (spot.isLocked() && spot.lockedBy != null && spot.lockedBy == playerIndex) {
+                    spot.setLocked(false);
+                    spot.lockedBy = null;
+                }
+            }
+        }
+    }
+
+    /**
+     * 관광지 인수 처리
+     * 잠금된 관광지는 인수 불가능
+     */
+    public boolean takeoverTouristSpot(Player buyer, Player seller, TouristSpot spot, int buyerIndex) {
+        if (!spot.isOwned()) {
+            return false; // 미소유 관광지는 인수 불가 (구매만 가능)
+        }
+
+        if (spot.isLocked()) {
+            return false; // 잠금된 관광지는 인수 불가
+        }
+
+        int takeoverCost = spot.price; // 관광지 인수 가격 = 원래 가격
+        if (!buyer.canAfford(takeoverCost)) {
+            return false;
+        }
+
+        buyer.pay(takeoverCost);
+        seller.earn(takeoverCost);
+        spot.owner = buyerIndex;
+
+        return true;
+    }
+
+    /**
      * 도시 업그레이드 처리
      */
     public boolean upgradeCity(Player player, City city) {

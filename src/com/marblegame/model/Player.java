@@ -11,6 +11,7 @@ public class Player {
     public int jailTurns = 0;
     public boolean bankrupt = false;
     public boolean hasRailroadTicket = false; // 전국철도 티켓 (다음 턴에 원하는 칸 선택 가능)
+    public boolean hasExtraChance = false; // 관광지 선택지로 획득한 추가 주사위 기회
 
     public Player(String name, int cash) {
         this.name = name;

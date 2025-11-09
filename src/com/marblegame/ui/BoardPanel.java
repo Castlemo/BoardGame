@@ -347,6 +347,31 @@ public class BoardPanel extends JPanel {
             g.drawLine(centerX - crossSize, centerY - crossSize, centerX + crossSize, centerY + crossSize);
             g.drawLine(centerX - crossSize, centerY + crossSize, centerX + crossSize, centerY - crossSize);
         }
+
+        // 잠금된 관광지 오버레이 (반투명 회색)
+        if (tile instanceof TouristSpot) {
+            TouristSpot touristSpot = (TouristSpot) tile;
+            if (touristSpot.isLocked()) {
+                g.setColor(new Color(60, 60, 60, 180)); // 회색 오버레이
+                g.fillRoundRect(x + padding, y + padding, tileWidth, tileHeight, arc, arc);
+
+                // 자물쇠 이모티콘 표시
+                g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 36));
+                String lockIcon = "🔒";
+                FontMetrics lockFm = g.getFontMetrics();
+                int lockWidth = lockFm.stringWidth(lockIcon);
+                int centerX = x + (BASE_TILE_SIZE - lockWidth) / 2;
+                int centerY = y + BASE_TILE_SIZE / 2 + 12;
+
+                // 자물쇠 그림자
+                g.setColor(new Color(0, 0, 0, 150));
+                g.drawString(lockIcon, centerX + 2, centerY + 2);
+
+                // 자물쇠
+                g.setColor(new Color(255, 255, 255, 230));
+                g.drawString(lockIcon, centerX, centerY);
+            }
+        }
     }
 
     private void drawLandmarkBorder(Graphics2D g, int x, int y, int width, int height, int arc) {

@@ -96,7 +96,13 @@ public class GameUI {
         frame.getActionPanel().setUpgradeListener(e -> upgradeCity());
 
         // 인수
-        frame.getActionPanel().setTakeoverListener(e -> takeoverCity());
+        frame.getActionPanel().setTakeoverListener(e -> {
+            if (currentTile instanceof City) {
+                takeoverCity();
+            } else if (currentTile instanceof TouristSpot) {
+                takeoverTouristSpot();
+            }
+        });
 
         // 패스
         frame.getActionPanel().setSkipListener(e -> skip());
@@ -178,6 +184,9 @@ public class GameUI {
         if (turnCount % 3 == 0 && currentPlayerIndex == 0) {
             executePhaseDelete();
         }
+
+        // 관광지 잠금 해제: 다음 내 턴 시작 시 자동 해제
+        ruleEngine.unlockPlayerTouristSpots(currentPlayerIndex);
 
         log("\n--- " + player.name + "의 차례 ---");
         log(String.format("%s (현금: %,d원, 위치: %d)", player.name, player.cash, player.pos));
@@ -388,9 +397,18 @@ public class GameUI {
                 double suppressProbability = getDoubleSuppressProbability(consecutiveDoubles);
                 if (Math.random() < suppressProbability) {
                     // 합계 2(1,1) 또는 12(6,6)는 더블만 가능
-                    // 이 경우 주사위 값은 유지하되 더블로 간주하지 않음
+                    // 이 경우 주사위 값을 조정하여 더블 무효화
                     if (result == 2 || result == 12) {
-                        // 주사위 값은 그대로, isDouble 플래그만 false
+                        // 주사위 값을 비더블로 조정
+                        if (result == 2) {
+                            // (1,1) → (1,2) 변환 (합계 3)
+                            tempD1 = 1;
+                            tempD2 = 2;
+                        } else {
+                            // (6,6) → (6,5) 변환 (합계 11)
+                            tempD1 = 6;
+                            tempD2 = 5;
+                        }
                         isDouble = false;
 
                         // 연속 더블 2번 이후에만 억제 다이얼로그 표시
@@ -738,22 +756,49 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
 
         if (!touristSpot.isOwned()) {
-            // 미소유 관광지
+            // 미소유 관광지 → 매입 다이얼로그 → 선택지 다이얼로그
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
-            log("(관광지는 업그레이드가 불가능합니다)");
-            state = GameState.WAITING_FOR_ACTION;
-            frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
+
+            // 매입 다이얼로그 표시
+            TouristSpotPurchaseDialog purchaseDialog = new TouristSpotPurchaseDialog(
+                frame,
+                touristSpot.name,
+                touristSpot.price,
+                player.cash
+            );
+            purchaseDialog.setVisible(true);
+
+            // 매입 처리
+            if (purchaseDialog.isConfirmed()) {
+                if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
+                    log("✅ " + touristSpot.name + "을(를) 매입했습니다!");
+                    frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
+                } else {
+                    log("❌ 매입 실패!");
+                }
+            } else {
+                log("매입을 취소했습니다.");
+            }
+
+            // 매입 성공 여부와 관계없이 선택지 다이얼로그 표시
+            showTouristSpotChoiceDialog(touristSpot, player);
+
         } else if (touristSpot.owner == currentPlayerIndex) {
-            // 본인 소유 관광지
+            // 본인 소유 관광지 → 선택지 다이얼로그만 표시
             log(touristSpot.name + "은(는) 본인 소유 관광지입니다.");
-            log("(관광지는 업그레이드가 불가능합니다)");
-            endTurn();
+            showTouristSpotChoiceDialog(touristSpot, player);
+
         } else {
             // 타인 소유 관광지
             Player owner = players[touristSpot.owner];
             int toll = ruleEngine.calculateTouristSpotToll(touristSpot);
 
             log(touristSpot.name + "은(는) " + owner.name + "의 소유 관광지입니다.");
+
+            // 잠금 여부 체크
+            if (touristSpot.isLocked()) {
+                log("🔒 이 관광지는 잠금 상태입니다! (인수 불가)");
+            }
 
             // 통행료 지불 확인 다이얼로그 (관광지는 레벨 1로 표시)
             TollPaymentDialog tollDialog = new TollPaymentDialog(
@@ -774,11 +819,60 @@ public class GameUI {
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
             frame.getOverlayPanel().showMoneyChange(touristSpot.owner, toll);
 
-            if (player.bankrupt) {
-                log(player.name + "이(가) 파산했습니다!");
-            }
+            // 잠금된 관광지는 통행료 지불 후 잠금 해제
+            if (touristSpot.isLocked()) {
+                ruleEngine.unlockTouristSpot(touristSpot);
+                log("🔓 관광지 잠금이 해제되었습니다.");
 
-            endTurn();
+                if (player.bankrupt) {
+                    log(player.name + "이(가) 파산했습니다!");
+                }
+                endTurn();
+            } else {
+                // 잠금되지 않은 경우 인수 선택지 제공
+                if (player.bankrupt) {
+                    log(player.name + "이(가) 파산했습니다!");
+                    endTurn();
+                } else {
+                    // 통행료 지불 후 인수 선택지 제공
+                    int takeoverCost = touristSpot.price;
+                    log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
+                    log("이 관광지를 인수하거나 패스하세요.");
+                    state = GameState.WAITING_FOR_ACTION;
+                    frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
+                }
+            }
+        }
+    }
+
+    /**
+     * 관광지 선택지 다이얼로그 표시 (잠금 / 주사위 한 번 더)
+     */
+    private void showTouristSpotChoiceDialog(TouristSpot touristSpot, Player player) {
+        log("행동을 선택하세요.");
+
+        TouristSpotChoiceDialog choiceDialog = new TouristSpotChoiceDialog(
+            frame,
+            touristSpot.name
+        );
+        choiceDialog.setVisible(true);
+
+        TouristSpotChoiceDialog.Choice choice = choiceDialog.getSelectedChoice();
+
+        switch (choice) {
+            case LOCK:
+                // 잠금
+                ruleEngine.lockTouristSpot(touristSpot, currentPlayerIndex);
+                log("🔒 " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
+                endTurn();
+                break;
+
+            case EXTRA_ROLL:
+                // 주사위 한 번 더
+                player.hasExtraChance = true;
+                log("🎲 추가 주사위 기회를 획득했습니다!");
+                endTurn();
+                break;
         }
     }
 
@@ -872,8 +966,26 @@ public class GameUI {
                 case 4: levelName = "랜드마크"; break;
             }
             log(city.name + "을(를) 레벨 " + city.level + "(" + levelName + " " + levelEmoji + ")로 업그레이드했습니다!");
+
+            // 랜드마크 건설 시 듀얼 마그네틱 코어 발동
             if (city.isLandmark()) {
                 log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
+
+                int landmarkPos = city.id;
+                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+
+                // 다이얼로그 표시
+                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                magneticDialog.setVisible(true);
+
+                if (pulledCount > 0) {
+                    log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+
+                    // 끌려온 플레이어들에게 통행료 징수
+                    handleMagneticTollCollection(city);
+                } else {
+                    log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+                }
             }
         } else {
             log("자금이 부족하여 업그레이드할 수 없습니다.");
@@ -913,6 +1025,52 @@ public class GameUI {
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
         } else if (city.isLandmark()) {
             log("🏛️ 랜드마크는 인수할 수 없습니다.");
+        } else {
+            log("자금이 부족하여 인수할 수 없습니다.");
+        }
+
+        endTurn();
+    }
+
+    private void takeoverTouristSpot() {
+        Player buyer = players[currentPlayerIndex];
+        TouristSpot spot = (TouristSpot) currentTile;
+        Player seller = players[spot.owner];
+
+        int takeoverCost = spot.price;
+
+        // 인수 확인 다이얼로그 (관광지는 레벨 1로 표시)
+        TakeoverConfirmDialog dialog = new TakeoverConfirmDialog(
+            frame,
+            spot.name,
+            seller.name,
+            1,  // 관광지는 레벨 개념 없음
+            takeoverCost,
+            buyer.cash
+        );
+        dialog.setVisible(true);
+
+        if (!dialog.isConfirmed()) {
+            log("관광지 인수를 취소했습니다.");
+            endTurn();
+            return;
+        }
+
+        // 인수 진행
+        if (ruleEngine.takeoverTouristSpot(buyer, seller, spot, currentPlayerIndex)) {
+            log(buyer.name + "이(가) " + seller.name + "으로부터 " + spot.name + "을(를) " +
+                String.format("%,d", takeoverCost) + "원에 인수했습니다!");
+            log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
+
+            // 자산 변동 표시
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -takeoverCost);
+            frame.getOverlayPanel().showMoneyChange(spot.owner, takeoverCost);
+
+            // 인수 후 선택지 다이얼로그 표시
+            showTouristSpotChoiceDialog(spot, buyer);
+            return; // endTurn()은 showTouristSpotChoiceDialog 내에서 호출됨
+        } else if (spot.isLocked()) {
+            log("🔒 잠금된 관광지는 인수할 수 없습니다.");
         } else {
             log("자금이 부족하여 인수할 수 없습니다.");
         }
@@ -1259,14 +1417,29 @@ public class GameUI {
     private void endTurn() {
         Player player = players[currentPlayerIndex];
 
-        // 파산 시 더블 무효화
+        // 파산 시 더블 및 Extra Chance 무효화
         if (player.bankrupt) {
-            log("💀 파산으로 인해 더블이 무효가 되었습니다.");
+            log("💀 파산으로 인해 더블과 Extra Chance가 무효가 되었습니다.");
             consecutiveDoubles = 0;
             lastD1 = 0;
             lastD2 = 0;
-            // 파산이면 더블 체크 생략하고 바로 턴 종료
+            player.hasExtraChance = false;
+            // 파산이면 더블 및 Extra Chance 체크 생략하고 바로 턴 종료
         } else {
+            // Extra Chance 체크 (더블보다 우선)
+            if (player.hasExtraChance) {
+                log("🎲 Extra Chance! 추가 주사위를 굴릴 수 있습니다!");
+                player.hasExtraChance = false; // Extra Chance 소진
+
+                // 정규 주사위 상태로 전환
+                state = GameState.WAITING_FOR_ROLL;
+                frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
+                frame.getBoardPanel().setTileClickEnabled(false);
+
+                updateDisplay();
+                return; // 턴 종료하지 않음
+            }
+
             // 더블 체크: 행동 완료 후 더블이면 추가 주사위 기회
             if (checkAndHandleDouble()) {
                 log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
