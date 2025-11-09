@@ -4,7 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * 듀얼 마그네틱 코어 효과 다이얼로그
+ * 랜드마크 마그네틱 효과 다이얼로그
  */
 public class DualMagneticDialog extends JDialog {
     // 다크 테마 색상
@@ -16,7 +16,7 @@ public class DualMagneticDialog extends JDialog {
     private static final Color HIGHLIGHT_COLOR = new Color(155, 89, 182); // 밝은 보라색
 
     public DualMagneticDialog(JFrame parent, String landmarkName, int pulledCount) {
-        super(parent, "듀얼 마그네틱 코어", true);
+        super(parent, "랜드마크 마그네틱", true);
 
         initComponents(landmarkName, pulledCount);
         pack();
@@ -47,7 +47,7 @@ public class DualMagneticDialog extends JDialog {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🧲 듀얼 마그네틱 코어");
+        JLabel titleLabel = new JLabel("🧲 랜드마크 마그네틱");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

@@ -112,7 +112,9 @@ public class DiceGauge {
      * 일반 주사위 (편향 없음)
      */
     private int rollNormal() {
-        return 2 + (int)(Math.random() * 11); // 2~12
+        int d1 = 1 + (int)(Math.random() * 6);
+        int d2 = 1 + (int)(Math.random() * 6);
+        return d1 + d2;
     }
 
     /**

@@ -413,6 +413,17 @@ public class GameUI {
         }
     }
 
+    private void clearDoubleState(String messageIfDouble) {
+        boolean wasDouble = (lastD1 == lastD2 && lastD1 > 0);
+        lastD1 = 0;
+        lastD2 = 0;
+        consecutiveDoubles = 0;
+
+        if (wasDouble && messageIfDouble != null && !messageIfDouble.isEmpty()) {
+            log(messageIfDouble);
+        }
+    }
+
     /**
      * 더블 체크 및 처리
      */
@@ -445,18 +456,7 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
-                // 더블이었는지 체크 (무효화 전에)
-                boolean wasDoubleAtStart = (lastD1 == lastD2 && lastD1 > 0);
-
-                // 더블 무효화 (START 칸에서는 더블 효과 사라짐)
-                lastD1 = 0;
-                lastD2 = 0;
-                consecutiveDoubles = 0;
-
-                if (wasDoubleAtStart) {
-                    log("🎲 더블이었지만 START 칸에서 무효가 되었습니다.");
-                }
-
+                clearDoubleState("🎲 더블이었지만 START 칸에서 무효가 되었습니다.");
                 handleStartTile();
                 break;
 
@@ -470,23 +470,12 @@ public class GameUI {
 
             case ISLAND:
                 player.jailTurns = 2; // 2턴 갇힘
-
-                // 더블이었는지 체크 (무효화 전에)
-                boolean wasDouble = (lastD1 == lastD2 && lastD1 > 0);
-
-                // 더블 무효화 (무인도에 갇히면 더블 효과 사라짐)
-                lastD1 = 0;
-                lastD2 = 0;
-                consecutiveDoubles = 0;
-
                 // 무인도 다이얼로그 표시
                 IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
                 islandDialog.setVisible(true);
 
                 log("무인도에 도착했습니다!");
-                if (wasDouble) {
-                    log("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
-                }
+                clearDoubleState("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
                 endTurn();
                 break;
@@ -523,38 +512,17 @@ public class GameUI {
                 break;
 
             case OLYMPIC:
-                // 더블이었는지 체크 (무효화 전에)
-                boolean wasDoubleAtOlympic = (lastD1 == lastD2 && lastD1 > 0);
-
-                // 더블 무효화 (올림픽 칸에서는 더블 효과 사라짐)
-                lastD1 = 0;
-                lastD2 = 0;
-                consecutiveDoubles = 0;
-
-                if (wasDoubleAtOlympic) {
-                    log("🎲 더블이었지만 올림픽 칸에서 무효가 되었습니다.");
-                }
-
+                clearDoubleState("🎲 더블이었지만 올림픽 칸에서 무효가 되었습니다.");
                 handleOlympicTile();
                 break;
 
             case WORLD_TOUR:
-                // 더블이었는지 체크 (무효화 전에)
-                boolean wasDoubleAtWorldTour = (lastD1 == lastD2 && lastD1 > 0);
-
-                // 더블 무효화 (세계여행 칸에서는 더블 효과 사라짐)
-                lastD1 = 0;
-                lastD2 = 0;
-                consecutiveDoubles = 0;
-
                 // 세계여행 다이얼로그 표시
                 WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
                 worldTourDialog.setVisible(true);
 
                 log("세계여행에 도착했습니다!");
-                if (wasDoubleAtWorldTour) {
-                    log("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
-                }
+                clearDoubleState("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true; // 전국철도와 동일한 효과
                 endTurn();
