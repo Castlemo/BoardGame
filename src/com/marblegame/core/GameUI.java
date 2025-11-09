@@ -40,6 +40,7 @@ public class GameUI {
         EVEN     // 짝수만 (2, 4, 6)
     }
     private DiceMode diceMode = DiceMode.NORMAL;
+    private static final int[][][] SUM_TO_DICE_COMBINATIONS = createSumToDiceCombinations();
 
     // 더블 시스템
     private int consecutiveDoubles = 0;  // 현재 턴에서 연속 더블 횟수
@@ -246,151 +247,10 @@ public class GameUI {
                 else result -= 1;  // 극히 드문 경우
             }
 
-            // 주사위 2개로 분할 (2~12 범위를 2D6로 변환)
-            // 더블 가능한 합계는 우선적으로 더블로 배정
-            int tempD1, tempD2;
-            boolean isDouble = false;
-
-            // 스마트 주사위 조합 선택: 각 합계에 대해 가능한 조합 중 랜덤 선택
-            // 더블은 자연스럽게 ~16-20% 확률로 나타남
-            if (result == 2) {
-                // 2: (1,1)만 가능
-                tempD1 = tempD2 = 1;
-                isDouble = true;
-            } else if (result == 3) {
-                // 3: (1,2), (2,1)
-                double rand = Math.random();
-                if (rand < 0.5) {
-                    tempD1 = 1; tempD2 = 2;
-                } else {
-                    tempD1 = 2; tempD2 = 1;
-                }
-                isDouble = false;
-            } else if (result == 4) {
-                // 4: (2,2) 33%, (1,3) 33%, (3,1) 33%
-                double rand = Math.random();
-                if (rand < 0.33) {
-                    tempD1 = tempD2 = 2;
-                    isDouble = true;
-                } else if (rand < 0.66) {
-                    tempD1 = 1; tempD2 = 3;
-                    isDouble = false;
-                } else {
-                    tempD1 = 3; tempD2 = 1;
-                    isDouble = false;
-                }
-            } else if (result == 5) {
-                // 5: (1,4), (2,3), (3,2), (4,1)
-                double rand = Math.random();
-                if (rand < 0.25) {
-                    tempD1 = 1; tempD2 = 4;
-                } else if (rand < 0.5) {
-                    tempD1 = 2; tempD2 = 3;
-                } else if (rand < 0.75) {
-                    tempD1 = 3; tempD2 = 2;
-                } else {
-                    tempD1 = 4; tempD2 = 1;
-                }
-                isDouble = false;
-            } else if (result == 6) {
-                // 6: (3,3) 20%, (1,5) 20%, (2,4) 20%, (4,2) 20%, (5,1) 20%
-                double rand = Math.random();
-                if (rand < 0.2) {
-                    tempD1 = tempD2 = 3;
-                    isDouble = true;
-                } else if (rand < 0.4) {
-                    tempD1 = 1; tempD2 = 5;
-                    isDouble = false;
-                } else if (rand < 0.6) {
-                    tempD1 = 2; tempD2 = 4;
-                    isDouble = false;
-                } else if (rand < 0.8) {
-                    tempD1 = 4; tempD2 = 2;
-                    isDouble = false;
-                } else {
-                    tempD1 = 5; tempD2 = 1;
-                    isDouble = false;
-                }
-            } else if (result == 7) {
-                // 7: (1,6), (2,5), (3,4), (4,3), (5,2), (6,1)
-                double rand = Math.random();
-                if (rand < 0.167) {
-                    tempD1 = 1; tempD2 = 6;
-                } else if (rand < 0.334) {
-                    tempD1 = 2; tempD2 = 5;
-                } else if (rand < 0.5) {
-                    tempD1 = 3; tempD2 = 4;
-                } else if (rand < 0.667) {
-                    tempD1 = 4; tempD2 = 3;
-                } else if (rand < 0.834) {
-                    tempD1 = 5; tempD2 = 2;
-                } else {
-                    tempD1 = 6; tempD2 = 1;
-                }
-                isDouble = false;
-            } else if (result == 8) {
-                // 8: (4,4) 20%, (2,6) 20%, (3,5) 20%, (5,3) 20%, (6,2) 20%
-                double rand = Math.random();
-                if (rand < 0.2) {
-                    tempD1 = tempD2 = 4;
-                    isDouble = true;
-                } else if (rand < 0.4) {
-                    tempD1 = 2; tempD2 = 6;
-                    isDouble = false;
-                } else if (rand < 0.6) {
-                    tempD1 = 3; tempD2 = 5;
-                    isDouble = false;
-                } else if (rand < 0.8) {
-                    tempD1 = 5; tempD2 = 3;
-                    isDouble = false;
-                } else {
-                    tempD1 = 6; tempD2 = 2;
-                    isDouble = false;
-                }
-            } else if (result == 9) {
-                // 9: (3,6), (4,5), (5,4), (6,3)
-                double rand = Math.random();
-                if (rand < 0.25) {
-                    tempD1 = 3; tempD2 = 6;
-                } else if (rand < 0.5) {
-                    tempD1 = 4; tempD2 = 5;
-                } else if (rand < 0.75) {
-                    tempD1 = 5; tempD2 = 4;
-                } else {
-                    tempD1 = 6; tempD2 = 3;
-                }
-                isDouble = false;
-            } else if (result == 10) {
-                // 10: (5,5) 33%, (4,6) 33%, (6,4) 33%
-                double rand = Math.random();
-                if (rand < 0.33) {
-                    tempD1 = tempD2 = 5;
-                    isDouble = true;
-                } else if (rand < 0.66) {
-                    tempD1 = 4; tempD2 = 6;
-                    isDouble = false;
-                } else {
-                    tempD1 = 6; tempD2 = 4;
-                    isDouble = false;
-                }
-            } else if (result == 11) {
-                // 11: (5,6), (6,5)
-                double rand = Math.random();
-                if (rand < 0.5) {
-                    tempD1 = 5; tempD2 = 6;
-                } else {
-                    tempD1 = 6; tempD2 = 5;
-                }
-                isDouble = false;
-            } else if (result == 12) {
-                // 12: (6,6)만 가능
-                tempD1 = tempD2 = 6;
-                isDouble = true;
-            } else {
-                // 범위 밖 (안전장치)
-                tempD1 = 1; tempD2 = 1;
-                isDouble = true;
-            }
+            int[] dicePair = getRandomDicePairForSum(result);
+            int tempD1 = dicePair[0];
+            int tempD2 = dicePair[1];
+            boolean isDouble = (tempD1 == tempD2);
 
             // 더블 확률 억제 시스템 (연속 더블 횟수에 따라)
             // 첫 번째 주사위: 60%, 두 번째: 20%, 세 번째: 0%
@@ -430,13 +290,7 @@ public class GameUI {
                             showSuppressionDialog = true;
                         }
 
-                        if (consecutiveDoubles == 0) {
-                            log("🎲 더블 억제 발동! (60% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
-                        } else if (consecutiveDoubles == 1) {
-                            log("🎲 더블 억제 발동! (20% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
-                        } else {
-                            log("🎲 더블 억제 발동! (0% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
-                        }
+                        logDoubleSuppression(originalResult, tempD1 + tempD2);
                     } else {
                         // 강제로 비더블로 변환 (±1 조정)
                         if (tempD1 > 1) {
@@ -447,13 +301,7 @@ public class GameUI {
                             tempD2 -= 1;
                         }
                         isDouble = false;
-                        if (consecutiveDoubles == 0) {
-                            log("🎲 더블 억제 발동! (60% 확률)");
-                        } else if (consecutiveDoubles == 1) {
-                            log("🎲 더블 억제 발동! (20% 확률)");
-                        } else {
-                            log("🎲 더블 억제 발동! (0% 확률)");
-                        }
+                        logDoubleSuppression(originalResult, tempD1 + tempD2);
                     }
                 }
             }
@@ -503,6 +351,34 @@ public class GameUI {
         }
     }
 
+    private static int[][][] createSumToDiceCombinations() {
+        int[][][] combos = new int[13][][];
+        combos[2] = new int[][]{{1, 1}};
+        combos[3] = new int[][]{{1, 2}, {2, 1}};
+        combos[4] = new int[][]{{1, 3}, {2, 2}, {3, 1}};
+        combos[5] = new int[][]{{1, 4}, {2, 3}, {3, 2}, {4, 1}};
+        combos[6] = new int[][]{{1, 5}, {2, 4}, {3, 3}, {4, 2}, {5, 1}};
+        combos[7] = new int[][]{{1, 6}, {2, 5}, {3, 4}, {4, 3}, {5, 2}, {6, 1}};
+        combos[8] = new int[][]{{2, 6}, {3, 5}, {4, 4}, {5, 3}, {6, 2}};
+        combos[9] = new int[][]{{3, 6}, {4, 5}, {5, 4}, {6, 3}};
+        combos[10] = new int[][]{{4, 6}, {5, 5}, {6, 4}};
+        combos[11] = new int[][]{{5, 6}, {6, 5}};
+        combos[12] = new int[][]{{6, 6}};
+        return combos;
+    }
+
+    private int[] getRandomDicePairForSum(int sum) {
+        if (sum < 2 || sum > 12) {
+            return new int[]{1, 1};
+        }
+        int[][] combos = SUM_TO_DICE_COMBINATIONS[sum];
+        if (combos == null || combos.length == 0) {
+            return new int[]{1, 1};
+        }
+        int idx = (int)(Math.random() * combos.length);
+        return combos[idx];
+    }
+
     /**
      * 더블 억제 확률 계산
      * @param consecutiveCount 연속 더블 횟수
@@ -513,6 +389,27 @@ public class GameUI {
             case 0: return 0.4;    // 1차 더블: 40% 억제 (60% 더블 가능)
             case 1: return 0.8;    // 2차 더블: 80% 억제 (20% 더블 가능)
             default: return 1.0;   // 3차 이상: 100% 억제 (0% 더블 가능)
+        }
+    }
+
+    private void logDoubleSuppression(int originalSum, int newSum) {
+        String probabilityText;
+        switch (consecutiveDoubles) {
+            case 0:
+                probabilityText = "60% 확률";
+                break;
+            case 1:
+                probabilityText = "20% 확률";
+                break;
+            default:
+                probabilityText = "0% 확률";
+                break;
+        }
+
+        if (originalSum > 0 && newSum > 0) {
+            log("🎲 더블 억제 발동! (" + probabilityText + ") - 합계 " + originalSum + " → " + newSum);
+        } else {
+            log("🎲 더블 억제 발동! (" + probabilityText + ")");
         }
     }
 
