@@ -95,20 +95,16 @@ public class DiceGauge {
     private int rollBiased(int section) {
         if (section == 1) {
             // S1 (0-25%, 노란색): 2~4만 100% 확률
-            int sum = 2 + (int)(Math.random() * 3); // 2, 3, 4 중 선택
-            return sum;
+            return 2 + (int)(Math.random() * 3); // 2,3,4
         } else if (section == 2) {
-            // S2 (25-50%, 연주황색): 5~7만 100% 확률
-            int sum = 5 + (int)(Math.random() * 3); // 5, 6, 7 중 선택
-            return sum;
+            // S2 (25-50%, 연주황색): 4~6만 100% 확률
+            return 4 + (int)(Math.random() * 3); // 4,5,6
         } else if (section == 3) {
-            // S3 (50-75%, 주황색): 8~10만 100% 확률
-            int sum = 8 + (int)(Math.random() * 3); // 8, 9, 10 중 선택
-            return sum;
+            // S3 (50-75%, 주황색): 7~10만 100% 확률
+            return 7 + (int)(Math.random() * 4); // 7,8,9,10
         } else {
-            // S4 (75-100%, 빨간색): 11~12만 100% 확률
-            int sum = 11 + (int)(Math.random() * 2); // 11, 12 중 선택
-            return sum;
+            // S4 (75-100%, 빨간색): 9~12만 100% 확률
+            return 9 + (int)(Math.random() * 4); // 9,10,11,12
         }
     }
 

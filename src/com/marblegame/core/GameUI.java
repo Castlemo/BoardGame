@@ -233,6 +233,8 @@ public class GameUI {
 
             log("🎯 구간: " + sectionName);
 
+            int originalResult = result;
+
             // 홀수/짝수 필터 적용 (결과값 자체를 홀수/짝수로 조정)
             if (diceMode == DiceMode.ODD && result % 2 == 0) {
                 // 짝수 결과를 홀수로 변경 (±1)
@@ -401,13 +403,25 @@ public class GameUI {
                     if (result == 2 || result == 12) {
                         // 주사위 값을 비더블로 조정
                         if (result == 2) {
-                            // (1,1) → (1,2) 변환 (합계 3)
-                            tempD1 = 1;
-                            tempD2 = 2;
+                            if (diceMode == DiceMode.EVEN) {
+                                // 짝수 모드에서는 합계가 짝수로 유지되도록 (1,3)으로 조정
+                                tempD1 = 1;
+                                tempD2 = 3;
+                            } else {
+                                // 기본 동작: (1,2)로 조정 (합계 3)
+                                tempD1 = 1;
+                                tempD2 = 2;
+                            }
                         } else {
-                            // (6,6) → (6,5) 변환 (합계 11)
-                            tempD1 = 6;
-                            tempD2 = 5;
+                            if (diceMode == DiceMode.EVEN) {
+                                // 짝수 모드에서는 합계가 짝수로 유지되도록 (6,4)로 조정
+                                tempD1 = 6;
+                                tempD2 = 4;
+                            } else {
+                                // 기본 동작: (6,5)로 조정 (합계 11)
+                                tempD1 = 6;
+                                tempD2 = 5;
+                            }
                         }
                         isDouble = false;
 
@@ -417,11 +431,11 @@ public class GameUI {
                         }
 
                         if (consecutiveDoubles == 0) {
-                            log("🎲 더블 억제 발동! (60% 확률) - 합계 " + result);
+                            log("🎲 더블 억제 발동! (60% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
                         } else if (consecutiveDoubles == 1) {
-                            log("🎲 더블 억제 발동! (20% 확률) - 합계 " + result);
+                            log("🎲 더블 억제 발동! (20% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
                         } else {
-                            log("🎲 더블 억제 발동! (0% 확률) - 합계 " + result);
+                            log("🎲 더블 억제 발동! (0% 확률) - 합계 " + originalResult + " → " + (tempD1 + tempD2));
                         }
                     } else {
                         // 강제로 비더블로 변환 (±1 조정)
@@ -447,7 +461,7 @@ public class GameUI {
             // final 변수로 복사 (람다 사용을 위해)
             final int finalD1 = tempD1;
             final int finalD2 = tempD2;
-            final int finalResult = result;
+            final int finalResult = finalD1 + finalD2;
             final boolean finalIsDouble = isDouble;
             final boolean finalShowSuppressionDialog = showSuppressionDialog;
             final int finalConsecutiveDoubles = consecutiveDoubles;
@@ -481,9 +495,10 @@ public class GameUI {
      */
     private String getSectionName(int section) {
         switch (section) {
-            case 1: return "S1 (2~5 우대)";
-            case 2: return "S2 (6~9 우대)";
-            case 3: return "S3 (10~12 우대)";
+            case 1: return "S1 (2~4 우대)";
+            case 2: return "S2 (4~6 우대)";
+            case 3: return "S3 (7~10 우대)";
+            case 4: return "S4 (9~12 우대)";
             default: return "Unknown";
         }
     }
@@ -1642,6 +1657,7 @@ public class GameUI {
             if (movementCurrentTile == 0) {
                 ruleEngine.paySalary(movementPlayer);
                 log("출발지를 통과하여 월급 " + String.format("%,d", ruleEngine.getSalary()) + "원을 받았습니다!");
+                frame.getOverlayPanel().showMoneyChange(movementPlayerIndex, ruleEngine.getSalary());
             }
 
             frame.getBoardPanel().updateBoard();
