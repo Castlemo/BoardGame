@@ -177,8 +177,7 @@ public class RuleEngine {
                 TouristSpot spot = (TouristSpot) tile;
                 // 해당 플레이어가 잠근 관광지만 해제
                 if (spot.isLocked() && spot.lockedBy != null && spot.lockedBy.intValue() == playerIndex) {
-                    spot.setLocked(false);
-                    spot.lockedBy = null;
+                    unlockTouristSpot(spot);
                 }
             }
         }
