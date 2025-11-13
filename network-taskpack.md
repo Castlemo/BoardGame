@@ -48,3 +48,21 @@
 - **Problem**: 이전에는 버전 협상 없이 곧바로 메시지를 주고받아 호스트/클라이언트 빌드가 다르면 즉시 예외가 발생하고, 서버는 원인을 모른 채 연결을 닫았다.
 - **Resolution**: `HELLO/WELCOME/REJECT` 메시지 타입을 추가하고, 클라이언트는 연결 직후 HELLO(프로토콜 버전)를 전송한 뒤 WELCOME을 받을 때까지 대기한다. 서버는 첫 메시지로 HELLO를 강제하고, 버전이 다르면 REJECT 이유를 전달한 뒤 연결을 종료한다. 스냅샷/하트비트 브로드캐스트는 핸드셰이크가 완료된 클라이언트에게만 전송된다. (역압은 추후 별도 과제로 남김)
 - **References**: `src/com/marblegame/network/message/MessageType.java:1-10`, `src/com/marblegame/network/ClientNetworkService.java:1-320`, `src/com/marblegame/network/HostNetworkService.java:1-240`
+
+## Next Tasks (Pending)
+
+### N1. 호스트 다이얼로그 클라이언트 동기화
+- **Objective**: 호스트에서 뜨는 게임 다이얼로그(주사위, 보물, 선택지 등)를 클라이언트에서도 동일하게 표시
+- **Scope**: 호스트의 다이얼로그 표시 시점에 클라이언트로 메시지 전송하여 동일 다이얼로그 렌더링
+
+### N2. 턴 대기 상태 메시지
+- **Objective**: 다른 플레이어의 턴일 때 대기 중인 플레이어에게 "다른 플레이어가 플레이중..." 메시지 표시
+- **Scope**: 다이얼로그는 표시하지 않고, UI 오버레이나 라벨로 대기 상태 알림
+
+### N3. 로비 UI 개선
+- **Objective**: 게임 시작 전 대기 로비 화면 개선
+- **Scope**: 플레이어 목록, 연결 상태, 준비 버튼 등 UX 향상
+
+### N4. 네트워크 모듈 최적화 및 리스크 제거
+- **Objective**: 기존 네트워크 계층의 잠재적 버그 제거 및 성능 최적화
+- **Scope**: 중복 코드 정리, 스레드 안전성 검토, 메모리 누수 방지, 예외 처리 보강
