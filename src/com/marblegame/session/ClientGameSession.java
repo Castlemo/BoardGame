@@ -31,9 +31,11 @@ public class ClientGameSession implements GameSession {
     public void start() {
         disconnecting = false;
         clientService = new ClientNetworkService(host, port);
+        lobbyFrame = new ClientLobbyFrame(clientService);
         try {
             clientService.connect();
         } catch (IOException ex) {
+            disposeLobbyFrameAsync();
             JOptionPane.showMessageDialog(
                 null,
                 "호스트에 연결할 수 없습니다:\n" + ex.getMessage(),
@@ -44,6 +46,7 @@ public class ClientGameSession implements GameSession {
         }
 
         if (!clientService.send(new NetworkMessage(MessageType.LOG_ENTRY, "클라이언트가 접속했습니다."))) {
+            disposeLobbyFrameAsync();
             JOptionPane.showMessageDialog(
                 null,
                 "호스트에 초기 메시지를 전송하지 못했습니다. 연결이 끊어졌을 수 있습니다.",
@@ -55,7 +58,6 @@ public class ClientGameSession implements GameSession {
         }
 
         remoteUI = new RemoteGameUI(clientService, this::handleClientDisconnect);
-        lobbyFrame = new ClientLobbyFrame(clientService);
         SwingUtilities.invokeLater(() -> lobbyFrame.setVisible(true));
     }
 
@@ -91,6 +93,17 @@ public class ClientGameSession implements GameSession {
         }
         if (clientService != null) {
             clientService.disconnect();
+        }
+    }
+
+    private void disposeLobbyFrameAsync() {
+        if (lobbyFrame != null) {
+            SwingUtilities.invokeLater(() -> {
+                if (lobbyFrame != null) {
+                    lobbyFrame.dispose();
+                    lobbyFrame = null;
+                }
+            });
         }
     }
 }
