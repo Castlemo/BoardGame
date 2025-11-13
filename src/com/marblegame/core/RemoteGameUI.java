@@ -10,6 +10,8 @@ import com.marblegame.model.Tile;
 import com.marblegame.model.TouristSpot;
 import com.marblegame.network.ClientNetworkService;
 import com.marblegame.network.listener.ServerMessageListener;
+import com.marblegame.network.message.DialogCommandPayload;
+import com.marblegame.network.message.DialogResponsePayload;
 import com.marblegame.network.message.DialogSyncCodec;
 import com.marblegame.network.message.DialogSyncPayload;
 import com.marblegame.network.message.DialogType;
@@ -78,6 +80,8 @@ public class RemoteGameUI {
             handleDialogSync(message.getPayload());
         } else if (message.getType() == MessageType.SLOT_ASSIGNMENT) {
             handleSlotAssignment(message.getPayload());
+        } else if (message.getType() == MessageType.DIALOG_COMMAND) {
+            handleDialogCommand(message.getPayload());
         }
     }
 
@@ -102,6 +106,23 @@ public class RemoteGameUI {
             SwingUtilities.invokeLater(() -> applySlotAssignment(assignment));
         } catch (IllegalArgumentException ex) {
             System.err.println("[Client] 슬롯 배정 파싱 실패: " + ex.getMessage());
+        }
+    }
+
+    private void handleDialogCommand(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return;
+        }
+        try {
+            DialogCommandPayload command = DialogCommandPayload.decode(payload);
+            if (assignedPlayerIndex >= 0 && command.getPlayerIndex() != assignedPlayerIndex) {
+                return;
+            }
+            System.out.println("[Client] 다이얼로그 명령 수신: " + command.getDialogType() +
+                " request=" + command.getRequestId());
+            // TODO: 추후 실제 다이얼로그 표시 및 응답 전송 구현
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Client] 다이얼로그 명령 파싱 실패: " + ex.getMessage());
         }
     }
 

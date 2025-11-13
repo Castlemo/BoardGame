@@ -19,6 +19,8 @@ import com.marblegame.network.HostNetworkService;
 import com.marblegame.network.lobby.LobbyState;
 import com.marblegame.network.lobby.LobbyStateCodec;
 import com.marblegame.network.lobby.LobbyStateView;
+import com.marblegame.network.message.DialogCommandPayload;
+import com.marblegame.network.message.DialogResponsePayload;
 import com.marblegame.network.message.DialogSyncCodec;
 import com.marblegame.network.message.DialogSyncPayload;
 import com.marblegame.network.message.DialogType;
@@ -30,6 +32,12 @@ import com.marblegame.network.message.SlotAssignmentPayload;
 import com.marblegame.network.message.SlotRequestPayload;
 import com.marblegame.network.snapshot.GameSnapshot;
 import com.marblegame.network.snapshot.GameSnapshotSerializer;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class GameUI implements PlayerInputSink {
     private final Board board;
@@ -99,6 +107,8 @@ public class GameUI implements PlayerInputSink {
     private boolean waitingForReadyGate = false;
     private boolean hostStartConfirmed = true;
     private boolean hostStartRequired = false;
+    private final Map<String, Consumer<DialogResponsePayload>> pendingDialogResponses = new ConcurrentHashMap<>();
+    private final AtomicLong dialogRequestSeq = new AtomicLong();
 
     public GameUI(int numPlayers, int initialCash) {
         this(numPlayers, initialCash, null);
@@ -290,6 +300,11 @@ public class GameUI implements PlayerInputSink {
             frame.getOverlayPanel().hideWaitingMessage();
         }
         SwingUtilities.invokeLater(this::startTurn);
+    }
+
+    private String nextDialogRequestId(int playerIndex) {
+        long seq = dialogRequestSeq.incrementAndGet();
+        return "dlg-" + playerIndex + "-" + seq;
     }
 
     private void setActionButtons(boolean roll, boolean purchase, boolean upgrade,
@@ -2068,6 +2083,9 @@ public class GameUI implements PlayerInputSink {
             case READY_STATUS:
                 handleReadyStatusMessage(clientId, message.getPayload());
                 break;
+            case DIALOG_RESPONSE:
+                handleDialogResponse(clientId, message.getPayload());
+                break;
             default:
                 break;
         }
@@ -2209,5 +2227,88 @@ public class GameUI implements PlayerInputSink {
         } catch (IllegalArgumentException ex) {
             System.err.println("[Host] 준비 상태 파싱 실패: " + ex.getMessage());
         }
+    }
+
+    private void handleDialogResponse(String clientId, String payload) {
+        try {
+            DialogResponsePayload response = DialogResponsePayload.decode(payload);
+            Consumer<DialogResponsePayload> handler = pendingDialogResponses.remove(response.getRequestId());
+            if (handler != null) {
+                SwingUtilities.invokeLater(() -> handler.accept(response));
+            } else {
+                System.err.println("[Host] 알 수 없는 다이얼로그 응답(" + response.getRequestId() + ") from " + clientId);
+            }
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Host] 다이얼로그 응답 파싱 실패: " + ex.getMessage());
+        }
+    }
+
+    private boolean shouldShowLocalDialogForPlayer(int playerIndex) {
+        if (lobbyState == null) {
+            return true;
+        }
+        if (playerIndex < 0 || playerIndex >= players.length) {
+            return true;
+        }
+        return lobbyState.getClientIdForSlot(playerIndex) == null;
+    }
+
+    private void showLocalDialogForPlayer(int playerIndex, Runnable dialogTask) {
+        if (dialogTask == null) {
+            return;
+        }
+        if (shouldShowLocalDialogForPlayer(playerIndex)) {
+            dialogTask.run();
+        }
+    }
+
+    private CompletableFuture<DialogResponsePayload> requestDialogFromPlayer(
+        int playerIndex,
+        DialogType dialogType,
+        Map<String, String> attributes,
+        Supplier<DialogResponsePayload> localHandler
+    ) {
+        if (shouldShowLocalDialogForPlayer(playerIndex)) {
+            if (localHandler == null) {
+                return CompletableFuture.completedFuture(
+                    new DialogResponsePayload(
+                        "local-" + dialogType.name(),
+                        dialogType,
+                        playerIndex,
+                        "",
+                        attributes
+                    )
+                );
+            }
+            try {
+                DialogResponsePayload localResponse = localHandler.get();
+                return CompletableFuture.completedFuture(localResponse);
+            } catch (Exception ex) {
+                CompletableFuture<DialogResponsePayload> failed = new CompletableFuture<>();
+                failed.completeExceptionally(ex);
+                return failed;
+            }
+        }
+        if (hostNetworkService == null || lobbyState == null) {
+            CompletableFuture<DialogResponsePayload> failed = new CompletableFuture<>();
+            failed.completeExceptionally(new IllegalStateException("host network unavailable"));
+            return failed;
+        }
+        String clientId = lobbyState.getClientIdForSlot(playerIndex);
+        if (clientId == null) {
+            CompletableFuture<DialogResponsePayload> failed = new CompletableFuture<>();
+            failed.completeExceptionally(new IllegalStateException("no remote client for slot " + playerIndex));
+            return failed;
+        }
+        String requestId = nextDialogRequestId(playerIndex);
+        CompletableFuture<DialogResponsePayload> future = new CompletableFuture<>();
+        pendingDialogResponses.put(requestId, response -> future.complete(response));
+        DialogCommandPayload payload = new DialogCommandPayload(requestId, dialogType, playerIndex, attributes);
+        hostNetworkService.sendTo(
+            clientId,
+            new NetworkMessage(MessageType.DIALOG_COMMAND, DialogCommandPayload.encode(payload))
+        );
+        future.whenComplete((res, err) -> pendingDialogResponses.remove(requestId));
+        return future;
     }
 }

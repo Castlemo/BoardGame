@@ -12,5 +12,7 @@ public enum MessageType {
     LOBBY_STATE,
     SLOT_REQUEST,
     SLOT_ASSIGNMENT,
-    READY_STATUS
+    READY_STATUS,
+    DIALOG_COMMAND,
+    DIALOG_RESPONSE
 }
