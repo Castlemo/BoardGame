@@ -1,20 +1,17 @@
 package com.marblegame;
 
-import com.marblegame.core.GameUI;
+import com.marblegame.ui.LauncherFrame;
 import javax.swing.SwingUtilities;
 
 /**
- * 게임 진입점
+ * 애플리케이션 진입점.
+ * 실행 즉시 호스트/클라이언트 모드를 고르는 런처를 띄운다.
  */
 public class Main {
     public static void main(String[] args) {
-        // 게임 설정
-        int numPlayers = 2;
-        int initialCash = 1500000;
-
-        // Swing UI는 EDT(Event Dispatch Thread)에서 실행
         SwingUtilities.invokeLater(() -> {
-            new GameUI(numPlayers, initialCash);
+            LauncherFrame launcher = new LauncherFrame();
+            launcher.setVisible(true);
         });
     }
 }

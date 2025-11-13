@@ -1,17 +1,29 @@
 package com.marblegame.core;
 
+import com.marblegame.core.input.LocalPlayerInputRouter;
+import com.marblegame.core.input.PlayerInputEvent;
+import com.marblegame.core.input.PlayerInputSink;
+import com.marblegame.core.input.PlayerInputType;
 import com.marblegame.model.*;
 import com.marblegame.ui.*;
 import javax.swing.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import java.util.List;
 
 /**
  * UI 버전 게임 컨트롤러
  */
-public class GameUI {
+import com.marblegame.network.HostNetworkService;
+import com.marblegame.network.listener.ClientMessageListener;
+import com.marblegame.network.message.MessageType;
+import com.marblegame.network.message.NetworkMessage;
+import com.marblegame.network.message.RemoteActionCodec;
+import com.marblegame.network.snapshot.GameSnapshot;
+import com.marblegame.network.snapshot.GameSnapshotSerializer;
+
+public class GameUI implements PlayerInputSink {
     private final Board board;
     private final RuleEngine ruleEngine;
     private final Player[] players;
@@ -63,11 +75,27 @@ public class GameUI {
     private Point2D.Double movementStartPoint;
     private Point2D.Double movementEndPoint;
 
+    private final HostNetworkService hostNetworkService;
+    private Timer snapshotTimer;
+    private int diceRollSequence = 0;
+    private boolean tileSelectionEnabled = false;
+    private boolean rollButtonActive;
+    private boolean purchaseButtonActive;
+    private boolean upgradeButtonActive;
+    private boolean takeoverButtonActive;
+    private boolean skipButtonActive;
+    private boolean escapeButtonActive;
+
     public GameUI(int numPlayers, int initialCash) {
+        this(numPlayers, initialCash, null);
+    }
+
+    public GameUI(int numPlayers, int initialCash, HostNetworkService hostNetworkService) {
         this.board = new Board();
         this.ruleEngine = new RuleEngine(board);
         this.players = new Player[numPlayers];
         this.dice = new Dice();
+        this.hostNetworkService = hostNetworkService;
 
         // 플레이어 초기화
         for (int i = 0; i < numPlayers; i++) {
@@ -76,7 +104,34 @@ public class GameUI {
 
         // UI 초기화
         frame = new GameFrame(board, java.util.Arrays.asList(players));
-        setupEventHandlers();
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (snapshotTimer != null) {
+                    snapshotTimer.stop();
+                }
+            }
+        });
+        new LocalPlayerInputRouter(frame, this);
+        if (hostNetworkService != null) {
+            hostNetworkService.setMessageListener(this::handleClientMessage);
+            hostNetworkService.setClientLifecycleListener(new HostNetworkService.ClientLifecycleListener() {
+                @Override
+                public void onClientConnected(String clientId) {
+                    SwingUtilities.invokeLater(() ->
+                        log("[네트워크] 클라이언트 연결: " + clientId)
+                    );
+                }
+
+                @Override
+                public void onClientDisconnected(String clientId, String reason) {
+                    SwingUtilities.invokeLater(() ->
+                        log("[네트워크] 클라이언트 연결 종료(" + clientId + "): " + reason)
+                    );
+                }
+            });
+            startSnapshotTimer();
+        }
 
         frame.setVisible(true);
         frame.getControlPanel().addLog("=== 모두의 마블 게임 시작 ===");
@@ -86,85 +141,111 @@ public class GameUI {
         startTurn();
     }
 
-    private void setupEventHandlers() {
-        // 주사위 굴리기 - press-and-hold 이벤트
-        setupDiceButtonPressAndHold();
-
-        // 매입
-        frame.getActionPanel().setPurchaseListener(e -> purchaseCity());
-
-        // 업그레이드
-        frame.getActionPanel().setUpgradeListener(e -> upgradeCity());
-
-        // 인수
-        frame.getActionPanel().setTakeoverListener(e -> {
-            if (currentTile instanceof City) {
-                takeoverCity();
-            } else if (currentTile instanceof TouristSpot) {
-                takeoverTouristSpot();
-            }
-        });
-
-        // 패스
-        frame.getActionPanel().setSkipListener(e -> skip());
-
-        // 보석금 탈출
-        frame.getActionPanel().setEscapeListener(e -> escapeWithBail());
-
-        // 홀수/짝수 선택
-        frame.getOverlayPanel().getOddButton().addActionListener(e -> {
-            if (diceMode == DiceMode.ODD) {
-                // 이미 선택된 경우 해제
-                diceMode = DiceMode.NORMAL;
-                log("일반 주사위 모드");
-            } else {
-                diceMode = DiceMode.ODD;
-                log("🔢 홀수 주사위 모드 선택 (1, 3, 5만 나옴)");
-            }
-            updateOddEvenButtons();
-        });
-
-        frame.getOverlayPanel().getEvenButton().addActionListener(e -> {
-            if (diceMode == DiceMode.EVEN) {
-                // 이미 선택된 경우 해제
-                diceMode = DiceMode.NORMAL;
-                log("일반 주사위 모드");
-            } else {
-                diceMode = DiceMode.EVEN;
-                log("🔢 짝수 주사위 모드 선택 (2, 4, 6만 나옴)");
-            }
-            updateOddEvenButtons();
-        });
-
-        // 보드 타일 클릭 (전국철도 선택용)
-        frame.getBoardPanel().setTileClickListener(tileIndex -> onTileSelected(tileIndex));
+    private void startSnapshotTimer() {
+        if (snapshotTimer != null) {
+            snapshotTimer.stop();
+        }
+        snapshotTimer = new Timer(300, e -> broadcastSnapshot());
+        snapshotTimer.setRepeats(true);
+        snapshotTimer.start();
     }
 
-    /**
-     * 주사위 버튼에 press-and-hold 이벤트 설정
-     */
-    private void setupDiceButtonPressAndHold() {
+    private void setActionButtons(boolean roll, boolean purchase, boolean upgrade,
+                                  boolean takeover, boolean skip, boolean escape) {
+        rollButtonActive = roll;
+        purchaseButtonActive = purchase;
+        upgradeButtonActive = upgrade;
+        takeoverButtonActive = takeover;
+        skipButtonActive = skip;
+        escapeButtonActive = escape;
+        frame.getActionPanel().setButtonsEnabled(roll, purchase, upgrade, takeover, skip, escape);
+    }
+
+    private void setTileSelectionEnabled(boolean enabled) {
+        tileSelectionEnabled = enabled;
+        frame.getBoardPanel().setTileClickEnabled(enabled);
+    }
+
+    @Override
+    public void handlePlayerInput(PlayerInputEvent event) {
+        switch (event.getType()) {
+            case GAUGE_PRESS:
+                onGaugePressed();
+                break;
+            case GAUGE_RELEASE:
+                onGaugeReleased();
+                break;
+            case PURCHASE_CITY:
+                purchaseCity();
+                break;
+            case UPGRADE_CITY:
+                upgradeCity();
+                break;
+            case TAKEOVER:
+                handleTakeover();
+                break;
+            case SKIP_TURN:
+                skip();
+                break;
+            case PAY_BAIL:
+                escapeWithBail();
+                break;
+            case TOGGLE_ODD_MODE:
+                toggleOddMode();
+                break;
+            case TOGGLE_EVEN_MODE:
+                toggleEvenMode();
+                break;
+            case TILE_SELECTED:
+                onTileSelected(event.requireIntValue());
+                break;
+        }
+    }
+
+    private void onGaugePressed() {
         JButton diceButton = frame.getActionPanel().getRollDiceButton();
+        if (diceButton.isEnabled()) {
+            frame.getActionPanel().getDiceGauge().start();
+            frame.getActionPanel().startGaugeAnimation();
+            log("🎯 게이지 타이밍을 잡으세요!");
+        }
+    }
 
-        diceButton.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (diceButton.isEnabled()) {
-                    // 게이지 시작
-                    frame.getActionPanel().getDiceGauge().start();
-                    frame.getActionPanel().startGaugeAnimation();
-                    log("🎯 게이지 타이밍을 잡으세요!");
-                }
-            }
+    private void onGaugeReleased() {
+        JButton diceButton = frame.getActionPanel().getRollDiceButton();
+        if (diceButton.isEnabled() && frame.getActionPanel().getDiceGauge().isRunning()) {
+            rollDiceWithGauge();
+        }
+    }
 
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                if (diceButton.isEnabled() && frame.getActionPanel().getDiceGauge().isRunning()) {
-                    // 게이지 정지 및 주사위 굴리기
-                    rollDiceWithGauge();
-                }
-            }
-        });
+    private void handleTakeover() {
+        if (currentTile instanceof City) {
+            takeoverCity();
+        } else if (currentTile instanceof TouristSpot) {
+            takeoverTouristSpot();
+        }
+    }
+
+    private void toggleOddMode() {
+        if (diceMode == DiceMode.ODD) {
+            diceMode = DiceMode.NORMAL;
+            log("일반 주사위 모드");
+        } else {
+            diceMode = DiceMode.ODD;
+            log("🔢 홀수 주사위 모드 선택 (1, 3, 5만 나옴)");
+        }
+        updateOddEvenButtons();
+    }
+
+    private void toggleEvenMode() {
+        if (diceMode == DiceMode.EVEN) {
+            diceMode = DiceMode.NORMAL;
+            log("일반 주사위 모드");
+        } else {
+            diceMode = DiceMode.EVEN;
+            log("🔢 짝수 주사위 모드 선택 (2, 4, 6만 나옴)");
+        }
+        updateOddEvenButtons();
     }
 
     private void startTurn() {
@@ -194,14 +275,14 @@ public class GameUI {
 
         if (player.isInJail()) {
             state = GameState.WAITING_FOR_JAIL_CHOICE;
-            frame.getActionPanel().setButtonsEnabled(false, false, false, false, true, true);
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setActionButtons(false, false, false, false, true, true);
+            setTileSelectionEnabled(false);
             log("무인도에 갇혀있습니다. (남은 턴: " + player.jailTurns + ")");
             log("💰 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
         } else if (player.hasRailroadTicket) {
             state = GameState.WAITING_FOR_RAILROAD_SELECTION;
-            frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
-            frame.getBoardPanel().setTileClickEnabled(true);
+            setActionButtons(false, false, false, false, false, false);
+            setTileSelectionEnabled(true);
             log("🚆 전국철도/세계여행 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
 
@@ -210,8 +291,8 @@ public class GameUI {
             selectionDialog.setVisible(true);
         } else {
             state = GameState.WAITING_FOR_ROLL;
-            frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setActionButtons(true, false, false, false, false, false);
+            setTileSelectionEnabled(false);
             log("주사위를 굴려주세요.");
         }
 
@@ -317,6 +398,7 @@ public class GameUI {
             // 주사위 값 저장 (나중에 더블 체크용)
             lastD1 = finalD1;
             lastD2 = finalD2;
+            diceRollSequence++;
 
             // 주사위 애니메이션 시작
             frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
@@ -539,7 +621,7 @@ public class GameUI {
             // 미소유 땅
             log(city.name + "은(는) 미소유 땅입니다. (가격: " + String.format("%,d", city.price) + "원)");
             state = GameState.WAITING_FOR_ACTION;
-            frame.getActionPanel().setButtonsEnabled(false, true, false, false, true, false);
+            setActionButtons(false, true, false, false, true, false);
         } else if (city.owner == currentPlayerIndex) {
             // 본인 소유 땅
             log(city.name + "은(는) 본인 소유입니다. (레벨: " + city.level + ")");
@@ -570,7 +652,7 @@ public class GameUI {
                 int upgradeCost = city.getUpgradeCost();
                 log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
                 state = GameState.WAITING_FOR_ACTION;
-                frame.getActionPanel().setButtonsEnabled(false, false, true, false, true, false);
+                setActionButtons(false, false, true, false, true, false);
             } else {
                 log("최대 레벨입니다. 더 이상 업그레이드할 수 없습니다.");
                 endTurn();
@@ -626,7 +708,7 @@ public class GameUI {
                     log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 땅을 인수하거나 패스하세요.");
                     state = GameState.WAITING_FOR_ACTION;
-                    frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
+                    setActionButtons(false, false, false, true, true, false);
                 }
             }
         }
@@ -719,7 +801,7 @@ public class GameUI {
                     log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 관광지를 인수하거나 패스하세요.");
                     state = GameState.WAITING_FOR_ACTION;
-                    frame.getActionPanel().setButtonsEnabled(false, false, false, true, true, false);
+                    setActionButtons(false, false, false, true, true, false);
                 }
             }
         }
@@ -982,7 +1064,7 @@ public class GameUI {
         if (ruleEngine.escapeIslandWithBail(player)) {
             log("보석금 200,000원을 내고 무인도에서 탈출했습니다!");
             state = GameState.WAITING_FOR_ROLL;
-            frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
+            setActionButtons(true, false, false, false, false, false);
             updateDisplay();
         } else {
             log("보석금이 부족합니다.");
@@ -1006,7 +1088,7 @@ public class GameUI {
             currentTile = selectedTile;
 
             // 타일 클릭 비활성화
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setTileSelectionEnabled(false);
 
             // 선택한 타일 처리
             log("선택한 칸에서 이벤트를 처리합니다.");
@@ -1112,7 +1194,7 @@ public class GameUI {
 
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;
-        frame.getBoardPanel().setTileClickEnabled(true);
+        setTileSelectionEnabled(true);
         log("📍 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
     }
 
@@ -1133,7 +1215,7 @@ public class GameUI {
             ErrorDialog errorDialog = new ErrorDialog(frame, "잔액 부족", "업그레이드 비용이 부족합니다.");
             errorDialog.setVisible(true);
             selectedLandmarkCity = null;
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setTileSelectionEnabled(false);
             endTurn();
             return;
         }
@@ -1177,7 +1259,7 @@ public class GameUI {
         // 상태 초기화
         selectedLandmarkCity = null;
         state = GameState.WAITING_FOR_ROLL;
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setTileSelectionEnabled(false);
 
         endTurn();
     }
@@ -1313,8 +1395,8 @@ public class GameUI {
 
                 // 정규 주사위 상태로 전환
                 state = GameState.WAITING_FOR_ROLL;
-                frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
-                frame.getBoardPanel().setTileClickEnabled(false);
+                setActionButtons(true, false, false, false, false, false);
+                setTileSelectionEnabled(false);
 
                 updateDisplay();
                 return; // 턴 종료하지 않음
@@ -1330,8 +1412,8 @@ public class GameUI {
 
                 // 더블 상태로 전환 (다시 주사위 굴리기 가능)
                 state = GameState.WAITING_FOR_DOUBLE_ROLL;
-                frame.getActionPanel().setButtonsEnabled(true, false, false, false, false, false);
-                frame.getBoardPanel().setTileClickEnabled(false);
+                setActionButtons(true, false, false, false, false, false);
+                setTileSelectionEnabled(false);
 
                 updateDisplay();
                 return; // 턴 종료하지 않음
@@ -1388,7 +1470,8 @@ public class GameUI {
 
     private void endGame() {
         state = GameState.GAME_OVER;
-        frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
+        setActionButtons(false, false, false, false, false, false);
+        setTileSelectionEnabled(false);
         frame.getActionPanel().clearPriceLabels();
 
         log("\n\n=== 게임 종료 ===");
@@ -1447,7 +1530,7 @@ public class GameUI {
 
         // 새 게임 시작
         SwingUtilities.invokeLater(() -> {
-            new GameUI(players.length, 1000000);
+            new GameUI(players.length, 1000000, hostNetworkService);
         });
     }
 
@@ -1465,8 +1548,8 @@ public class GameUI {
         movementEndPoint = null;
 
         state = GameState.ANIMATING_MOVEMENT;
-        frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setActionButtons(false, false, false, false, false, false);
+        setTileSelectionEnabled(false);
         frame.getActionPanel().clearPriceLabels();
 
         prepareNextMovementStep();
@@ -1564,6 +1647,80 @@ public class GameUI {
 
     private void log(String message) {
         frame.getControlPanel().addLog(message);
+        broadcastLog(message);
+    }
+
+    private void broadcastLog(String message) {
+        if (hostNetworkService != null) {
+            hostNetworkService.broadcast(new NetworkMessage(MessageType.LOG_ENTRY, message));
+        }
+    }
+
+    private void broadcastSnapshot() {
+        if (hostNetworkService == null) {
+            return;
+        }
+        try {
+            GameSnapshot snapshot = createSnapshot();
+            String payload = GameSnapshotSerializer.serialize(snapshot);
+            hostNetworkService.broadcast(new NetworkMessage(MessageType.STATE_SNAPSHOT, payload));
+        } catch (Exception ex) {
+            System.err.println("[Host] 스냅샷 전송 실패: " + ex.getMessage());
+        }
+    }
+
+    private GameSnapshot createSnapshot() {
+        GameSnapshot snapshot = new GameSnapshot();
+        snapshot.turnNumber = turnCount;
+        snapshot.currentPlayerIndex = currentPlayerIndex;
+        snapshot.diceRollSequence = diceRollSequence;
+        snapshot.dice1 = lastD1;
+        snapshot.dice2 = lastD2;
+        snapshot.oddModeSelected = diceMode == DiceMode.ODD;
+        snapshot.evenModeSelected = diceMode == DiceMode.EVEN;
+        snapshot.tileSelectionEnabled = tileSelectionEnabled;
+
+        snapshot.buttons.roll = rollButtonActive;
+        snapshot.buttons.purchase = purchaseButtonActive;
+        snapshot.buttons.upgrade = upgradeButtonActive;
+        snapshot.buttons.takeover = takeoverButtonActive;
+        snapshot.buttons.skip = skipButtonActive;
+        snapshot.buttons.escape = escapeButtonActive;
+
+        for (Player player : players) {
+            GameSnapshot.PlayerState ps = new GameSnapshot.PlayerState();
+            ps.name = player.name;
+            ps.cash = player.cash;
+            ps.position = player.pos;
+            ps.jailTurns = player.jailTurns;
+            ps.bankrupt = player.bankrupt;
+            ps.hasRailroadTicket = player.hasRailroadTicket;
+            ps.hasExtraChance = player.hasExtraChance;
+            snapshot.players.add(ps);
+        }
+
+        for (int i = 0; i < board.getSize(); i++) {
+            Tile tile = board.getTile(i);
+            if (tile instanceof City) {
+                City city = (City) tile;
+                GameSnapshot.CityState cs = new GameSnapshot.CityState();
+                cs.tileId = city.id;
+                cs.owner = city.owner;
+                cs.level = city.level;
+                cs.hasOlympicBoost = city.hasOlympicBoost;
+                cs.deleted = city.isDeleted;
+                snapshot.cities.add(cs);
+            } else if (tile instanceof TouristSpot) {
+                TouristSpot spot = (TouristSpot) tile;
+                GameSnapshot.TouristSpotState ts = new GameSnapshot.TouristSpotState();
+                ts.tileId = spot.id;
+                ts.owner = spot.owner;
+                ts.locked = spot.locked;
+                ts.lockedBy = spot.lockedBy;
+                snapshot.touristSpots.add(ts);
+            }
+        }
+        return snapshot;
     }
 
     private void updateDisplay() {
@@ -1590,6 +1747,22 @@ public class GameUI {
             case 3: return "건물";
             case 4: return "랜드마크";
             default: return "";
+        }
+    }
+
+    private void handleClientMessage(String clientId, NetworkMessage message) {
+        if (message.getType() == MessageType.PLAYER_ACTION) {
+            try {
+                PlayerInputEvent remoteEvent = RemoteActionCodec.decode(message);
+                SwingUtilities.invokeLater(() -> handlePlayerInput(remoteEvent));
+            } catch (IllegalArgumentException ex) {
+                System.err.println("[Host] 잘못된 원격 입력(" + clientId + "): " + message.getPayload());
+            }
+        } else if (message.getType() == MessageType.LOG_ENTRY) {
+            String payload = message.getPayload();
+            if (payload != null && !payload.isEmpty()) {
+                log("[원격] " + payload);
+            }
         }
     }
 }

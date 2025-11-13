@@ -85,6 +85,17 @@ public class DiceAnimationPanel extends JPanel {
     }
 
     /**
+     * 애니메이션 없이 즉시 주사위 눈을 표시.
+     */
+    public void showFaces(int value1, int value2) {
+        this.animating = false;
+        this.dice1 = clampDie(value1);
+        this.dice2 = clampDie(value2);
+        this.isDouble = (dice1 == dice2);
+        repaint();
+    }
+
+    /**
      * Cubic-out easing
      */
     private double cubicOut(double t) {
@@ -239,5 +250,11 @@ public class DiceAnimationPanel extends JPanel {
             animationTimer.stop();
         }
         repaint();
+    }
+
+    private int clampDie(int value) {
+        if (value < 1) return 1;
+        if (value > 6) return 6;
+        return value;
     }
 }
