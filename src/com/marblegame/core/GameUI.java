@@ -3,26 +3,31 @@ package com.marblegame.core;
 import com.marblegame.core.input.LocalPlayerInputRouter;
 import com.marblegame.core.input.PlayerInputEvent;
 import com.marblegame.core.input.PlayerInputSink;
-import com.marblegame.core.input.PlayerInputType;
 import com.marblegame.model.*;
 import com.marblegame.ui.*;
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * UI 버전 게임 컨트롤러
  */
 import com.marblegame.network.HostNetworkService;
-import com.marblegame.network.listener.ClientMessageListener;
+import com.marblegame.network.lobby.LobbyState;
+import com.marblegame.network.lobby.LobbyStateCodec;
+import com.marblegame.network.lobby.LobbyStateView;
 import com.marblegame.network.message.DialogSyncCodec;
 import com.marblegame.network.message.DialogSyncPayload;
 import com.marblegame.network.message.DialogType;
 import com.marblegame.network.message.MessageType;
 import com.marblegame.network.message.NetworkMessage;
+import com.marblegame.network.message.ReadyStatusPayload;
 import com.marblegame.network.message.RemoteActionCodec;
+import com.marblegame.network.message.SlotAssignmentPayload;
+import com.marblegame.network.message.SlotRequestPayload;
 import com.marblegame.network.snapshot.GameSnapshot;
 import com.marblegame.network.snapshot.GameSnapshotSerializer;
 
@@ -44,6 +49,7 @@ public class GameUI implements PlayerInputSink {
         WAITING_FOR_RAILROAD_SELECTION,
         WAITING_FOR_LANDMARK_SELECTION,
         WAITING_FOR_DOUBLE_ROLL,  // 더블 발생 후 추가 주사위 대기
+        WAITING_FOR_READY,        // 네트워크 플레이어 준비 대기
         ANIMATING_MOVEMENT,
         GAME_OVER
     }
@@ -79,6 +85,8 @@ public class GameUI implements PlayerInputSink {
     private Point2D.Double movementEndPoint;
 
     private final HostNetworkService hostNetworkService;
+    private HostLobbyFrame hostLobbyFrame;
+    private LobbyState lobbyState;
     private Timer snapshotTimer;
     private int diceRollSequence = 0;
     private boolean tileSelectionEnabled = false;
@@ -88,6 +96,7 @@ public class GameUI implements PlayerInputSink {
     private boolean takeoverButtonActive;
     private boolean skipButtonActive;
     private boolean escapeButtonActive;
+    private boolean waitingForReadyGate = false;
 
     public GameUI(int numPlayers, int initialCash) {
         this(numPlayers, initialCash, null);
@@ -105,6 +114,12 @@ public class GameUI implements PlayerInputSink {
             players[i] = new Player("Player" + (char)('A' + i), initialCash);
         }
 
+        List<String> slotLabels = new ArrayList<>();
+        for (Player player : players) {
+            slotLabels.add(player.name);
+        }
+        lobbyState = new LobbyState(slotLabels);
+
         // UI 초기화
         frame = new GameFrame(board, java.util.Arrays.asList(players));
         frame.addWindowListener(new WindowAdapter() {
@@ -112,6 +127,10 @@ public class GameUI implements PlayerInputSink {
             public void windowClosing(WindowEvent e) {
                 if (snapshotTimer != null) {
                     snapshotTimer.stop();
+                }
+                if (hostLobbyFrame != null) {
+                    hostLobbyFrame.dispose();
+                    hostLobbyFrame = null;
                 }
             }
         });
@@ -121,19 +140,27 @@ public class GameUI implements PlayerInputSink {
             hostNetworkService.setClientLifecycleListener(new HostNetworkService.ClientLifecycleListener() {
                 @Override
                 public void onClientConnected(String clientId) {
-                    SwingUtilities.invokeLater(() ->
-                        log("[네트워크] 클라이언트 연결: " + clientId)
-                    );
+                    SwingUtilities.invokeLater(() -> {
+                        log("[네트워크] 클라이언트 연결: " + clientId);
+                        handleLobbyConnection(clientId);
+                    });
                 }
 
                 @Override
                 public void onClientDisconnected(String clientId, String reason) {
-                    SwingUtilities.invokeLater(() ->
-                        log("[네트워크] 클라이언트 연결 종료(" + clientId + "): " + reason)
-                    );
+                    SwingUtilities.invokeLater(() -> {
+                        log("[네트워크] 클라이언트 연결 종료(" + clientId + "): " + reason);
+                        handleLobbyDisconnection(clientId);
+                    });
                 }
             });
+            hostLobbyFrame = new HostLobbyFrame(slotIndex ->
+                SwingUtilities.invokeLater(() -> releaseSlotFromHost(slotIndex))
+            );
+            hostLobbyFrame.setLocationRelativeTo(frame);
+            hostLobbyFrame.setVisible(true);
             startSnapshotTimer();
+            pushLobbyState();
         }
 
         frame.setVisible(true);
@@ -151,6 +178,102 @@ public class GameUI implements PlayerInputSink {
         snapshotTimer = new Timer(300, e -> broadcastSnapshot());
         snapshotTimer.setRepeats(true);
         snapshotTimer.start();
+    }
+
+    private void handleLobbyConnection(String clientId) {
+        if (hostNetworkService == null || lobbyState == null) {
+            return;
+        }
+        lobbyState.onClientConnected(clientId);
+        pushLobbyState();
+    }
+
+    private void handleLobbyDisconnection(String clientId) {
+        if (hostNetworkService == null || lobbyState == null) {
+            return;
+        }
+        Integer slotIndex = lobbyState.getSlotIndex(clientId);
+        lobbyState.onClientDisconnected(clientId);
+        if (slotIndex != null) {
+            players[slotIndex].name = lobbyState.getEffectivePlayerName(slotIndex);
+            frame.getOverlayPanel().updatePlayerInfo();
+        }
+        pushLobbyState();
+    }
+
+    private void pushLobbyState() {
+        if (hostNetworkService == null || lobbyState == null) {
+            return;
+        }
+        LobbyStateView view = lobbyState.toView(state != GameState.GAME_OVER);
+        NetworkMessage message = new NetworkMessage(
+            MessageType.LOBBY_STATE,
+            LobbyStateCodec.encode(view)
+        );
+        hostNetworkService.broadcast(message);
+        if (hostLobbyFrame != null) {
+            hostLobbyFrame.update(view);
+        }
+        resumeIfReadyGateCleared();
+    }
+
+    private void notifySlotAssignment(String clientId, int slotIndex, String playerName,
+                                      SlotAssignmentPayload.Status status, String note) {
+        if (hostNetworkService == null) {
+            return;
+        }
+        SlotAssignmentPayload payload = new SlotAssignmentPayload(slotIndex, playerName, status, note);
+        hostNetworkService.sendTo(
+            clientId,
+            new NetworkMessage(MessageType.SLOT_ASSIGNMENT, SlotAssignmentPayload.encode(payload))
+        );
+    }
+
+    private String sanitizePlayerName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String normalized = raw.replaceAll("\\s+", " ").trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        return normalized.length() > 16 ? normalized.substring(0, 16) : normalized;
+    }
+
+    private boolean shouldWaitForReadyGate() {
+        if (hostNetworkService == null || lobbyState == null) {
+            waitingForReadyGate = false;
+            return false;
+        }
+        if (lobbyState.areAllAssignedReady()) {
+            waitingForReadyGate = false;
+            return false;
+        }
+        if (!waitingForReadyGate) {
+            log("[네트워크] 모든 플레이어가 준비 완료될 때까지 대기합니다.");
+            broadcastLog("[네트워크] 준비 신호 대기 중입니다.");
+        }
+        waitingForReadyGate = true;
+        state = GameState.WAITING_FOR_READY;
+        setActionButtons(false, false, false, false, false, false);
+        setTileSelectionEnabled(false);
+        if (frame != null) {
+            frame.getOverlayPanel().showWaitingMessage("모든 플레이어 준비 대기 중...");
+        }
+        return true;
+    }
+
+    private void resumeIfReadyGateCleared() {
+        if (!waitingForReadyGate) {
+            return;
+        }
+        if (lobbyState != null && lobbyState.areAllAssignedReady()) {
+            waitingForReadyGate = false;
+            if (frame != null) {
+                frame.getOverlayPanel().hideWaitingMessage();
+            }
+            SwingUtilities.invokeLater(this::startTurn);
+        }
     }
 
     private void setActionButtons(boolean roll, boolean purchase, boolean upgrade,
@@ -255,6 +378,13 @@ public class GameUI implements PlayerInputSink {
         if (isGameOver()) {
             endGame();
             return;
+        }
+
+        if (shouldWaitForReadyGate()) {
+            return;
+        }
+        if (frame != null) {
+            frame.getOverlayPanel().hideWaitingMessage();
         }
 
         Player player = players[currentPlayerIndex];
@@ -1905,18 +2035,152 @@ public class GameUI implements PlayerInputSink {
     }
 
     private void handleClientMessage(String clientId, NetworkMessage message) {
-        if (message.getType() == MessageType.PLAYER_ACTION) {
-            try {
-                PlayerInputEvent remoteEvent = RemoteActionCodec.decode(message);
-                SwingUtilities.invokeLater(() -> handlePlayerInput(remoteEvent));
-            } catch (IllegalArgumentException ex) {
-                System.err.println("[Host] 잘못된 원격 입력(" + clientId + "): " + message.getPayload());
+        MessageType type = message.getType();
+        switch (type) {
+            case PLAYER_ACTION:
+                handleRemoteAction(clientId, message);
+                break;
+            case LOG_ENTRY:
+                String payload = message.getPayload();
+                if (payload != null && !payload.isEmpty()) {
+                    log("[원격] " + payload);
+                }
+                break;
+            case SLOT_REQUEST:
+                handleSlotRequestMessage(clientId, message.getPayload());
+                break;
+            case READY_STATUS:
+                handleReadyStatusMessage(clientId, message.getPayload());
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void handleRemoteAction(String clientId, NetworkMessage message) {
+        if (!isClientTurn(clientId)) {
+            System.out.println("[Host] " + clientId + " 원격 입력 무시: 현재 차례가 아님");
+            return;
+        }
+        try {
+            PlayerInputEvent remoteEvent = RemoteActionCodec.decode(message);
+            SwingUtilities.invokeLater(() -> handlePlayerInput(remoteEvent));
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Host] 잘못된 원격 입력(" + clientId + "): " + message.getPayload());
+        }
+    }
+
+    private boolean isClientTurn(String clientId) {
+        if (lobbyState == null) {
+            return false;
+        }
+        Integer slotIndex = lobbyState.getSlotIndex(clientId);
+        if (slotIndex == null) {
+            System.out.println("[Host] 슬롯 미할당 클라이언트 입력 무시: " + clientId);
+            return false;
+        }
+        return slotIndex == currentPlayerIndex;
+    }
+
+    private void handleSlotRequestMessage(String clientId, String payload) {
+        if (lobbyState == null) {
+            return;
+        }
+        try {
+            SlotRequestPayload request = SlotRequestPayload.decode(payload);
+            SwingUtilities.invokeLater(() -> processSlotRequest(clientId, request));
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Host] 잘못된 슬롯 요청: " + ex.getMessage());
+            notifySlotAssignment(clientId, -1, "", SlotAssignmentPayload.Status.DENIED, "요청 형식 오류");
+        }
+    }
+
+    private void processSlotRequest(String clientId, SlotRequestPayload request) {
+        if (hostNetworkService == null || lobbyState == null) {
+            return;
+        }
+        if (request.getSlotIndex() < 0) {
+            Integer prevSlot = lobbyState.getSlotIndex(clientId);
+            lobbyState.releaseSlot(clientId);
+            if (prevSlot != null) {
+                players[prevSlot].name = lobbyState.getEffectivePlayerName(prevSlot);
+                frame.getOverlayPanel().updatePlayerInfo();
             }
-        } else if (message.getType() == MessageType.LOG_ENTRY) {
-            String payload = message.getPayload();
-            if (payload != null && !payload.isEmpty()) {
-                log("[원격] " + payload);
-            }
+            notifySlotAssignment(clientId, -1, "", SlotAssignmentPayload.Status.RELEASED, "슬롯을 비웠습니다.");
+            pushLobbyState();
+            return;
+        }
+
+        String sanitized = sanitizePlayerName(request.getPlayerName());
+        Integer previousSlot = lobbyState.getSlotIndex(clientId);
+        boolean assigned = lobbyState.assignSlot(clientId, request.getSlotIndex(), sanitized);
+        if (!assigned) {
+            notifySlotAssignment(
+                clientId,
+                request.getSlotIndex(),
+                "",
+                SlotAssignmentPayload.Status.DENIED,
+                "이미 점유된 슬롯입니다."
+            );
+            pushLobbyState();
+            return;
+        }
+
+        if (previousSlot != null && previousSlot != request.getSlotIndex()) {
+            players[previousSlot].name = lobbyState.getEffectivePlayerName(previousSlot);
+        }
+        players[request.getSlotIndex()].name = lobbyState.getEffectivePlayerName(request.getSlotIndex());
+        frame.getOverlayPanel().updatePlayerInfo();
+        notifySlotAssignment(
+            clientId,
+            request.getSlotIndex(),
+            players[request.getSlotIndex()].name,
+            SlotAssignmentPayload.Status.ASSIGNED,
+            "슬롯 #" + (request.getSlotIndex() + 1) + " 배정 완료"
+        );
+        pushLobbyState();
+    }
+
+    private void releaseSlotFromHost(int slotIndex) {
+        if (lobbyState == null) {
+            return;
+        }
+        if (slotIndex < 0 || slotIndex >= players.length) {
+            return;
+        }
+        String clientId = lobbyState.getClientIdForSlot(slotIndex);
+        boolean released = lobbyState.releaseSlot(slotIndex);
+        if (!released) {
+            return;
+        }
+        players[slotIndex].name = lobbyState.getEffectivePlayerName(slotIndex);
+        frame.getOverlayPanel().updatePlayerInfo();
+        if (clientId != null) {
+            notifySlotAssignment(
+                clientId,
+                slotIndex,
+                "",
+                SlotAssignmentPayload.Status.RELEASED,
+                "호스트가 슬롯을 해제했습니다."
+            );
+        }
+        log("[네트워크] 슬롯 #" + (slotIndex + 1) + " 을(를) 해제했습니다.");
+        pushLobbyState();
+    }
+
+    private void handleReadyStatusMessage(String clientId, String payload) {
+        if (lobbyState == null) {
+            return;
+        }
+        try {
+            ReadyStatusPayload readyPayload = ReadyStatusPayload.decode(payload);
+            SwingUtilities.invokeLater(() -> {
+                if (lobbyState.updateReady(clientId, readyPayload.isReady())) {
+                    pushLobbyState();
+                }
+            });
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Host] 준비 상태 파싱 실패: " + ex.getMessage());
         }
     }
 }

@@ -5,7 +5,7 @@ package com.marblegame.model;
  * 이름, 현금, 위치, 무인도 턴, 파산 여부 관리
  */
 public class Player {
-    public final String name;
+    public String name;
     public int cash;
     public int pos = 0;
     public int jailTurns = 0;

@@ -8,5 +8,9 @@ public enum MessageType {
     HELLO,
     WELCOME,
     REJECT,
-    DIALOG_SYNC
+    DIALOG_SYNC,
+    LOBBY_STATE,
+    SLOT_REQUEST,
+    SLOT_ASSIGNMENT,
+    READY_STATUS
 }

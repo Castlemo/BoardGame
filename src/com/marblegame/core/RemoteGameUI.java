@@ -9,12 +9,14 @@ import com.marblegame.model.Player;
 import com.marblegame.model.Tile;
 import com.marblegame.model.TouristSpot;
 import com.marblegame.network.ClientNetworkService;
+import com.marblegame.network.listener.ServerMessageListener;
 import com.marblegame.network.message.DialogSyncCodec;
 import com.marblegame.network.message.DialogSyncPayload;
 import com.marblegame.network.message.DialogType;
 import com.marblegame.network.message.MessageType;
 import com.marblegame.network.message.NetworkMessage;
 import com.marblegame.network.message.RemoteActionCodec;
+import com.marblegame.network.message.SlotAssignmentPayload;
 import com.marblegame.network.snapshot.GameSnapshot;
 import com.marblegame.network.snapshot.GameSnapshotSerializer;
 import com.marblegame.ui.*;
@@ -42,11 +44,15 @@ public class RemoteGameUI {
     private final List<String> pendingLogs = new ArrayList<>();
     private final List<DialogSyncPayload> pendingDialogs = new ArrayList<>();
     private volatile boolean localDisconnectRequested = false;
+    private final ServerMessageListener messageListener;
+    private volatile int assignedPlayerIndex = -1;
+    private volatile String assignedPlayerName = "";
 
     public RemoteGameUI(ClientNetworkService networkService, Runnable onDisconnect) {
         this.networkService = networkService;
         this.onDisconnect = onDisconnect;
-        this.networkService.setMessageListener(this::handleServerMessage);
+        this.messageListener = this::handleServerMessage;
+        this.networkService.addMessageListener(messageListener);
         this.networkService.setDisconnectListener(this::handleNetworkDisconnect);
     }
 
@@ -70,6 +76,8 @@ public class RemoteGameUI {
             }
         } else if (message.getType() == MessageType.DIALOG_SYNC) {
             handleDialogSync(message.getPayload());
+        } else if (message.getType() == MessageType.SLOT_ASSIGNMENT) {
+            handleSlotAssignment(message.getPayload());
         }
     }
 
@@ -82,6 +90,35 @@ public class RemoteGameUI {
             SwingUtilities.invokeLater(() -> enqueueOrShowDialog(dialogPayload));
         } catch (IllegalArgumentException ex) {
             System.err.println("[Client] 다이얼로그 파싱 실패: " + ex.getMessage());
+        }
+    }
+
+    private void handleSlotAssignment(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return;
+        }
+        try {
+            SlotAssignmentPayload assignment = SlotAssignmentPayload.decode(payload);
+            SwingUtilities.invokeLater(() -> applySlotAssignment(assignment));
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Client] 슬롯 배정 파싱 실패: " + ex.getMessage());
+        }
+    }
+
+    private void applySlotAssignment(SlotAssignmentPayload assignment) {
+        if (assignment.getStatus() == SlotAssignmentPayload.Status.ASSIGNED) {
+            assignedPlayerIndex = assignment.getSlotIndex();
+            assignedPlayerName = assignment.getPlayerName();
+        } else {
+            assignedPlayerIndex = -1;
+            assignedPlayerName = "";
+        }
+        refreshLocalHighlight();
+        if (frame != null && assignedPlayerIndex < 0) {
+            frame.getOverlayPanel().hideWaitingMessage();
+        }
+        if (assignment.getNote() != null && !assignment.getNote().isEmpty()) {
+            appendLog("[로비] " + assignment.getNote());
         }
     }
 
@@ -113,6 +150,7 @@ public class RemoteGameUI {
 
         frame.updateDisplay(snapshot.turnNumber);
         frame.getBoardPanel().setTileClickEnabled(snapshot.tileSelectionEnabled);
+        updateWaitingIndicator(snapshot);
     }
 
     private void initializeFrame(GameSnapshot snapshot) {
@@ -152,6 +190,7 @@ public class RemoteGameUI {
         initialized = true;
         flushPendingLogs();
         flushPendingDialogs();
+        refreshLocalHighlight();
     }
 
     private void syncPlayers(GameSnapshot snapshot) {
@@ -233,6 +272,37 @@ public class RemoteGameUI {
             lastDiceSequence = sequence;
             frame.getActionPanel().getDiceAnimationPanel().startAnimation(snapshot.dice1, snapshot.dice2, null);
         }
+    }
+
+    private void updateWaitingIndicator(GameSnapshot snapshot) {
+        if (frame == null) {
+            return;
+        }
+        if (assignedPlayerIndex < 0) {
+            frame.getOverlayPanel().hideWaitingMessage();
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+            return;
+        }
+        if (snapshot.currentPlayerIndex == assignedPlayerIndex) {
+            frame.getOverlayPanel().hideWaitingMessage();
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+            return;
+        }
+        String activeName = resolvePlayerName(snapshot.currentPlayerIndex);
+        String message = "다른 플레이어가 진행 중입니다. 잠시만 기다려주세요.";
+        if (activeName != null && !activeName.isEmpty()) {
+            message = activeName + " 차례입니다. 잠시만 기다려주세요.";
+        }
+        frame.getOverlayPanel().showWaitingMessage(message);
+        frame.getOverlayPanel().setHighlightedPlayerIndex(assignedPlayerIndex);
+    }
+
+    private String resolvePlayerName(int index) {
+        if (players == null || index < 0 || index >= players.length) {
+            return "";
+        }
+        String name = players[index].name;
+        return name == null ? "" : name;
     }
 
     private void showSynchronizedDialog(DialogSyncPayload payload) {
@@ -396,6 +466,15 @@ public class RemoteGameUI {
         pendingDialogs.clear();
     }
 
+    private void refreshLocalHighlight() {
+        if (frame == null) {
+            return;
+        }
+        if (assignedPlayerIndex < 0) {
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+        }
+    }
+
     private String safeString(String value, String fallback) {
         if (value == null || value.isEmpty()) {
             return fallback;
@@ -404,7 +483,7 @@ public class RemoteGameUI {
     }
 
     public void dispose() {
-        networkService.setMessageListener(null);
+        networkService.removeMessageListener(messageListener);
         networkService.setDisconnectListener(null);
         if (frame != null) {
             frame.dispose();

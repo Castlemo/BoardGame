@@ -32,6 +32,7 @@ public class OverlayPanel extends JPanel {
     private GaugePanel gaugePanel;
     private DiceGauge diceGauge; // 추가됨: 게이지 모델
     private JPanel actionButtonPanel;
+    private JLabel waitingLabel;
 
     // 추가됨: 플레이어 카드
     private List<CompactPlayerCard> playerCards;
@@ -39,6 +40,7 @@ public class OverlayPanel extends JPanel {
 
     // 스케일 팩터 (보드와 동일한 비율로 스케일링)
     private double scaleFactor = 1.0;
+    private int highlightedPlayerIndex = -1;
 
     // 추가됨: 행동 버튼들
     private JButton rollDiceButton;
@@ -159,6 +161,15 @@ public class OverlayPanel extends JPanel {
             playerCards.add(card);
             add(card);
         }
+
+        waitingLabel = new JLabel("다른 플레이어가 진행 중입니다.", SwingConstants.CENTER);
+        waitingLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+        waitingLabel.setForeground(TEXT_PRIMARY);
+        waitingLabel.setOpaque(true);
+        waitingLabel.setBackground(new Color(0, 0, 0, 170));
+        waitingLabel.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        waitingLabel.setVisible(false);
+        add(waitingLabel);
     }
 
     /**
@@ -544,6 +555,11 @@ public class OverlayPanel extends JPanel {
         // 5. 행동 버튼 패널 배치
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
                                    BUTTON_PANEL_WIDTH, buttonPanelHeight);
+
+        int waitingWidth = Math.min((int)(340 * scaleFactor), width - 40);
+        int waitingHeight = Math.max(30, (int)(36 * scaleFactor));
+        int waitingY = currentY + buttonPanelHeight + (int)(20 * scaleFactor);
+        waitingLabel.setBounds(cx - waitingWidth / 2, waitingY, waitingWidth, waitingHeight);
     }
 
     /**
@@ -764,6 +780,33 @@ public class OverlayPanel extends JPanel {
         }
     }
 
+    public void showWaitingMessage(String message) {
+        if (waitingLabel == null) {
+            return;
+        }
+        waitingLabel.setText(message == null || message.isEmpty() ? "다른 플레이어가 진행 중입니다." : message);
+        waitingLabel.setVisible(true);
+        waitingLabel.repaint();
+    }
+
+    public void hideWaitingMessage() {
+        if (waitingLabel == null) {
+            return;
+        }
+        waitingLabel.setVisible(false);
+        waitingLabel.repaint();
+    }
+
+    public void setHighlightedPlayerIndex(int index) {
+        if (this.highlightedPlayerIndex == index) {
+            return;
+        }
+        this.highlightedPlayerIndex = index;
+        for (CompactPlayerCard card : playerCards) {
+            card.repaint();
+        }
+    }
+
     // ========== 내부 클래스: CompactPlayerCard ==========
 
     /**
@@ -833,9 +876,16 @@ public class OverlayPanel extends JPanel {
             // 카드 배경
             g2.setColor(CARD_BACKGROUND);
             g2.fillRoundRect(0, 0, width, height, roundSize, roundSize);
+            if (playerIndex == highlightedPlayerIndex) {
+                g2.setColor(new Color(255, 255, 255, 30));
+                g2.fillRoundRect(0, 0, width, height, roundSize, roundSize);
+            }
 
             // 테두리
             Color accent = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
+            if (playerIndex == highlightedPlayerIndex) {
+                accent = accent.brighter();
+            }
             g2.setColor(accent);
             g2.setStroke(new BasicStroke(strokeWidth));
             g2.drawRoundRect(0, 0, width, height, roundSize, roundSize);

@@ -4,8 +4,10 @@ import com.marblegame.network.ClientNetworkService;
 import com.marblegame.network.message.MessageType;
 import com.marblegame.network.message.NetworkMessage;
 import com.marblegame.core.RemoteGameUI;
+import com.marblegame.ui.ClientLobbyFrame;
 import java.io.IOException;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 /**
  * 클라이언트 모드 세션. 호스트에 접속하고 대기 화면을 띄운다.
@@ -17,6 +19,8 @@ public class ClientGameSession implements GameSession {
 
     private ClientNetworkService clientService;
     private RemoteGameUI remoteUI;
+    private ClientLobbyFrame lobbyFrame;
+    private volatile boolean disconnecting = false;
 
     public ClientGameSession(String host, int port) {
         this.host = host;
@@ -25,6 +29,7 @@ public class ClientGameSession implements GameSession {
 
     @Override
     public void start() {
+        disconnecting = false;
         clientService = new ClientNetworkService(host, port);
         try {
             clientService.connect();
@@ -49,18 +54,43 @@ public class ClientGameSession implements GameSession {
             return;
         }
 
-        remoteUI = new RemoteGameUI(clientService, () -> clientService.disconnect());
+        remoteUI = new RemoteGameUI(clientService, this::handleClientDisconnect);
+        lobbyFrame = new ClientLobbyFrame(clientService);
+        SwingUtilities.invokeLater(() -> lobbyFrame.setVisible(true));
     }
 
     @Override
     public void stop() {
+        disconnecting = true;
         if (remoteUI != null) {
             remoteUI.dispose();
             remoteUI = null;
         }
+        if (lobbyFrame != null) {
+            lobbyFrame.dispose();
+            lobbyFrame = null;
+        }
         if (clientService != null) {
             clientService.disconnect();
             clientService = null;
+        }
+    }
+
+    private void handleClientDisconnect() {
+        if (disconnecting) {
+            return;
+        }
+        disconnecting = true;
+        if (lobbyFrame != null) {
+            SwingUtilities.invokeLater(() -> {
+                if (lobbyFrame != null) {
+                    lobbyFrame.dispose();
+                    lobbyFrame = null;
+                }
+            });
+        }
+        if (clientService != null) {
+            clientService.disconnect();
         }
     }
 }

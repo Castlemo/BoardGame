@@ -140,6 +140,18 @@ public class HostNetworkService {
         }
     }
 
+    public void sendTo(String clientId, NetworkMessage message) {
+        if (clientId == null || message == null) {
+            return;
+        }
+        for (ClientHandler handler : clientHandlers) {
+            if (clientId.equals(handler.getClientId()) && handler.isHandshakeComplete()) {
+                handler.send(message);
+                break;
+            }
+        }
+    }
+
     private void removeHandler(ClientHandler handler) {
         removeHandler(handler, null);
     }

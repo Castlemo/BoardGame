@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -34,7 +35,7 @@ public class ClientNetworkService {
     private PrintWriter writer;
     private BufferedReader reader;
     private Thread readerThread;
-    private ServerMessageListener messageListener;
+    private final CopyOnWriteArrayList<ServerMessageListener> messageListeners = new CopyOnWriteArrayList<>();
     private Runnable disconnectListener;
     private final AtomicBoolean disconnectNotified = new AtomicBoolean(true);
     private final AtomicLong lastServerMessageAt = new AtomicLong();
@@ -150,7 +151,22 @@ public class ClientNetworkService {
     }
 
     public void setMessageListener(ServerMessageListener listener) {
-        this.messageListener = listener;
+        messageListeners.clear();
+        if (listener != null) {
+            messageListeners.add(listener);
+        }
+    }
+
+    public void addMessageListener(ServerMessageListener listener) {
+        if (listener != null) {
+            messageListeners.add(listener);
+        }
+    }
+
+    public void removeMessageListener(ServerMessageListener listener) {
+        if (listener != null) {
+            messageListeners.remove(listener);
+        }
     }
 
     public void setDisconnectListener(Runnable listener) {
@@ -193,9 +209,7 @@ public class ClientNetworkService {
                         if (handleControlMessage(message)) {
                             continue;
                         }
-                        if (messageListener != null) {
-                            messageListener.onMessage(message);
-                        }
+                        dispatchMessage(message);
                     } catch (IllegalArgumentException ex) {
                         System.err.println("[Client] 잘못된 서버 메시지: " + ex.getMessage() + " raw=" + line);
                     }
@@ -208,6 +222,16 @@ public class ClientNetworkService {
         }, "ClientServerReader");
         readerThread.setDaemon(true);
         readerThread.start();
+    }
+
+    private void dispatchMessage(NetworkMessage message) {
+        for (ServerMessageListener listener : messageListeners) {
+            try {
+                listener.onMessage(message);
+            } catch (Exception ex) {
+                System.err.println("[Client] 메시지 리스너 예외: " + ex.getMessage());
+            }
+        }
     }
 
     private void notifyDisconnectListener() {
