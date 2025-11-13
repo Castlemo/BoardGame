@@ -25,14 +25,18 @@ import javax.swing.WindowConstants;
  */
 public class HostLobbyFrame extends JFrame {
     private final IntConsumer slotReleaseHandler;
+    private final Runnable startGameAction;
     private final JPanel slotsPanel = new JPanel(new GridLayout(0, 1, 6, 6));
     private final JLabel readyLabel = new JLabel("로비 정보를 기다리는 중...", SwingConstants.LEFT);
     private final JLabel spectatorLabel = new JLabel("관전자: 0명", SwingConstants.RIGHT);
+    private final JButton startButton = new JButton("게임 시작");
     private final List<SlotRow> slotRows = new ArrayList<>();
+    private boolean hostStarted = false;
 
-    public HostLobbyFrame(IntConsumer slotReleaseHandler) {
+    public HostLobbyFrame(IntConsumer slotReleaseHandler, Runnable startGameAction) {
         super("호스트 로비 모니터");
         this.slotReleaseHandler = slotReleaseHandler;
+        this.startGameAction = startGameAction;
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
         setSize(new Dimension(360, 480));
         setAlwaysOnTop(false);
@@ -57,20 +61,31 @@ public class HostLobbyFrame extends JFrame {
         spectatorLabel.setForeground(new Color(189, 195, 199));
         statusPanel.add(readyLabel, BorderLayout.CENTER);
         statusPanel.add(spectatorLabel, BorderLayout.EAST);
+
+        startButton.addActionListener(e -> {
+            if (startGameAction != null) {
+                startGameAction.run();
+            }
+        });
+        statusPanel.add(startButton, BorderLayout.SOUTH);
         content.add(statusPanel, BorderLayout.SOUTH);
     }
 
-    public void update(LobbyStateView view) {
+    public void update(LobbyStateView view, boolean hostStarted) {
         if (view == null) {
             return;
         }
-        SwingUtilities.invokeLater(() -> render(view));
+        SwingUtilities.invokeLater(() -> {
+            this.hostStarted = hostStarted;
+            render(view);
+        });
     }
 
     private void render(LobbyStateView view) {
         ensureSlotRows(view.maxPlayers);
         spectatorLabel.setText("관전자: " + view.spectatorCount + "명");
         readyLabel.setText(buildReadySummary(view));
+        updateStartButton(view);
         for (LobbySlotView slot : view.slots) {
             if (slot.index >= 0 && slot.index < slotRows.size()) {
                 slotRows.get(slot.index).render(slot);
@@ -108,6 +123,33 @@ public class HostLobbyFrame extends JFrame {
             return "할당된 슬롯 없음";
         }
         return "준비 상태: " + readyCount + "/" + assigned;
+    }
+
+    private void updateStartButton(LobbyStateView view) {
+        if (hostStarted) {
+            startButton.setText("게임 진행 중");
+            startButton.setEnabled(false);
+            return;
+        }
+        boolean hasAssigned = false;
+        for (LobbySlotView slot : view.slots) {
+            if (slot.occupied) {
+                hasAssigned = true;
+                break;
+            }
+        }
+        if (!hasAssigned) {
+            startButton.setText("플레이어 대기 중");
+            startButton.setEnabled(false);
+            return;
+        }
+        if (view.allAssignedReady) {
+            startButton.setText("게임 시작");
+            startButton.setEnabled(true);
+        } else {
+            startButton.setText("준비 대기...");
+            startButton.setEnabled(false);
+        }
     }
 
     private final class SlotRow extends JPanel {

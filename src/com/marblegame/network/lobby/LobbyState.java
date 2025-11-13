@@ -106,6 +106,7 @@ public class LobbyState {
         LobbyStateView view = new LobbyStateView();
         view.maxPlayers = slots.size();
         view.gameInProgress = gameInProgress;
+        view.allAssignedReady = areAllAssignedReady();
         int spectators = connectedClients.size() - clientToSlot.size();
         view.spectatorCount = Math.max(0, spectators);
         for (Slot slot : slots) {

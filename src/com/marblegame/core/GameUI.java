@@ -97,6 +97,8 @@ public class GameUI implements PlayerInputSink {
     private boolean skipButtonActive;
     private boolean escapeButtonActive;
     private boolean waitingForReadyGate = false;
+    private boolean hostStartConfirmed = true;
+    private boolean hostStartRequired = false;
 
     public GameUI(int numPlayers, int initialCash) {
         this(numPlayers, initialCash, null);
@@ -136,6 +138,8 @@ public class GameUI implements PlayerInputSink {
         });
         new LocalPlayerInputRouter(frame, this);
         if (hostNetworkService != null) {
+            hostStartConfirmed = false;
+            hostStartRequired = true;
             hostNetworkService.setMessageListener(this::handleClientMessage);
             hostNetworkService.setClientLifecycleListener(new HostNetworkService.ClientLifecycleListener() {
                 @Override
@@ -154,8 +158,9 @@ public class GameUI implements PlayerInputSink {
                     });
                 }
             });
-            hostLobbyFrame = new HostLobbyFrame(slotIndex ->
-                SwingUtilities.invokeLater(() -> releaseSlotFromHost(slotIndex))
+            hostLobbyFrame = new HostLobbyFrame(
+                slotIndex -> SwingUtilities.invokeLater(() -> releaseSlotFromHost(slotIndex)),
+                () -> SwingUtilities.invokeLater(this::confirmHostStart)
             );
             hostLobbyFrame.setLocationRelativeTo(frame);
             hostLobbyFrame.setVisible(true);
@@ -212,7 +217,7 @@ public class GameUI implements PlayerInputSink {
         );
         hostNetworkService.broadcast(message);
         if (hostLobbyFrame != null) {
-            hostLobbyFrame.update(view);
+            hostLobbyFrame.update(view, hostStartConfirmed);
         }
         resumeIfReadyGateCleared();
     }
@@ -245,20 +250,28 @@ public class GameUI implements PlayerInputSink {
             waitingForReadyGate = false;
             return false;
         }
-        if (lobbyState.areAllAssignedReady()) {
+        boolean waitingForHost = hostStartRequired && !hostStartConfirmed;
+        boolean waitingForPlayers = !lobbyState.areAllAssignedReady();
+        if (!waitingForHost && !waitingForPlayers) {
             waitingForReadyGate = false;
             return false;
         }
         if (!waitingForReadyGate) {
-            log("[네트워크] 모든 플레이어가 준비 완료될 때까지 대기합니다.");
-            broadcastLog("[네트워크] 준비 신호 대기 중입니다.");
+            String logMessage = waitingForHost
+                ? "[네트워크] 호스트가 게임을 시작할 때까지 대기합니다."
+                : "[네트워크] 모든 플레이어가 준비 완료될 때까지 대기합니다.";
+            log(logMessage);
+            broadcastLog(logMessage);
         }
         waitingForReadyGate = true;
         state = GameState.WAITING_FOR_READY;
         setActionButtons(false, false, false, false, false, false);
         setTileSelectionEnabled(false);
         if (frame != null) {
-            frame.getOverlayPanel().showWaitingMessage("모든 플레이어 준비 대기 중...");
+            String overlayMessage = waitingForHost
+                ? "호스트가 게임을 시작하기를 기다리는 중..."
+                : "모든 플레이어 준비 대기 중...";
+            frame.getOverlayPanel().showWaitingMessage(overlayMessage);
         }
         return true;
     }
@@ -267,13 +280,16 @@ public class GameUI implements PlayerInputSink {
         if (!waitingForReadyGate) {
             return;
         }
-        if (lobbyState != null && lobbyState.areAllAssignedReady()) {
-            waitingForReadyGate = false;
-            if (frame != null) {
-                frame.getOverlayPanel().hideWaitingMessage();
-            }
-            SwingUtilities.invokeLater(this::startTurn);
+        boolean waitingForHost = hostStartRequired && !hostStartConfirmed;
+        boolean waitingForPlayers = lobbyState != null && !lobbyState.areAllAssignedReady();
+        if (waitingForHost || waitingForPlayers) {
+            return;
         }
+        waitingForReadyGate = false;
+        if (frame != null) {
+            frame.getOverlayPanel().hideWaitingMessage();
+        }
+        SwingUtilities.invokeLater(this::startTurn);
     }
 
     private void setActionButtons(boolean roll, boolean purchase, boolean upgrade,
@@ -2166,6 +2182,17 @@ public class GameUI implements PlayerInputSink {
         }
         log("[네트워크] 슬롯 #" + (slotIndex + 1) + " 을(를) 해제했습니다.");
         pushLobbyState();
+    }
+
+    private void confirmHostStart() {
+        if (hostStartConfirmed) {
+            return;
+        }
+        hostStartConfirmed = true;
+        log("[네트워크] 호스트가 게임 시작을 확정했습니다.");
+        broadcastLog("[네트워크] 게임이 시작됩니다!");
+        pushLobbyState();
+        resumeIfReadyGateCleared();
     }
 
     private void handleReadyStatusMessage(String clientId, String payload) {
