@@ -9,12 +9,15 @@ import com.marblegame.model.Player;
 import com.marblegame.model.Tile;
 import com.marblegame.model.TouristSpot;
 import com.marblegame.network.ClientNetworkService;
+import com.marblegame.network.message.DialogSyncCodec;
+import com.marblegame.network.message.DialogSyncPayload;
+import com.marblegame.network.message.DialogType;
 import com.marblegame.network.message.MessageType;
 import com.marblegame.network.message.NetworkMessage;
 import com.marblegame.network.message.RemoteActionCodec;
 import com.marblegame.network.snapshot.GameSnapshot;
 import com.marblegame.network.snapshot.GameSnapshotSerializer;
-import com.marblegame.ui.GameFrame;
+import com.marblegame.ui.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -37,6 +40,7 @@ public class RemoteGameUI {
     private boolean initialized = false;
     private int lastDiceSequence = -1;
     private final List<String> pendingLogs = new ArrayList<>();
+    private final List<DialogSyncPayload> pendingDialogs = new ArrayList<>();
     private volatile boolean localDisconnectRequested = false;
 
     public RemoteGameUI(ClientNetworkService networkService, Runnable onDisconnect) {
@@ -64,7 +68,29 @@ public class RemoteGameUI {
             if (payload != null && !payload.isEmpty()) {
                 SwingUtilities.invokeLater(() -> appendLog(payload));
             }
+        } else if (message.getType() == MessageType.DIALOG_SYNC) {
+            handleDialogSync(message.getPayload());
         }
+    }
+
+    private void handleDialogSync(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return;
+        }
+        try {
+            DialogSyncPayload dialogPayload = DialogSyncCodec.decode(payload);
+            SwingUtilities.invokeLater(() -> enqueueOrShowDialog(dialogPayload));
+        } catch (IllegalArgumentException ex) {
+            System.err.println("[Client] 다이얼로그 파싱 실패: " + ex.getMessage());
+        }
+    }
+
+    private void enqueueOrShowDialog(DialogSyncPayload payload) {
+        if (frame == null) {
+            pendingDialogs.add(payload);
+            return;
+        }
+        showSynchronizedDialog(payload);
     }
 
     private void applySnapshot(GameSnapshot snapshot) {
@@ -125,6 +151,7 @@ public class RemoteGameUI {
         frame.setVisible(true);
         initialized = true;
         flushPendingLogs();
+        flushPendingDialogs();
     }
 
     private void syncPlayers(GameSnapshot snapshot) {
@@ -208,6 +235,139 @@ public class RemoteGameUI {
         }
     }
 
+    private void showSynchronizedDialog(DialogSyncPayload payload) {
+        if (frame == null || payload == null) {
+            return;
+        }
+        DialogType type = payload.getType();
+        switch (type) {
+            case CITY_SELECTION:
+                new CitySelectionDialog(frame).setVisible(true);
+                break;
+            case DOUBLE_SUPPRESSED:
+                new DoubleSuppressedDialog(
+                    frame,
+                    payload.getInt("diceValue", 0),
+                    payload.getInt("consecutive", 0)
+                ).setVisible(true);
+                break;
+            case ISLAND_STATUS:
+                new IslandDialog(frame, payload.getInt("jailTurns", 0)).setVisible(true);
+                break;
+            case CHANCE_REWARD:
+                new ChanceDialog(frame, payload.getInt("amount", 0)).setVisible(true);
+                break;
+            case WORLD_TOUR:
+                new WorldTourDialog(frame).setVisible(true);
+                break;
+            case DUAL_MAGNETIC:
+                new DualMagneticDialog(
+                    frame,
+                    safeString(payload.get("cityName"), "도시"),
+                    payload.getInt("pulledCount", 0)
+                ).setVisible(true);
+                break;
+            case TOLL_PAYMENT:
+                new TollPaymentDialog(
+                    frame,
+                    safeString(payload.get("cityName"), "도시"),
+                    safeString(payload.get("ownerName"), "???"),
+                    payload.getInt("level", 1),
+                    payload.getInt("toll", 0),
+                    payload.getBoolean("olympic", false),
+                    payload.getInt("playerCash", 0)
+                ).setVisible(true);
+                break;
+            case TOURIST_PURCHASE:
+                new TouristSpotPurchaseDialog(
+                    frame,
+                    safeString(payload.get("spotName"), "관광지"),
+                    payload.getInt("price", 0),
+                    payload.getInt("playerCash", 0)
+                ).setVisible(true);
+                break;
+            case TOURIST_CHOICE:
+                new TouristSpotChoiceDialog(
+                    frame,
+                    safeString(payload.get("spotName"), "관광지")
+                ).setVisible(true);
+                break;
+            case LEVEL_SELECTION:
+                new LevelSelectionDialog(
+                    frame,
+                    safeString(payload.get("cityName"), "도시"),
+                    payload.getInt("price", 0),
+                    payload.getInt("playerCash", 0)
+                ).setVisible(true);
+                break;
+            case TAKEOVER_CONFIRM:
+                new TakeoverConfirmDialog(
+                    frame,
+                    safeString(payload.get("cityName"), "도시"),
+                    safeString(payload.get("ownerName"), "???"),
+                    payload.getInt("level", 1),
+                    payload.getInt("cost", 0),
+                    payload.getInt("playerCash", 0)
+                ).setVisible(true);
+                break;
+            case ERROR:
+                new ErrorDialog(
+                    frame,
+                    safeString(payload.get("title"), "오류"),
+                    safeString(payload.get("message"), "")
+                ).setVisible(true);
+                break;
+            case TAX_PAYMENT:
+                new TaxPaymentDialog(
+                    frame,
+                    payload.getInt("playerCash", 0),
+                    payload.getInt("taxAmount", 0)
+                ).setVisible(true);
+                break;
+            case OLYMPIC:
+                new OlympicDialog(frame).setVisible(true);
+                break;
+            case PHASE_DELETE:
+                new PhaseDeleteDialog(
+                    frame,
+                    safeString(payload.get("cityName"), "도시")
+                ).setVisible(true);
+                break;
+            case DOUBLE_ROLL:
+                new DoubleDialog(
+                    frame,
+                    payload.getInt("diceValue", 0),
+                    payload.getInt("consecutive", 0)
+                ).setVisible(true);
+                break;
+            case UPGRADE_GUIDE:
+                JOptionPane.showMessageDialog(
+                    frame,
+                    safeString(payload.get("message"), ""),
+                    safeString(payload.get("title"), "안내"),
+                    JOptionPane.INFORMATION_MESSAGE
+                );
+                break;
+            case GAME_OVER:
+                String winner = safeString(payload.get("winner"), "플레이어");
+                String victoryType = safeString(payload.get("victoryType"), "조건");
+                int cash = payload.getInt("cash", 0);
+                JOptionPane.showOptionDialog(
+                    frame,
+                    winner + " 승리!\n승리 조건: " + victoryType + "\n최종 자산: " + String.format("%,d", cash) + "원",
+                    "게임 종료",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    new Object[]{"새 게임", "종료"},
+                    "새 게임"
+                );
+                break;
+            default:
+                break;
+        }
+    }
+
     private void appendLog(String message) {
         if (frame == null) {
             pendingLogs.add(message);
@@ -224,6 +384,23 @@ public class RemoteGameUI {
             frame.getControlPanel().addLog(log);
         }
         pendingLogs.clear();
+    }
+
+    private void flushPendingDialogs() {
+        if (frame == null || pendingDialogs.isEmpty()) {
+            return;
+        }
+        for (DialogSyncPayload payload : pendingDialogs) {
+            showSynchronizedDialog(payload);
+        }
+        pendingDialogs.clear();
+    }
+
+    private String safeString(String value, String fallback) {
+        if (value == null || value.isEmpty()) {
+            return fallback;
+        }
+        return value;
     }
 
     public void dispose() {

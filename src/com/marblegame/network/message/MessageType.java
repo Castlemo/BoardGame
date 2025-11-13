@@ -7,5 +7,6 @@ public enum MessageType {
     HEARTBEAT,
     HELLO,
     WELCOME,
-    REJECT
+    REJECT,
+    DIALOG_SYNC
 }

@@ -17,6 +17,9 @@ import java.util.List;
  */
 import com.marblegame.network.HostNetworkService;
 import com.marblegame.network.listener.ClientMessageListener;
+import com.marblegame.network.message.DialogSyncCodec;
+import com.marblegame.network.message.DialogSyncPayload;
+import com.marblegame.network.message.DialogType;
 import com.marblegame.network.message.MessageType;
 import com.marblegame.network.message.NetworkMessage;
 import com.marblegame.network.message.RemoteActionCodec;
@@ -288,6 +291,7 @@ public class GameUI implements PlayerInputSink {
 
             // 도시 선택 안내 다이얼로그 표시
             CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
+            broadcastDialog(DialogSyncPayload.builder(DialogType.CITY_SELECTION).build());
             selectionDialog.setVisible(true);
         } else {
             state = GameState.WAITING_FOR_ROLL;
@@ -412,6 +416,12 @@ public class GameUI implements PlayerInputSink {
                 if (finalShowSuppressionDialog) {
                     DoubleSuppressedDialog suppressedDialog = new DoubleSuppressedDialog(
                         frame, finalD1, finalConsecutiveDoubles);
+                    broadcastDialog(
+                        DialogSyncPayload.builder(DialogType.DOUBLE_SUPPRESSED)
+                            .putInt("diceValue", finalD1)
+                            .putInt("consecutive", finalConsecutiveDoubles)
+                            .build()
+                    );
                     suppressedDialog.setVisible(true);
                 }
 
@@ -554,6 +564,11 @@ public class GameUI implements PlayerInputSink {
                 player.jailTurns = 2; // 2턴 갇힘
                 // 무인도 다이얼로그 표시
                 IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
+                broadcastDialog(
+                    DialogSyncPayload.builder(DialogType.ISLAND_STATUS)
+                        .putInt("jailTurns", player.jailTurns)
+                        .build()
+                );
                 islandDialog.setVisible(true);
 
                 log("무인도에 도착했습니다!");
@@ -571,6 +586,11 @@ public class GameUI implements PlayerInputSink {
 
                 // 찬스 다이얼로그 표시
                 ChanceDialog chanceDialog = new ChanceDialog(frame, chanceReward);
+                broadcastDialog(
+                    DialogSyncPayload.builder(DialogType.CHANCE_REWARD)
+                        .putInt("amount", chanceReward)
+                        .build()
+                );
                 chanceDialog.setVisible(true);
 
                 log("찬스 카드! " + String.format("%,d", chanceReward) + "원을 받았습니다!");
@@ -601,6 +621,7 @@ public class GameUI implements PlayerInputSink {
             case WORLD_TOUR:
                 // 세계여행 다이얼로그 표시
                 WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
+                broadcastDialog(DialogSyncPayload.builder(DialogType.WORLD_TOUR).build());
                 worldTourDialog.setVisible(true);
 
                 log("세계여행에 도착했습니다!");
@@ -633,6 +654,12 @@ public class GameUI implements PlayerInputSink {
 
                 // 다이얼로그 표시
                 DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                broadcastDialog(
+                    DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
+                        .put("cityName", city.name)
+                        .putInt("pulledCount", pulledCount)
+                        .build()
+                );
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
@@ -678,6 +705,16 @@ public class GameUI implements PlayerInputSink {
                 toll,
                 city.hasOlympicBoost,
                 player.cash
+            );
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.TOLL_PAYMENT)
+                    .put("cityName", city.name)
+                    .put("ownerName", owner.name)
+                    .putInt("level", city.level)
+                    .putInt("toll", toll)
+                    .putBoolean("olympic", city.hasOlympicBoost)
+                    .putInt("playerCash", player.cash)
+                    .build()
             );
             tollDialog.setVisible(true);
 
@@ -728,6 +765,13 @@ public class GameUI implements PlayerInputSink {
                 touristSpot.price,
                 player.cash
             );
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
+                    .put("spotName", touristSpot.name)
+                    .putInt("price", touristSpot.price)
+                    .putInt("playerCash", player.cash)
+                    .build()
+            );
             purchaseDialog.setVisible(true);
 
             // 매입 처리
@@ -771,6 +815,16 @@ public class GameUI implements PlayerInputSink {
                 toll,
                 false,  // 관광지는 올림픽 효과 없음
                 player.cash
+            );
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.TOLL_PAYMENT)
+                    .put("cityName", touristSpot.name)
+                    .put("ownerName", owner.name)
+                    .putInt("level", 1)
+                    .putInt("toll", toll)
+                    .putBoolean("olympic", false)
+                    .putInt("playerCash", player.cash)
+                    .build()
             );
             tollDialog.setVisible(true);
 
@@ -817,6 +871,11 @@ public class GameUI implements PlayerInputSink {
             frame,
             touristSpot.name
         );
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.TOURIST_CHOICE)
+                .put("spotName", touristSpot.name)
+                .build()
+        );
         choiceDialog.setVisible(true);
 
         TouristSpotChoiceDialog.Choice choice = choiceDialog.getSelectedChoice();
@@ -850,6 +909,13 @@ public class GameUI implements PlayerInputSink {
                 city.name,
                 city.price,
                 player.cash
+            );
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.LEVEL_SELECTION)
+                    .put("cityName", city.name)
+                    .putInt("price", city.price)
+                    .putInt("playerCash", player.cash)
+                    .build()
             );
             dialog.setVisible(true);
 
@@ -886,6 +952,13 @@ public class GameUI implements PlayerInputSink {
                 touristSpot.name,
                 touristSpot.price,
                 player.cash
+            );
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
+                    .put("spotName", touristSpot.name)
+                    .putInt("price", touristSpot.price)
+                    .putInt("playerCash", player.cash)
+                    .build()
             );
             dialog.setVisible(true);
 
@@ -938,6 +1011,12 @@ public class GameUI implements PlayerInputSink {
 
                 // 다이얼로그 표시
                 DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                broadcastDialog(
+                    DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
+                        .put("cityName", city.name)
+                        .putInt("pulledCount", pulledCount)
+                        .build()
+                );
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
@@ -971,6 +1050,15 @@ public class GameUI implements PlayerInputSink {
             city.level,
             takeoverCost,
             buyer.cash
+        );
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
+                .put("cityName", city.name)
+                .put("ownerName", seller.name)
+                .putInt("level", city.level)
+                .putInt("cost", takeoverCost)
+                .putInt("playerCash", buyer.cash)
+                .build()
         );
         dialog.setVisible(true);
 
@@ -1009,6 +1097,15 @@ public class GameUI implements PlayerInputSink {
             1,  // 관광지는 레벨 개념 없음
             takeoverCost,
             buyer.cash
+        );
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
+                .put("cityName", spot.name)
+                .put("ownerName", seller.name)
+                .putInt("level", 1)
+                .putInt("cost", takeoverCost)
+                .putInt("playerCash", buyer.cash)
+                .build()
         );
         dialog.setVisible(true);
 
@@ -1101,8 +1198,7 @@ public class GameUI implements PlayerInputSink {
             // 클릭한 타일이 도시인지 확인
             if (!(selectedTile instanceof City)) {
                 log("도시가 아닌 칸을 선택했습니다.");
-                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "도시가 아닌 칸을 선택했습니다.");
-                errorDialog.setVisible(true);
+                showErrorDialog("선택 오류", "도시가 아닌 칸을 선택했습니다.");
                 return; // 재선택 가능하도록 상태 유지
             }
 
@@ -1111,16 +1207,14 @@ public class GameUI implements PlayerInputSink {
             // 본인 소유 도시인지 확인
             if (!city.isOwned() || city.owner != currentPlayerIndex) {
                 log("본인 소유 도시가 아닙니다.");
-                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "본인 소유 도시가 아닙니다.");
-                errorDialog.setVisible(true);
+                showErrorDialog("선택 오류", "본인 소유 도시가 아닙니다.");
                 return; // 재선택 가능
             }
 
             // 레벨 1~3인지 확인 (업그레이드 가능한지)
             if (city.level < 1 || city.level >= 4) {
                 log("업그레이드할 수 없는 도시입니다. (레벨 1~3만 가능)");
-                ErrorDialog errorDialog = new ErrorDialog(frame, "선택 오류", "업그레이드할 수 없는 도시입니다.");
-                errorDialog.setVisible(true);
+                showErrorDialog("선택 오류", "업그레이드할 수 없는 도시입니다.");
                 return; // 재선택 가능
             }
 
@@ -1143,6 +1237,12 @@ public class GameUI implements PlayerInputSink {
             frame,
             player.cash,
             tax
+        );
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.TAX_PAYMENT)
+                .putInt("playerCash", player.cash)
+                .putInt("taxAmount", tax)
+                .build()
         );
         taxDialog.setVisible(true);
 
@@ -1185,9 +1285,16 @@ public class GameUI implements PlayerInputSink {
         // 간단한 안내 메시지 다이얼로그 표시
         log("⬆️ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
+        String upgradeGuideMessage = "원하는 도시를 선택해주세요!\n\n보드에서 본인 소유 도시(레벨 1~3)를 클릭하면 1단계 업그레이드됩니다.";
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.UPGRADE_GUIDE)
+                .put("title", "도시 업그레이드")
+                .put("message", upgradeGuideMessage)
+                .build()
+        );
         JOptionPane.showMessageDialog(
             frame,
-            "원하는 도시를 선택해주세요!\n\n보드에서 본인 소유 도시(레벨 1~3)를 클릭하면 1단계 업그레이드됩니다.",
+            upgradeGuideMessage,
             "도시 업그레이드",
             JOptionPane.INFORMATION_MESSAGE
         );
@@ -1212,8 +1319,7 @@ public class GameUI implements PlayerInputSink {
 
         if (!player.canAfford(upgradeCost)) {
             log("잔액이 부족하여 업그레이드할 수 없습니다.");
-            ErrorDialog errorDialog = new ErrorDialog(frame, "잔액 부족", "업그레이드 비용이 부족합니다.");
-            errorDialog.setVisible(true);
+            showErrorDialog("잔액 부족", "업그레이드 비용이 부족합니다.");
             selectedLandmarkCity = null;
             setTileSelectionEnabled(false);
             endTurn();
@@ -1244,6 +1350,12 @@ public class GameUI implements PlayerInputSink {
 
             // 다이얼로그 표시
             DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
+                    .put("cityName", selectedLandmarkCity.name)
+                    .putInt("pulledCount", pulledCount)
+                    .build()
+            );
             magneticDialog.setVisible(true);
 
             if (pulledCount > 0) {
@@ -1269,6 +1381,7 @@ public class GameUI implements PlayerInputSink {
 
         // 올림픽 다이얼로그 표시
         OlympicDialog olympicDialog = new OlympicDialog(frame);
+        broadcastDialog(DialogSyncPayload.builder(DialogType.OLYMPIC).build());
         olympicDialog.setVisible(true);
 
         log("올림픽에 도착했습니다!");
@@ -1370,6 +1483,11 @@ public class GameUI implements PlayerInputSink {
 
         // 삭제 다이얼로그 표시
         PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, deletedCity.name);
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.PHASE_DELETE)
+                .put("cityName", deletedCity.name)
+                .build()
+        );
         deleteDialog.setVisible(true);
 
         // 보드 업데이트
@@ -1408,6 +1526,12 @@ public class GameUI implements PlayerInputSink {
 
                 // 더블 다이얼로그 표시
                 DoubleDialog doubleDialog = new DoubleDialog(frame, lastD1, consecutiveDoubles);
+                broadcastDialog(
+                    DialogSyncPayload.builder(DialogType.DOUBLE_ROLL)
+                        .putInt("diceValue", lastD1)
+                        .putInt("consecutive", consecutiveDoubles)
+                        .build()
+                );
                 doubleDialog.setVisible(true);
 
                 // 더블 상태로 전환 (다시 주사위 굴리기 가능)
@@ -1503,6 +1627,13 @@ public class GameUI implements PlayerInputSink {
             log("최종 자산: " + String.format("%,d", winner.cash) + "원");
 
             // 재시작 옵션이 포함된 다이얼로그
+            broadcastDialog(
+                DialogSyncPayload.builder(DialogType.GAME_OVER)
+                    .put("winner", winner.name)
+                    .put("victoryType", victoryType)
+                    .putInt("cash", winner.cash)
+                    .build()
+            );
             int choice = JOptionPane.showOptionDialog(
                 frame,
                 winner.name + " 승리!\n승리 조건: " + victoryType + "\n최종 자산: " + String.format("%,d", winner.cash) + "원",
@@ -1650,9 +1781,32 @@ public class GameUI implements PlayerInputSink {
         broadcastLog(message);
     }
 
+    private void showErrorDialog(String title, String message) {
+        ErrorDialog errorDialog = new ErrorDialog(frame, title, message);
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.ERROR)
+                .put("title", title)
+                .put("message", message)
+                .build()
+        );
+        errorDialog.setVisible(true);
+    }
+
     private void broadcastLog(String message) {
         if (hostNetworkService != null) {
             hostNetworkService.broadcast(new NetworkMessage(MessageType.LOG_ENTRY, message));
+        }
+    }
+
+    private void broadcastDialog(DialogSyncPayload payload) {
+        if (hostNetworkService == null || payload == null) {
+            return;
+        }
+        try {
+            String serialized = DialogSyncCodec.encode(payload);
+            hostNetworkService.broadcast(new NetworkMessage(MessageType.DIALOG_SYNC, serialized));
+        } catch (Exception ex) {
+            System.err.println("[Host] 다이얼로그 동기화 실패: " + ex.getMessage());
         }
     }
 
