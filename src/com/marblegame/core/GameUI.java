@@ -2498,18 +2498,21 @@ public class GameUI implements PlayerInputSink {
         endTurn();
     }
 
-    private void handleTouristSpotPurchaseResult(Player player, TouristSpot touristSpot, DialogResponsePayload response) {
+    private boolean handleTouristSpotPurchaseResult(Player player, TouristSpot touristSpot, DialogResponsePayload response) {
         if (!isResult(response, "CONFIRM")) {
             log("매입을 취소했습니다.");
-            return;
+            endTurn();
+            return false;
         }
         if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
             log("✅ " + player.name + "이(가) " + touristSpot.name + "을(를) " +
                 String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
-        } else {
-            log("자금이 부족하여 매입할 수 없습니다.");
+            return true;
         }
+        log("자금이 부족하여 매입할 수 없습니다.");
+        endTurn();
+        return false;
     }
 
     private void handleTouristSpotChoice(Player player, TouristSpot touristSpot, DialogResponsePayload response) {
@@ -2595,8 +2598,8 @@ public class GameUI implements PlayerInputSink {
             DialogType.TOURIST_PURCHASE,
             playerIndex,
             response -> {
-                handleTouristSpotPurchaseResult(player, touristSpot, response);
-                if (afterDecision != null) {
+                boolean purchased = handleTouristSpotPurchaseResult(player, touristSpot, response);
+                if (purchased && afterDecision != null) {
                     afterDecision.run();
                 }
             },
