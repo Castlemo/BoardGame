@@ -97,6 +97,7 @@ public class GameUI implements PlayerInputSink {
     private Point2D.Double movementEndPoint;
 
     private final HostNetworkService hostNetworkService;
+    private final int myPlayerIndex;
     private HostLobbyFrame hostLobbyFrame;
     private LobbyState lobbyState;
     private Timer snapshotTimer;
@@ -124,6 +125,7 @@ public class GameUI implements PlayerInputSink {
         this.players = new Player[numPlayers];
         this.dice = new Dice();
         this.hostNetworkService = hostNetworkService;
+        this.myPlayerIndex = 0;
 
         // 플레이어 초기화
         for (int i = 0; i < numPlayers; i++) {
@@ -486,9 +488,7 @@ public class GameUI implements PlayerInputSink {
         if (shouldWaitForReadyGate()) {
             return;
         }
-        if (frame != null) {
-            frame.getOverlayPanel().hideWaitingMessage();
-        }
+        updateLocalTurnOverlay();
 
         Player player = players[currentPlayerIndex];
         frame.getActionPanel().clearPriceLabels();
@@ -905,7 +905,8 @@ public class GameUI implements PlayerInputSink {
             // 본인 랜드마크 도착 시 듀얼 마그네틱 코어 발동
             if (city.isLandmark()) {
                 int landmarkPos = city.id;
-                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                List<Integer> pulledPlayers = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                int pulledCount = pulledPlayers.size();
 
                 // 다이얼로그 표시
                 int playerIndex = currentPlayerIndex;
@@ -925,7 +926,7 @@ public class GameUI implements PlayerInputSink {
                     log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                     // 끌려온 플레이어들에게 통행료 징수
-                    handleMagneticTollCollection(city);
+                    handleMagneticTollCollection(city, pulledPlayers, playerIndex);
                 } else {
                     log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
                 }
@@ -1197,7 +1198,8 @@ public class GameUI implements PlayerInputSink {
                 log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
 
                 int landmarkPos = city.id;
-                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                List<Integer> pulledPlayers = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                int pulledCount = pulledPlayers.size();
 
                 // 다이얼로그 표시
                 int playerIndex = currentPlayerIndex;
@@ -1217,7 +1219,7 @@ public class GameUI implements PlayerInputSink {
                     log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                     // 끌려온 플레이어들에게 통행료 징수
-                    handleMagneticTollCollection(city);
+                handleMagneticTollCollection(city, pulledPlayers, playerIndex);
                 } else {
                     log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
                 }
@@ -1524,7 +1526,8 @@ public class GameUI implements PlayerInputSink {
         // 랜드마크 건설 시 듀얼 마그네틱 코어 발동
         if (selectedLandmarkCity.level == 4) {
             int landmarkPos = selectedLandmarkCity.id;
-            int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+            List<Integer> pulledPlayers = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+            int pulledCount = pulledPlayers.size();
 
             int playerIndex = currentPlayerIndex;
             // 다이얼로그 표시
@@ -1544,7 +1547,7 @@ public class GameUI implements PlayerInputSink {
                 log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                 // 끌려온 플레이어들에게 통행료 징수
-                handleMagneticTollCollection(selectedLandmarkCity);
+                handleMagneticTollCollection(selectedLandmarkCity, pulledPlayers, playerIndex);
             } else {
                 log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
             }
@@ -1611,35 +1614,46 @@ public class GameUI implements PlayerInputSink {
         endTurn();
     }
 
-    private void handleMagneticTollCollection(City landmark) {
-        // 랜드마크에 끌려온 플레이어들에게 통행료 징수
-        Player owner = players[currentPlayerIndex];
-        int toll = ruleEngine.calculateToll(landmark, currentPlayerIndex);
+    private void handleMagneticTollCollection(City landmark, List<Integer> pulledPlayerIndices, int ownerIndexHint) {
+        if (pulledPlayerIndices == null || pulledPlayerIndices.isEmpty()) {
+            return;
+        }
+        int ownerIndex = ownerIndexHint;
+        if (landmark != null && landmark.owner >= 0 && landmark.owner < players.length) {
+            ownerIndex = landmark.owner;
+        }
+        if (ownerIndex < 0 || ownerIndex >= players.length) {
+            ownerIndex = currentPlayerIndex;
+        }
+        Player owner = players[ownerIndex];
+        int toll = ruleEngine.calculateToll(landmark, ownerIndex);
 
-        for (int i = 0; i < players.length; i++) {
-            // 본인은 제외
-            if (i == currentPlayerIndex) {
+        for (Integer idx : pulledPlayerIndices) {
+            if (idx == null) {
                 continue;
             }
+            int playerIndex = idx;
+            if (playerIndex < 0 || playerIndex >= players.length) {
+                continue;
+            }
+            if (playerIndex == ownerIndex) {
+                continue;
+            }
+            Player player = players[playerIndex];
+            if (player.bankrupt) {
+                continue;
+            }
+            log("💸 " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+            ruleEngine.payToll(player, owner, toll);
 
-            Player player = players[i];
+            frame.getOverlayPanel().showMoneyChange(playerIndex, -toll);
+            frame.getOverlayPanel().showMoneyChange(ownerIndex, toll);
 
-            // 랜드마크 위치에 있는 플레이어만 통행료 징수
-            if (player.pos == landmark.id && !player.bankrupt) {
-                log("💸 " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
-                ruleEngine.payToll(player, owner, toll);
-
-                // 자산 변동 표시
-                frame.getOverlayPanel().showMoneyChange(i, -toll);
-                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, toll);
-
-                if (player.bankrupt) {
-                    log(player.name + "이(가) 파산했습니다!");
-                }
+            if (player.bankrupt) {
+                log(player.name + "이(가) 파산했습니다!");
             }
         }
 
-        // 보드 업데이트 (플레이어 위치 변경 반영)
         frame.getBoardPanel().updateBoard();
         frame.getOverlayPanel().updatePlayerInfo();
     }
@@ -2069,6 +2083,7 @@ public class GameUI implements PlayerInputSink {
 
     private void updateDisplay() {
         frame.updateDisplay(turnCount);
+        updateLocalTurnOverlay();
     }
 
     /**
@@ -2085,6 +2100,34 @@ public class GameUI implements PlayerInputSink {
         frame.getOverlayPanel().getEvenButton().setEnabled(allowLocal);
         frame.getOverlayPanel().getOddButton().repaint();
         frame.getOverlayPanel().getEvenButton().repaint();
+    }
+
+    private void updateLocalTurnOverlay() {
+        if (frame == null || waitingForReadyGate) {
+            return;
+        }
+        if (players == null || players.length == 0) {
+            frame.getOverlayPanel().hideWaitingMessage();
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+            return;
+        }
+        if (myPlayerIndex < 0 || myPlayerIndex >= players.length) {
+            frame.getOverlayPanel().hideWaitingMessage();
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+            return;
+        }
+        if (currentPlayerIndex == myPlayerIndex) {
+            frame.getOverlayPanel().hideWaitingMessage();
+            frame.getOverlayPanel().setHighlightedPlayerIndex(-1);
+            return;
+        }
+        String activeName = players[currentPlayerIndex].name;
+        String message = "상대방이 플레이중입니다. 잠시만 기다려주세요.";
+        if (activeName != null && !activeName.isEmpty()) {
+            message = activeName + " 차례입니다. 상대방이 플레이중입니다.";
+        }
+        frame.getOverlayPanel().showWaitingMessage(message);
+        frame.getOverlayPanel().setHighlightedPlayerIndex(myPlayerIndex);
     }
 
     /**

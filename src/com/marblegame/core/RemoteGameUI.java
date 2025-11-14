@@ -326,9 +326,9 @@ public class RemoteGameUI {
             return;
         }
         String activeName = resolvePlayerName(snapshot.currentPlayerIndex);
-        String message = "다른 플레이어가 진행 중입니다. 잠시만 기다려주세요.";
+        String message = "상대방이 플레이중입니다. 잠시만 기다려주세요.";
         if (activeName != null && !activeName.isEmpty()) {
-            message = activeName + " 차례입니다. 잠시만 기다려주세요.";
+            message = activeName + " 차례입니다. 상대방이 플레이중입니다.";
         }
         frame.getOverlayPanel().showWaitingMessage(message);
         frame.getOverlayPanel().setHighlightedPlayerIndex(assignedPlayerIndex);

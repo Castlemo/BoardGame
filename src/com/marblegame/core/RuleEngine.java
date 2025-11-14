@@ -1,6 +1,7 @@
 package com.marblegame.core;
 
 import com.marblegame.model.*;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -531,8 +532,8 @@ public class RuleEngine {
      * @param ownerIndex 랜드마크 소유자 인덱스
      * @return 끌려온 플레이어 수
      */
-    public int applyDualMagneticCore(int landmarkPos, Player[] players, int ownerIndex) {
-        int pulledCount = 0;
+    public List<Integer> applyDualMagneticCore(int landmarkPos, Player[] players, int ownerIndex) {
+        List<Integer> pulledPlayers = new ArrayList<>();
         final int MAGNETIC_RANGE = 4;
 
         for (int i = 0; i < players.length; i++) {
@@ -565,11 +566,11 @@ public class RuleEngine {
             // 4칸 이내면 끌어당김
             if (minDistance <= MAGNETIC_RANGE && minDistance > 0) {
                 player.pos = landmarkPos;
-                pulledCount++;
+                pulledPlayers.add(i);
             }
         }
 
-        return pulledCount;
+        return pulledPlayers;
     }
 
 }
