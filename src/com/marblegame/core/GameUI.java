@@ -234,6 +234,7 @@ public class GameUI implements PlayerInputSink {
             hostLobbyFrame.update(view, hostStartConfirmed);
         }
         resumeIfReadyGateCleared();
+        refreshLocalInteractionLocks();
     }
 
     private void notifySlotAssignment(String clientId, int slotIndex, String playerName,
@@ -319,12 +320,47 @@ public class GameUI implements PlayerInputSink {
         takeoverButtonActive = takeover;
         skipButtonActive = skip;
         escapeButtonActive = escape;
-        frame.getActionPanel().setButtonsEnabled(roll, purchase, upgrade, takeover, skip, escape);
+        refreshLocalInteractionLocks();
     }
 
     private void setTileSelectionEnabled(boolean enabled) {
         tileSelectionEnabled = enabled;
-        frame.getBoardPanel().setTileClickEnabled(enabled);
+        refreshLocalInteractionLocks();
+    }
+
+    private void refreshLocalInteractionLocks() {
+        if (frame == null) {
+            return;
+        }
+        updateLocalActionButtons();
+        updateLocalTileSelection();
+        updateOddEvenButtons();
+    }
+
+    private void updateLocalActionButtons() {
+        if (frame == null) {
+            return;
+        }
+        boolean allowLocal = !isCurrentPlayerRemoteControlled();
+        frame.getActionPanel().setButtonsEnabled(
+            allowLocal && rollButtonActive,
+            allowLocal && purchaseButtonActive,
+            allowLocal && upgradeButtonActive,
+            allowLocal && takeoverButtonActive,
+            allowLocal && skipButtonActive,
+            allowLocal && escapeButtonActive
+        );
+    }
+
+    private void updateLocalTileSelection() {
+        if (frame == null) {
+            return;
+        }
+        frame.getBoardPanel().setTileClickEnabled(tileSelectionEnabled && !isCurrentPlayerRemoteControlled());
+    }
+
+    private boolean isCurrentPlayerRemoteControlled() {
+        return !shouldShowLocalDialogForPlayer(currentPlayerIndex);
     }
 
     private void enterDialogWaitState() {
@@ -341,15 +377,29 @@ public class GameUI implements PlayerInputSink {
 
     @Override
     public void handlePlayerInput(PlayerInputEvent event) {
+        processPlayerInput(event, false);
+    }
+
+    private void handleRemotePlayerInput(PlayerInputEvent event) {
+        processPlayerInput(event, true);
+    }
+
+    private void processPlayerInput(PlayerInputEvent event, boolean fromRemoteClient) {
+        if (event == null) {
+            return;
+        }
+        if (!fromRemoteClient && isCurrentPlayerRemoteControlled()) {
+            return;
+        }
         if (state == GameState.WAITING_FOR_DIALOG_RESPONSE) {
             return;
         }
         switch (event.getType()) {
             case GAUGE_PRESS:
-                onGaugePressed();
+                onGaugePressed(fromRemoteClient);
                 break;
             case GAUGE_RELEASE:
-                onGaugeReleased();
+                onGaugeReleased(fromRemoteClient);
                 break;
             case PURCHASE_CITY:
                 purchaseCity();
@@ -375,21 +425,24 @@ public class GameUI implements PlayerInputSink {
             case TILE_SELECTED:
                 onTileSelected(event.requireIntValue());
                 break;
+            default:
+                break;
         }
     }
 
-    private void onGaugePressed() {
+    private void onGaugePressed(boolean fromRemote) {
         JButton diceButton = frame.getActionPanel().getRollDiceButton();
-        if (diceButton.isEnabled()) {
+        if (diceButton.isEnabled() || fromRemote) {
             frame.getActionPanel().getDiceGauge().start();
             frame.getActionPanel().startGaugeAnimation();
             log("🎯 게이지 타이밍을 잡으세요!");
         }
     }
 
-    private void onGaugeReleased() {
+    private void onGaugeReleased(boolean fromRemote) {
         JButton diceButton = frame.getActionPanel().getRollDiceButton();
-        if (diceButton.isEnabled() && frame.getActionPanel().getDiceGauge().isRunning()) {
+        boolean gaugeRunning = frame.getActionPanel().getDiceGauge().isRunning();
+        if ((diceButton.isEnabled() || fromRemote) && gaugeRunning) {
             rollDiceWithGauge();
         }
     }
@@ -1045,17 +1098,19 @@ public class GameUI implements PlayerInputSink {
 
     private void purchaseCity() {
         Player player = players[currentPlayerIndex];
+        int playerIndex = currentPlayerIndex;
 
         if (currentTile instanceof City) {
             City city = (City) currentTile;
 
             // 레벨 선택 다이얼로그 표시
-            broadcastDialog(
+            broadcastDialogForPlayer(
                 DialogSyncPayload.builder(DialogType.LEVEL_SELECTION)
                     .put("cityName", city.name)
                     .putInt("price", city.price)
                     .putInt("playerCash", player.cash)
-                    .build()
+                    .build(),
+                playerIndex
             );
 
             Map<String, String> attrs = newDialogAttributes();
@@ -1063,7 +1118,6 @@ public class GameUI implements PlayerInputSink {
             attrs.put("price", Integer.toString(city.price));
             attrs.put("playerCash", Integer.toString(player.cash));
             enterDialogWaitState();
-            int playerIndex = currentPlayerIndex;
             CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
                 playerIndex,
                 DialogType.LEVEL_SELECTION,
@@ -1966,8 +2020,14 @@ public class GameUI implements PlayerInputSink {
      * 홀수/짝수 버튼 상태 업데이트
      */
     private void updateOddEvenButtons() {
+        if (frame == null) {
+            return;
+        }
+        boolean allowLocal = !isCurrentPlayerRemoteControlled();
         frame.getOverlayPanel().getOddButton().putClientProperty("selected", diceMode == DiceMode.ODD);
         frame.getOverlayPanel().getEvenButton().putClientProperty("selected", diceMode == DiceMode.EVEN);
+        frame.getOverlayPanel().getOddButton().setEnabled(allowLocal);
+        frame.getOverlayPanel().getEvenButton().setEnabled(allowLocal);
         frame.getOverlayPanel().getOddButton().repaint();
         frame.getOverlayPanel().getEvenButton().repaint();
     }
@@ -2011,6 +2071,13 @@ public class GameUI implements PlayerInputSink {
         }
     }
 
+    private void broadcastDialogForPlayer(DialogSyncPayload payload, int playerIndex) {
+        if (shouldShowLocalDialogForPlayer(playerIndex)) {
+            return;
+        }
+        broadcastDialog(payload);
+    }
+
     private void handleRemoteAction(String clientId, NetworkMessage message) {
         if (!isClientTurn(clientId)) {
             System.out.println("[Host] " + clientId + " 원격 입력 무시: 현재 차례가 아님");
@@ -2018,7 +2085,7 @@ public class GameUI implements PlayerInputSink {
         }
         try {
             PlayerInputEvent remoteEvent = RemoteActionCodec.decode(message);
-            SwingUtilities.invokeLater(() -> handlePlayerInput(remoteEvent));
+            SwingUtilities.invokeLater(() -> handleRemotePlayerInput(remoteEvent));
         } catch (IllegalArgumentException ex) {
             System.err.println("[Host] 잘못된 원격 입력(" + clientId + "): " + message.getPayload());
         }
@@ -2445,12 +2512,13 @@ public class GameUI implements PlayerInputSink {
         attrs.put("price", Integer.toString(touristSpot.price));
         attrs.put("playerCash", Integer.toString(player.cash));
 
-        broadcastDialog(
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
                 .put("spotName", touristSpot.name)
                 .putInt("price", touristSpot.price)
                 .putInt("playerCash", player.cash)
-                .build()
+                .build(),
+            playerIndex
         );
 
         enterDialogWaitState();
