@@ -637,25 +637,28 @@ public class GameUI implements PlayerInputSink {
             lastD2 = finalD2;
             diceRollSequence++;
 
-            // 주사위 애니메이션 시작
-            frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
-                if (finalIsDouble) {
-                    log("🎲 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
-                } else {
-                    log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
+        final int dialogPlayerIndex = currentPlayerIndex;
+        // 주사위 애니메이션 시작
+        frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
+            if (finalIsDouble) {
+                log("🎲 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
+            } else {
+                log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
                 }
 
                 // 연속 더블 2번 후 합계 2 또는 12인 경우 억제 다이얼로그 표시
                 if (finalShowSuppressionDialog) {
-                    DoubleSuppressedDialog suppressedDialog = new DoubleSuppressedDialog(
-                        frame, finalD1, finalConsecutiveDoubles);
-                    broadcastDialog(
+                    broadcastDialogForPlayer(
                         DialogSyncPayload.builder(DialogType.DOUBLE_SUPPRESSED)
                             .putInt("diceValue", finalD1)
                             .putInt("consecutive", finalConsecutiveDoubles)
-                            .build()
+                            .build(),
+                        dialogPlayerIndex
                     );
-                    suppressedDialog.setVisible(true);
+                    showLocalDialogForPlayer(
+                        dialogPlayerIndex,
+                        () -> new DoubleSuppressedDialog(frame, finalD1, finalConsecutiveDoubles).setVisible(true)
+                    );
                 }
 
                 movePlayer(finalResult);
@@ -813,18 +816,22 @@ public class GameUI implements PlayerInputSink {
             case CHANCE:
                 int chanceReward = ruleEngine.getChanceReward();
                 ruleEngine.processChance(player);
+                int chancePlayerIndex = currentPlayerIndex;
 
                 // 자산 변동 표시
                 frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, chanceReward);
 
                 // 찬스 다이얼로그 표시
-                ChanceDialog chanceDialog = new ChanceDialog(frame, chanceReward);
-                broadcastDialog(
+                broadcastDialogForPlayer(
                     DialogSyncPayload.builder(DialogType.CHANCE_REWARD)
                         .putInt("amount", chanceReward)
-                        .build()
+                        .build(),
+                    chancePlayerIndex
                 );
-                chanceDialog.setVisible(true);
+                showLocalDialogForPlayer(
+                    chancePlayerIndex,
+                    () -> new ChanceDialog(frame, chanceReward).setVisible(true)
+                );
 
                 log("찬스 카드! " + String.format("%,d", chanceReward) + "원을 받았습니다!");
                 endTurn();
@@ -853,9 +860,14 @@ public class GameUI implements PlayerInputSink {
 
             case WORLD_TOUR:
                 // 세계여행 다이얼로그 표시
-                WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
-                broadcastDialog(DialogSyncPayload.builder(DialogType.WORLD_TOUR).build());
-                worldTourDialog.setVisible(true);
+                broadcastDialogForPlayer(
+                    DialogSyncPayload.builder(DialogType.WORLD_TOUR).build(),
+                    currentPlayerIndex
+                );
+                showLocalDialogForPlayer(
+                    currentPlayerIndex,
+                    () -> new WorldTourDialog(frame).setVisible(true)
+                );
 
                 log("세계여행에 도착했습니다!");
                 clearDoubleState("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
@@ -929,17 +941,8 @@ public class GameUI implements PlayerInputSink {
                 log("⚡ 올림픽 효과로 통행료 2배!");
             }
 
-            // 통행료 지불 확인 다이얼로그
-            TollPaymentDialog tollDialog = new TollPaymentDialog(
-                frame,
-                city.name,
-                owner.name,
-                city.level,
-                toll,
-                city.hasOlympicBoost,
-                player.cash
-            );
-            broadcastDialog(
+            int playerIndex = currentPlayerIndex;
+            broadcastDialogForPlayer(
                 DialogSyncPayload.builder(DialogType.TOLL_PAYMENT)
                     .put("cityName", city.name)
                     .put("ownerName", owner.name)
@@ -947,9 +950,21 @@ public class GameUI implements PlayerInputSink {
                     .putInt("toll", toll)
                     .putBoolean("olympic", city.hasOlympicBoost)
                     .putInt("playerCash", player.cash)
-                    .build()
+                    .build(),
+                playerIndex
             );
-            tollDialog.setVisible(true);
+            showLocalDialogForPlayer(
+                playerIndex,
+                () -> new TollPaymentDialog(
+                    frame,
+                    city.name,
+                    owner.name,
+                    city.level,
+                    toll,
+                    city.hasOlympicBoost,
+                    player.cash
+                ).setVisible(true)
+            );
 
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
@@ -1010,17 +1025,8 @@ public class GameUI implements PlayerInputSink {
                 log("🔒 이 관광지는 잠금 상태입니다! (인수 불가)");
             }
 
-            // 통행료 지불 확인 다이얼로그 (관광지는 레벨 1로 표시)
-            TollPaymentDialog tollDialog = new TollPaymentDialog(
-                frame,
-                touristSpot.name,
-                owner.name,
-                1,  // 관광지는 레벨 개념 없음
-                toll,
-                false,  // 관광지는 올림픽 효과 없음
-                player.cash
-            );
-            broadcastDialog(
+            int playerIndex = currentPlayerIndex;
+            broadcastDialogForPlayer(
                 DialogSyncPayload.builder(DialogType.TOLL_PAYMENT)
                     .put("cityName", touristSpot.name)
                     .put("ownerName", owner.name)
@@ -1028,9 +1034,21 @@ public class GameUI implements PlayerInputSink {
                     .putInt("toll", toll)
                     .putBoolean("olympic", false)
                     .putInt("playerCash", player.cash)
-                    .build()
+                    .build(),
+                playerIndex
             );
-            tollDialog.setVisible(true);
+            showLocalDialogForPlayer(
+                playerIndex,
+                () -> new TollPaymentDialog(
+                    frame,
+                    touristSpot.name,
+                    owner.name,
+                    1,
+                    toll,
+                    false,
+                    player.cash
+                ).setVisible(true)
+            );
 
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
@@ -1070,17 +1088,18 @@ public class GameUI implements PlayerInputSink {
      */
     private void showTouristSpotChoiceDialog(TouristSpot touristSpot, Player player) {
         log("행동을 선택하세요.");
+        int playerIndex = currentPlayerIndex;
 
-        broadcastDialog(
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.TOURIST_CHOICE)
                 .put("spotName", touristSpot.name)
-                .build()
+                .build(),
+            playerIndex
         );
 
         Map<String, String> attrs = newDialogAttributes();
         attrs.put("spotName", touristSpot.name);
         enterDialogWaitState();
-        int playerIndex = currentPlayerIndex;
         CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
             playerIndex,
             DialogType.TOURIST_CHOICE,
@@ -1364,22 +1383,21 @@ public class GameUI implements PlayerInputSink {
     private void handleTaxTile() {
         Player player = players[currentPlayerIndex];
         int tax = ruleEngine.calculateTax(player);
+        int playerIndex = currentPlayerIndex;
 
         log("국세청에 도착했습니다!");
 
-        // 세금 납부 확인 다이얼로그
-        TaxPaymentDialog taxDialog = new TaxPaymentDialog(
-            frame,
-            player.cash,
-            tax
-        );
-        broadcastDialog(
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.TAX_PAYMENT)
                 .putInt("playerCash", player.cash)
                 .putInt("taxAmount", tax)
-                .build()
+                .build(),
+            playerIndex
         );
-        taxDialog.setVisible(true);
+        showLocalDialogForPlayer(
+            playerIndex,
+            () -> new TaxPaymentDialog(frame, player.cash, tax).setVisible(true)
+        );
 
         log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         ruleEngine.payTax(player);
@@ -1513,11 +1531,17 @@ public class GameUI implements PlayerInputSink {
 
     private void handleOlympicTile() {
         Player player = players[currentPlayerIndex];
+        int playerIndex = currentPlayerIndex;
 
         // 올림픽 다이얼로그 표시
-        OlympicDialog olympicDialog = new OlympicDialog(frame);
-        broadcastDialog(DialogSyncPayload.builder(DialogType.OLYMPIC).build());
-        olympicDialog.setVisible(true);
+        broadcastDialogForPlayer(
+            DialogSyncPayload.builder(DialogType.OLYMPIC).build(),
+            playerIndex
+        );
+        showLocalDialogForPlayer(
+            playerIndex,
+            () -> new OlympicDialog(frame).setVisible(true)
+        );
 
         log("올림픽에 도착했습니다!");
 
@@ -1658,16 +1682,19 @@ public class GameUI implements PlayerInputSink {
             // 더블 체크: 행동 완료 후 더블이면 추가 주사위 기회
             if (checkAndHandleDouble()) {
                 log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
+                int playerIndex = currentPlayerIndex;
 
-                // 더블 다이얼로그 표시
-                DoubleDialog doubleDialog = new DoubleDialog(frame, lastD1, consecutiveDoubles);
-                broadcastDialog(
+                broadcastDialogForPlayer(
                     DialogSyncPayload.builder(DialogType.DOUBLE_ROLL)
                         .putInt("diceValue", lastD1)
                         .putInt("consecutive", consecutiveDoubles)
-                        .build()
+                        .build(),
+                    playerIndex
                 );
-                doubleDialog.setVisible(true);
+                showLocalDialogForPlayer(
+                    playerIndex,
+                    () -> new DoubleDialog(frame, lastD1, consecutiveDoubles).setVisible(true)
+                );
 
                 // 더블 상태로 전환 (다시 주사위 굴리기 가능)
                 state = GameState.WAITING_FOR_DOUBLE_ROLL;
@@ -2072,10 +2099,17 @@ public class GameUI implements PlayerInputSink {
     }
 
     private void broadcastDialogForPlayer(DialogSyncPayload payload, int playerIndex) {
-        if (shouldShowLocalDialogForPlayer(playerIndex)) {
+        if (payload == null || shouldShowLocalDialogForPlayer(playerIndex)) {
             return;
         }
-        broadcastDialog(payload);
+        broadcastDialog(cloneDialogWithTargetPlayer(payload, playerIndex));
+    }
+
+    private DialogSyncPayload cloneDialogWithTargetPlayer(DialogSyncPayload payload, int playerIndex) {
+        DialogSyncPayload.Builder builder = DialogSyncPayload.builder(payload.getType());
+        payload.getAttributes().forEach(builder::put);
+        builder.putInt(DialogSyncPayload.ATTR_TARGET_PLAYER_INDEX, playerIndex);
+        return builder.build();
     }
 
     private void handleRemoteAction(String clientId, NetworkMessage message) {

@@ -8,6 +8,7 @@ import java.util.Map;
  * 다이얼로그 정보를 네트워크로 전달할 때 사용하는 단순 키-값 페이로드.
  */
 public class DialogSyncPayload {
+    public static final String ATTR_TARGET_PLAYER_INDEX = "__targetPlayerIndex";
     private final DialogType type;
     private final Map<String, String> attributes;
 

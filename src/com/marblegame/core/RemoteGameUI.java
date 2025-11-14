@@ -94,6 +94,9 @@ public class RemoteGameUI {
         }
         try {
             DialogSyncPayload dialogPayload = DialogSyncCodec.decode(payload);
+            if (!shouldDisplayDialog(dialogPayload)) {
+                return;
+            }
             SwingUtilities.invokeLater(() -> enqueueOrShowDialog(dialogPayload));
         } catch (IllegalArgumentException ex) {
             System.err.println("[Client] 다이얼로그 파싱 실패: " + ex.getMessage());
@@ -150,6 +153,17 @@ public class RemoteGameUI {
             return;
         }
         showSynchronizedDialog(payload);
+    }
+
+    private boolean shouldDisplayDialog(DialogSyncPayload payload) {
+        if (payload == null) {
+            return false;
+        }
+        int targetIndex = payload.getInt(DialogSyncPayload.ATTR_TARGET_PLAYER_INDEX, -1);
+        if (targetIndex < 0) {
+            return true;
+        }
+        return assignedPlayerIndex >= 0 && assignedPlayerIndex == targetIndex;
     }
 
     private void applySnapshot(GameSnapshot snapshot) {
