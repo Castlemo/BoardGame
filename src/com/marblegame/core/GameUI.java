@@ -10,6 +10,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -35,6 +36,7 @@ import com.marblegame.network.snapshot.GameSnapshotSerializer;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -56,6 +58,7 @@ public class GameUI implements PlayerInputSink {
         WAITING_FOR_JAIL_CHOICE,
         WAITING_FOR_RAILROAD_SELECTION,
         WAITING_FOR_LANDMARK_SELECTION,
+        WAITING_FOR_DIALOG_RESPONSE,
         WAITING_FOR_DOUBLE_ROLL,  // 더블 발생 후 추가 주사위 대기
         WAITING_FOR_READY,        // 네트워크 플레이어 준비 대기
         ANIMATING_MOVEMENT,
@@ -70,6 +73,7 @@ public class GameUI implements PlayerInputSink {
     }
     private DiceMode diceMode = DiceMode.NORMAL;
     private static final int[][][] SUM_TO_DICE_COMBINATIONS = createSumToDiceCombinations();
+    private static final long DIALOG_RESPONSE_TIMEOUT_MS = 15000;
 
     // 더블 시스템
     private int consecutiveDoubles = 0;  // 현재 턴에서 연속 더블 횟수
@@ -323,8 +327,23 @@ public class GameUI implements PlayerInputSink {
         frame.getBoardPanel().setTileClickEnabled(enabled);
     }
 
+    private void enterDialogWaitState() {
+        state = GameState.WAITING_FOR_DIALOG_RESPONSE;
+        setActionButtons(false, false, false, false, false, false);
+        setTileSelectionEnabled(false);
+    }
+
+    private void exitDialogWaitState() {
+        if (state == GameState.WAITING_FOR_DIALOG_RESPONSE) {
+            state = GameState.WAITING_FOR_ACTION;
+        }
+    }
+
     @Override
     public void handlePlayerInput(PlayerInputEvent event) {
+        if (state == GameState.WAITING_FOR_DIALOG_RESPONSE) {
+            return;
+        }
         switch (event.getType()) {
             case GAUGE_PRESS:
                 onGaugePressed();
@@ -919,42 +938,13 @@ public class GameUI implements PlayerInputSink {
             // 미소유 관광지 → 매입 다이얼로그 → 선택지 다이얼로그
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
 
-            // 매입 다이얼로그 표시
-            TouristSpotPurchaseDialog purchaseDialog = new TouristSpotPurchaseDialog(
-                frame,
-                touristSpot.name,
-                touristSpot.price,
-                player.cash
-            );
-            broadcastDialog(
-                DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
-                    .put("spotName", touristSpot.name)
-                    .putInt("price", touristSpot.price)
-                    .putInt("playerCash", player.cash)
-                    .build()
-            );
-            purchaseDialog.setVisible(true);
-
-            // 매입 처리
-            if (purchaseDialog.isConfirmed()) {
-                if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
-                    log("✅ " + touristSpot.name + "을(를) 매입했습니다!");
-                    frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
-                } else {
-                    log("❌ 매입 실패!");
-                }
-            } else {
-                log("매입을 취소했습니다.");
-            }
-
-            // 매입 성공 여부와 관계없이 선택지 다이얼로그 표시
-            showTouristSpotChoiceDialog(touristSpot, player);
-
+            requestTouristSpotPurchase(player, touristSpot, () -> showTouristSpotChoiceDialog(touristSpot, player));
+            return;
         } else if (touristSpot.owner == currentPlayerIndex) {
             // 본인 소유 관광지 → 선택지 다이얼로그만 표시
             log(touristSpot.name + "은(는) 본인 소유 관광지입니다.");
             showTouristSpotChoiceDialog(touristSpot, player);
-
+            return;
         } else {
             // 타인 소유 관광지
             Player owner = players[touristSpot.owner];
@@ -1028,34 +1018,29 @@ public class GameUI implements PlayerInputSink {
     private void showTouristSpotChoiceDialog(TouristSpot touristSpot, Player player) {
         log("행동을 선택하세요.");
 
-        TouristSpotChoiceDialog choiceDialog = new TouristSpotChoiceDialog(
-            frame,
-            touristSpot.name
-        );
         broadcastDialog(
             DialogSyncPayload.builder(DialogType.TOURIST_CHOICE)
                 .put("spotName", touristSpot.name)
                 .build()
         );
-        choiceDialog.setVisible(true);
 
-        TouristSpotChoiceDialog.Choice choice = choiceDialog.getSelectedChoice();
-
-        switch (choice) {
-            case LOCK:
-                // 잠금
-                ruleEngine.lockTouristSpot(touristSpot, currentPlayerIndex);
-                log("🔒 " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
-                endTurn();
-                break;
-
-            case EXTRA_ROLL:
-                // 주사위 한 번 더
-                player.hasExtraChance = true;
-                log("🎲 추가 주사위 기회를 획득했습니다!");
-                endTurn();
-                break;
-        }
+        Map<String, String> attrs = newDialogAttributes();
+        attrs.put("spotName", touristSpot.name);
+        enterDialogWaitState();
+        int playerIndex = currentPlayerIndex;
+        CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
+            playerIndex,
+            DialogType.TOURIST_CHOICE,
+            attrs,
+            localTouristChoiceHandler(playerIndex, touristSpot)
+        );
+        awaitDialogResponse(
+            future,
+            DialogType.TOURIST_CHOICE,
+            playerIndex,
+            response -> handleTouristSpotChoice(player, touristSpot, response),
+            () -> buildFallbackDialogResponse(playerIndex, DialogType.TOURIST_CHOICE, "LOCK", null)
+        );
     }
 
     private void purchaseCity() {
@@ -1065,12 +1050,6 @@ public class GameUI implements PlayerInputSink {
             City city = (City) currentTile;
 
             // 레벨 선택 다이얼로그 표시
-            LevelSelectionDialog dialog = new LevelSelectionDialog(
-                frame,
-                city.name,
-                city.price,
-                player.cash
-            );
             broadcastDialog(
                 DialogSyncPayload.builder(DialogType.LEVEL_SELECTION)
                     .put("cityName", city.name)
@@ -1078,71 +1057,34 @@ public class GameUI implements PlayerInputSink {
                     .putInt("playerCash", player.cash)
                     .build()
             );
-            dialog.setVisible(true);
 
-            int selectedLevel = dialog.getSelectedLevel();
-
-            if (selectedLevel == 0) {
-                // 취소 선택
-                log("구매를 취소했습니다.");
-                endTurn();
-                return;
-            }
-
-            // 선택한 레벨로 구매 시도
-            if (ruleEngine.purchaseCityWithLevel(player, city, selectedLevel, currentPlayerIndex)) {
-                int totalCost = ruleEngine.calculateLevelCost(city.price, selectedLevel);
-                String levelName = getLevelName(selectedLevel);
-                String emoji = city.getBuildingEmoji();
-
-                // 자산 변동 표시
-                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -totalCost);
-
-                log(player.name + "이(가) " + city.name + "을(를) " +
-                    String.format("%,d", totalCost) + "원에 매입했습니다!");
-                log(emoji + " " + levelName + "이(가) 건설되었습니다! (레벨 " + selectedLevel + ")");
-            } else {
-                log("자금이 부족하여 매입할 수 없습니다.");
-            }
+            Map<String, String> attrs = newDialogAttributes();
+            attrs.put("cityName", city.name);
+            attrs.put("price", Integer.toString(city.price));
+            attrs.put("playerCash", Integer.toString(player.cash));
+            enterDialogWaitState();
+            int playerIndex = currentPlayerIndex;
+            CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
+                playerIndex,
+                DialogType.LEVEL_SELECTION,
+                attrs,
+                localLevelSelectionHandler(playerIndex, city, player)
+            );
+            awaitDialogResponse(
+                future,
+                DialogType.LEVEL_SELECTION,
+                playerIndex,
+                response -> handleLevelSelectionResponse(player, city, response),
+                () -> buildFallbackDialogResponse(playerIndex, DialogType.LEVEL_SELECTION, "CANCEL", null)
+            );
+            return;
         } else if (currentTile instanceof TouristSpot) {
             TouristSpot touristSpot = (TouristSpot) currentTile;
 
             // 관광지 매입 확인 다이얼로그 표시
-            TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
-                frame,
-                touristSpot.name,
-                touristSpot.price,
-                player.cash
-            );
-            broadcastDialog(
-                DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
-                    .put("spotName", touristSpot.name)
-                    .putInt("price", touristSpot.price)
-                    .putInt("playerCash", player.cash)
-                    .build()
-            );
-            dialog.setVisible(true);
-
-            if (!dialog.isConfirmed()) {
-                // 취소 선택
-                log("구매를 취소했습니다.");
-                endTurn();
-                return;
-            }
-
-            // 매입 시도
-            if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
-                // 자산 변동 표시
-                frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
-
-                log(player.name + "이(가) " + touristSpot.name + "을(를) " +
-                    String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
-            } else {
-                log("자금이 부족하여 매입할 수 없습니다.");
-            }
+            requestTouristSpotPurchase(player, touristSpot, this::endTurn);
+            return;
         }
-
-        endTurn();
     }
 
     private void upgradeCity() {
@@ -1203,15 +1145,6 @@ public class GameUI implements PlayerInputSink {
 
         int takeoverCost = city.getTakeoverPrice();
 
-        // 인수 확인 다이얼로그
-        TakeoverConfirmDialog dialog = new TakeoverConfirmDialog(
-            frame,
-            city.name,
-            seller.name,
-            city.level,
-            takeoverCost,
-            buyer.cash
-        );
         broadcastDialog(
             DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
                 .put("cityName", city.name)
@@ -1221,26 +1154,28 @@ public class GameUI implements PlayerInputSink {
                 .putInt("playerCash", buyer.cash)
                 .build()
         );
-        dialog.setVisible(true);
 
-        if (!dialog.isConfirmed()) {
-            log("도시 인수를 취소했습니다.");
-            endTurn();
-            return;
-        }
-
-        // 인수 진행
-        if (ruleEngine.takeoverCity(buyer, seller, city, currentPlayerIndex)) {
-            log(buyer.name + "이(가) " + seller.name + "으로부터 " + city.name + "을(를) " +
-                String.format("%,d", takeoverCost) + "원에 인수했습니다!");
-            log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
-        } else if (city.isLandmark()) {
-            log("🏛️ 랜드마크는 인수할 수 없습니다.");
-        } else {
-            log("자금이 부족하여 인수할 수 없습니다.");
-        }
-
-        endTurn();
+        Map<String, String> attrs = newDialogAttributes();
+        attrs.put("cityName", city.name);
+        attrs.put("ownerName", seller.name);
+        attrs.put("level", Integer.toString(city.level));
+        attrs.put("cost", Integer.toString(takeoverCost));
+        attrs.put("playerCash", Integer.toString(buyer.cash));
+        enterDialogWaitState();
+        int playerIndex = currentPlayerIndex;
+        CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
+            playerIndex,
+            DialogType.TAKEOVER_CONFIRM,
+            attrs,
+            localTakeoverConfirmHandler(playerIndex, city.name, seller.name, city.level, takeoverCost, buyer.cash)
+        );
+        awaitDialogResponse(
+            future,
+            DialogType.TAKEOVER_CONFIRM,
+            playerIndex,
+            response -> handleCityTakeoverResponse(buyer, seller, city, response),
+            () -> buildFallbackDialogResponse(playerIndex, DialogType.TAKEOVER_CONFIRM, "CANCEL", null)
+        );
     }
 
     private void takeoverTouristSpot() {
@@ -1250,15 +1185,6 @@ public class GameUI implements PlayerInputSink {
 
         int takeoverCost = spot.price;
 
-        // 인수 확인 다이얼로그 (관광지는 레벨 1로 표시)
-        TakeoverConfirmDialog dialog = new TakeoverConfirmDialog(
-            frame,
-            spot.name,
-            seller.name,
-            1,  // 관광지는 레벨 개념 없음
-            takeoverCost,
-            buyer.cash
-        );
         broadcastDialog(
             DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
                 .put("cityName", spot.name)
@@ -1268,34 +1194,28 @@ public class GameUI implements PlayerInputSink {
                 .putInt("playerCash", buyer.cash)
                 .build()
         );
-        dialog.setVisible(true);
 
-        if (!dialog.isConfirmed()) {
-            log("관광지 인수를 취소했습니다.");
-            endTurn();
-            return;
-        }
-
-        // 인수 진행
-        if (ruleEngine.takeoverTouristSpot(buyer, seller, spot, currentPlayerIndex)) {
-            log(buyer.name + "이(가) " + seller.name + "으로부터 " + spot.name + "을(를) " +
-                String.format("%,d", takeoverCost) + "원에 인수했습니다!");
-            log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
-
-            // 자산 변동 표시
-            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -takeoverCost);
-            frame.getOverlayPanel().showMoneyChange(spot.owner, takeoverCost);
-
-            // 인수 후 선택지 다이얼로그 표시
-            showTouristSpotChoiceDialog(spot, buyer);
-            return; // endTurn()은 showTouristSpotChoiceDialog 내에서 호출됨
-        } else if (spot.isLocked()) {
-            log("🔒 잠금된 관광지는 인수할 수 없습니다.");
-        } else {
-            log("자금이 부족하여 인수할 수 없습니다.");
-        }
-
-        endTurn();
+        Map<String, String> attrs = newDialogAttributes();
+        attrs.put("cityName", spot.name);
+        attrs.put("ownerName", seller.name);
+        attrs.put("level", "1");
+        attrs.put("cost", Integer.toString(takeoverCost));
+        attrs.put("playerCash", Integer.toString(buyer.cash));
+        enterDialogWaitState();
+        int playerIndex = currentPlayerIndex;
+        CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
+            playerIndex,
+            DialogType.TAKEOVER_CONFIRM,
+            attrs,
+            localTakeoverConfirmHandler(playerIndex, spot.name, seller.name, 1, takeoverCost, buyer.cash)
+        );
+        awaitDialogResponse(
+            future,
+            DialogType.TAKEOVER_CONFIRM,
+            playerIndex,
+            response -> handleTouristTakeoverResponse(buyer, seller, spot, response),
+            () -> buildFallbackDialogResponse(playerIndex, DialogType.TAKEOVER_CONFIRM, "CANCEL", null)
+        );
     }
 
     private void skip() {
@@ -2260,6 +2180,298 @@ public class GameUI implements PlayerInputSink {
         if (shouldShowLocalDialogForPlayer(playerIndex)) {
             dialogTask.run();
         }
+    }
+
+    private Map<String, String> newDialogAttributes() {
+        return new LinkedHashMap<>();
+    }
+
+    private boolean isResult(DialogResponsePayload response, String expected) {
+        if (response == null || expected == null) {
+            return false;
+        }
+        return expected.equalsIgnoreCase(response.getResult());
+    }
+
+    private int parseIntAttribute(DialogResponsePayload response, String key) {
+        if (response == null || key == null) {
+            return 0;
+        }
+        Map<String, String> attrs = response.getAttributes();
+        String raw = attrs.get(key);
+        if (raw == null || raw.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private void awaitDialogResponse(
+        CompletableFuture<DialogResponsePayload> future,
+        DialogType dialogType,
+        int playerIndex,
+        Consumer<DialogResponsePayload> handler,
+        Supplier<DialogResponsePayload> fallbackSupplier
+    ) {
+        CompletableFuture<DialogResponsePayload> guarded = future.orTimeout(
+            DIALOG_RESPONSE_TIMEOUT_MS,
+            TimeUnit.MILLISECONDS
+        );
+        guarded.thenAccept(response -> {
+            if (response == null) {
+                return;
+            }
+            SwingUtilities.invokeLater(() -> {
+                exitDialogWaitState();
+                handler.accept(response);
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                log("[네트워크] " + dialogType + " 응답 대기 중 오류: " + ex.getMessage());
+                DialogResponsePayload fallback = fallbackSupplier == null ? null : fallbackSupplier.get();
+                exitDialogWaitState();
+                if (fallback != null) {
+                    handler.accept(fallback);
+                } else {
+                    showErrorDialog("다이얼로그 오류", dialogType + " 응답을 처리하지 못했습니다.");
+                    endTurn();
+                }
+            });
+            return null;
+        });
+    }
+
+    private DialogResponsePayload buildLocalDialogResponse(
+        int playerIndex,
+        DialogType dialogType,
+        String result,
+        Map<String, String> attributes
+    ) {
+        Map<String, String> attrCopy = attributes == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attributes);
+        return new DialogResponsePayload(
+            nextDialogRequestId(playerIndex),
+            dialogType,
+            playerIndex,
+            result == null ? "" : result,
+            attrCopy
+        );
+    }
+
+    private DialogResponsePayload buildFallbackDialogResponse(
+        int playerIndex,
+        DialogType dialogType,
+        String result,
+        Map<String, String> attributes
+    ) {
+        Map<String, String> attrCopy = attributes == null ? new LinkedHashMap<>() : new LinkedHashMap<>(attributes);
+        return new DialogResponsePayload(
+            "fallback-" + dialogType.name() + "-" + playerIndex,
+            dialogType,
+            playerIndex,
+            result == null ? "" : result,
+            attrCopy
+        );
+    }
+
+    private Supplier<DialogResponsePayload> localLevelSelectionHandler(int playerIndex, City city, Player player) {
+        return () -> {
+            LevelSelectionDialog dialog = new LevelSelectionDialog(frame, city.name, city.price, player.cash);
+            dialog.setVisible(true);
+            int selectedLevel = dialog.getSelectedLevel();
+            Map<String, String> attrs = newDialogAttributes();
+            String result;
+            if (selectedLevel > 0) {
+                result = "LEVEL_SELECTED";
+                attrs.put("selectedLevel", Integer.toString(selectedLevel));
+            } else {
+                result = "CANCEL";
+            }
+            return buildLocalDialogResponse(playerIndex, DialogType.LEVEL_SELECTION, result, attrs);
+        };
+    }
+
+    private Supplier<DialogResponsePayload> localTouristPurchaseHandler(int playerIndex, TouristSpot spot, Player player) {
+        return () -> {
+            TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
+                frame,
+                spot.name,
+                spot.price,
+                player.cash
+            );
+            dialog.setVisible(true);
+            String result = dialog.isConfirmed() ? "CONFIRM" : "CANCEL";
+            return buildLocalDialogResponse(playerIndex, DialogType.TOURIST_PURCHASE, result, newDialogAttributes());
+        };
+    }
+
+    private Supplier<DialogResponsePayload> localTouristChoiceHandler(int playerIndex, TouristSpot spot) {
+        return () -> {
+            TouristSpotChoiceDialog dialog = new TouristSpotChoiceDialog(frame, spot.name);
+            dialog.setVisible(true);
+            TouristSpotChoiceDialog.Choice choice = dialog.getSelectedChoice();
+            if (choice == null) {
+                choice = TouristSpotChoiceDialog.Choice.LOCK;
+            }
+            String result = (choice == TouristSpotChoiceDialog.Choice.EXTRA_ROLL) ? "EXTRA_ROLL" : "LOCK";
+            return buildLocalDialogResponse(playerIndex, DialogType.TOURIST_CHOICE, result, newDialogAttributes());
+        };
+    }
+
+    private Supplier<DialogResponsePayload> localTakeoverConfirmHandler(
+        int playerIndex,
+        String targetName,
+        String ownerName,
+        int level,
+        int cost,
+        int playerCash
+    ) {
+        return () -> {
+            TakeoverConfirmDialog dialog = new TakeoverConfirmDialog(
+                frame,
+                targetName,
+                ownerName,
+                level,
+                cost,
+                playerCash
+            );
+            dialog.setVisible(true);
+            String result = dialog.isConfirmed() ? "CONFIRM" : "CANCEL";
+            return buildLocalDialogResponse(playerIndex, DialogType.TAKEOVER_CONFIRM, result, newDialogAttributes());
+        };
+    }
+
+    private void handleLevelSelectionResponse(Player player, City city, DialogResponsePayload response) {
+        if (!isResult(response, "LEVEL_SELECTED")) {
+            log("구매를 취소했습니다.");
+            endTurn();
+            return;
+        }
+        int selectedLevel = parseIntAttribute(response, "selectedLevel");
+        if (selectedLevel <= 0) {
+            log("선택한 레벨 정보를 확인할 수 없어 구매를 취소합니다.");
+            endTurn();
+            return;
+        }
+        if (ruleEngine.purchaseCityWithLevel(player, city, selectedLevel, currentPlayerIndex)) {
+            int totalCost = ruleEngine.calculateLevelCost(city.price, selectedLevel);
+            String levelName = getLevelName(selectedLevel);
+            String emoji = city.getBuildingEmoji();
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -totalCost);
+            log(player.name + "이(가) " + city.name + "을(를) " +
+                String.format("%,d", totalCost) + "원에 매입했습니다!");
+            log(emoji + " " + levelName + "이(가) 건설되었습니다! (레벨 " + selectedLevel + ")");
+        } else {
+            log("자금이 부족하여 매입할 수 없습니다.");
+        }
+        endTurn();
+    }
+
+    private void handleTouristSpotPurchaseResult(Player player, TouristSpot touristSpot, DialogResponsePayload response) {
+        if (!isResult(response, "CONFIRM")) {
+            log("매입을 취소했습니다.");
+            return;
+        }
+        if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
+            log("✅ " + player.name + "이(가) " + touristSpot.name + "을(를) " +
+                String.format("%,d", touristSpot.price) + "원에 매입했습니다!");
+        } else {
+            log("자금이 부족하여 매입할 수 없습니다.");
+        }
+    }
+
+    private void handleTouristSpotChoice(Player player, TouristSpot touristSpot, DialogResponsePayload response) {
+        if (isResult(response, "EXTRA_ROLL")) {
+            player.hasExtraChance = true;
+            log("🎲 추가 주사위 기회를 획득했습니다!");
+        } else {
+            ruleEngine.lockTouristSpot(touristSpot, currentPlayerIndex);
+            log("🔒 " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
+        }
+        endTurn();
+    }
+
+    private void handleCityTakeoverResponse(Player buyer, Player seller, City city, DialogResponsePayload response) {
+        if (!isResult(response, "CONFIRM")) {
+            log("도시 인수를 취소했습니다.");
+            endTurn();
+            return;
+        }
+        int takeoverCost = city.getTakeoverPrice();
+        if (ruleEngine.takeoverCity(buyer, seller, city, currentPlayerIndex)) {
+            log(buyer.name + "이(가) " + seller.name + "으로부터 " + city.name + "을(를) " +
+                String.format("%,d", takeoverCost) + "원에 인수했습니다!");
+            log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
+        } else if (city.isLandmark()) {
+            log("🏛️ 랜드마크는 인수할 수 없습니다.");
+        } else {
+            log("자금이 부족하여 인수할 수 없습니다.");
+        }
+        endTurn();
+    }
+
+    private void handleTouristTakeoverResponse(Player buyer, Player seller, TouristSpot spot, DialogResponsePayload response) {
+        if (!isResult(response, "CONFIRM")) {
+            log("관광지 인수를 취소했습니다.");
+            endTurn();
+            return;
+        }
+        int takeoverCost = spot.price;
+        if (spot.isLocked()) {
+            log("🔒 잠금된 관광지는 인수할 수 없습니다.");
+            endTurn();
+            return;
+        }
+        if (ruleEngine.takeoverTouristSpot(buyer, seller, spot, currentPlayerIndex)) {
+            log(buyer.name + "이(가) " + seller.name + "으로부터 " + spot.name + "을(를) " +
+                String.format("%,d", takeoverCost) + "원에 인수했습니다!");
+            log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
+            frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -takeoverCost);
+            frame.getOverlayPanel().showMoneyChange(spot.owner, takeoverCost);
+            showTouristSpotChoiceDialog(spot, buyer);
+            return;
+        }
+        log("자금이 부족하여 인수할 수 없습니다.");
+        endTurn();
+    }
+
+    private void requestTouristSpotPurchase(Player player, TouristSpot touristSpot, Runnable afterDecision) {
+        int playerIndex = currentPlayerIndex;
+        Map<String, String> attrs = newDialogAttributes();
+        attrs.put("spotName", touristSpot.name);
+        attrs.put("price", Integer.toString(touristSpot.price));
+        attrs.put("playerCash", Integer.toString(player.cash));
+
+        broadcastDialog(
+            DialogSyncPayload.builder(DialogType.TOURIST_PURCHASE)
+                .put("spotName", touristSpot.name)
+                .putInt("price", touristSpot.price)
+                .putInt("playerCash", player.cash)
+                .build()
+        );
+
+        enterDialogWaitState();
+        CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
+            playerIndex,
+            DialogType.TOURIST_PURCHASE,
+            attrs,
+            localTouristPurchaseHandler(playerIndex, touristSpot, player)
+        );
+        awaitDialogResponse(
+            future,
+            DialogType.TOURIST_PURCHASE,
+            playerIndex,
+            response -> {
+                handleTouristSpotPurchaseResult(player, touristSpot, response);
+                if (afterDecision != null) {
+                    afterDecision.run();
+                }
+            },
+            () -> buildFallbackDialogResponse(playerIndex, DialogType.TOURIST_PURCHASE, "CANCEL", null)
+        );
     }
 
     private CompletableFuture<DialogResponsePayload> requestDialogFromPlayer(

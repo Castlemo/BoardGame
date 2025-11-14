@@ -26,7 +26,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
@@ -45,6 +47,7 @@ public class RemoteGameUI {
     private int lastDiceSequence = -1;
     private final List<String> pendingLogs = new ArrayList<>();
     private final List<DialogSyncPayload> pendingDialogs = new ArrayList<>();
+    private final List<DialogCommandPayload> pendingDialogCommands = new ArrayList<>();
     private volatile boolean localDisconnectRequested = false;
     private final ServerMessageListener messageListener;
     private volatile int assignedPlayerIndex = -1;
@@ -115,12 +118,10 @@ public class RemoteGameUI {
         }
         try {
             DialogCommandPayload command = DialogCommandPayload.decode(payload);
-            if (assignedPlayerIndex >= 0 && command.getPlayerIndex() != assignedPlayerIndex) {
+            if (assignedPlayerIndex < 0 || command.getPlayerIndex() != assignedPlayerIndex) {
                 return;
             }
-            System.out.println("[Client] 다이얼로그 명령 수신: " + command.getDialogType() +
-                " request=" + command.getRequestId());
-            // TODO: 추후 실제 다이얼로그 표시 및 응답 전송 구현
+            SwingUtilities.invokeLater(() -> enqueueOrHandleDialogCommand(command));
         } catch (IllegalArgumentException ex) {
             System.err.println("[Client] 다이얼로그 명령 파싱 실패: " + ex.getMessage());
         }
@@ -211,6 +212,7 @@ public class RemoteGameUI {
         initialized = true;
         flushPendingLogs();
         flushPendingDialogs();
+        flushPendingDialogCommands();
         refreshLocalHighlight();
     }
 
@@ -485,6 +487,147 @@ public class RemoteGameUI {
             showSynchronizedDialog(payload);
         }
         pendingDialogs.clear();
+    }
+
+    private void flushPendingDialogCommands() {
+        if (frame == null || pendingDialogCommands.isEmpty()) {
+            return;
+        }
+        List<DialogCommandPayload> commands = new ArrayList<>(pendingDialogCommands);
+        pendingDialogCommands.clear();
+        for (DialogCommandPayload command : commands) {
+            handleDialogCommandInternal(command);
+        }
+    }
+
+    private void enqueueOrHandleDialogCommand(DialogCommandPayload command) {
+        if (frame == null) {
+            pendingDialogCommands.add(command);
+            return;
+        }
+        handleDialogCommandInternal(command);
+    }
+
+    private void handleDialogCommandInternal(DialogCommandPayload command) {
+        if (frame == null) {
+            pendingDialogCommands.add(command);
+            return;
+        }
+        Map<String, String> attrs = command.getAttributes();
+        switch (command.getDialogType()) {
+            case LEVEL_SELECTION:
+                handleLevelSelectionCommand(command, attrs);
+                break;
+            case TOURIST_PURCHASE:
+                handleTouristPurchaseCommand(command, attrs);
+                break;
+            case TAKEOVER_CONFIRM:
+                handleTakeoverConfirmCommand(command, attrs);
+                break;
+            case TOURIST_CHOICE:
+                handleTouristChoiceCommand(command, attrs);
+                break;
+            default:
+                sendDialogResponse(command, "ACK", newAttributeMap());
+                break;
+        }
+    }
+
+    private void handleLevelSelectionCommand(DialogCommandPayload command, Map<String, String> attrs) {
+        String cityName = getAttr(attrs, "cityName", "도시");
+        int price = getIntAttr(attrs, "price", 0);
+        int cash = getIntAttr(attrs, "playerCash", 0);
+        LevelSelectionDialog dialog = new LevelSelectionDialog(frame, cityName, price, cash);
+        dialog.setVisible(true);
+        int selectedLevel = dialog.getSelectedLevel();
+        Map<String, String> responseAttrs = newAttributeMap();
+        String result;
+        if (selectedLevel > 0) {
+            result = "LEVEL_SELECTED";
+            responseAttrs.put("selectedLevel", Integer.toString(selectedLevel));
+        } else {
+            result = "CANCEL";
+        }
+        sendDialogResponse(command, result, responseAttrs);
+    }
+
+    private void handleTouristPurchaseCommand(DialogCommandPayload command, Map<String, String> attrs) {
+        String spotName = getAttr(attrs, "spotName", "관광지");
+        int price = getIntAttr(attrs, "price", 0);
+        int cash = getIntAttr(attrs, "playerCash", 0);
+        TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(frame, spotName, price, cash);
+        dialog.setVisible(true);
+        String result = dialog.isConfirmed() ? "CONFIRM" : "CANCEL";
+        sendDialogResponse(command, result, newAttributeMap());
+    }
+
+    private void handleTakeoverConfirmCommand(DialogCommandPayload command, Map<String, String> attrs) {
+        String cityName = getAttr(attrs, "cityName", "도시");
+        String ownerName = getAttr(attrs, "ownerName", "???");
+        int level = getIntAttr(attrs, "level", 1);
+        int cost = getIntAttr(attrs, "cost", 0);
+        int cash = getIntAttr(attrs, "playerCash", 0);
+        TakeoverConfirmDialog dialog = new TakeoverConfirmDialog(frame, cityName, ownerName, level, cost, cash);
+        dialog.setVisible(true);
+        String result = dialog.isConfirmed() ? "CONFIRM" : "CANCEL";
+        sendDialogResponse(command, result, newAttributeMap());
+    }
+
+    private void handleTouristChoiceCommand(DialogCommandPayload command, Map<String, String> attrs) {
+        String spotName = getAttr(attrs, "spotName", "관광지");
+        TouristSpotChoiceDialog dialog = new TouristSpotChoiceDialog(frame, spotName);
+        dialog.setVisible(true);
+        TouristSpotChoiceDialog.Choice choice = dialog.getSelectedChoice();
+        if (choice == null) {
+            choice = TouristSpotChoiceDialog.Choice.LOCK;
+        }
+        String result = (choice == TouristSpotChoiceDialog.Choice.EXTRA_ROLL) ? "EXTRA_ROLL" : "LOCK";
+        sendDialogResponse(command, result, newAttributeMap());
+    }
+
+    private void sendDialogResponse(DialogCommandPayload command, String result, Map<String, String> attributes) {
+        Map<String, String> attrsCopy = attributes == null ? newAttributeMap() : new LinkedHashMap<>(attributes);
+        DialogResponsePayload response = new DialogResponsePayload(
+            command.getRequestId(),
+            command.getDialogType(),
+            command.getPlayerIndex(),
+            result == null ? "" : result,
+            attrsCopy
+        );
+        NetworkMessage message = new NetworkMessage(
+            MessageType.DIALOG_RESPONSE,
+            DialogResponsePayload.encode(response)
+        );
+        if (!networkService.send(message)) {
+            System.err.println("[Client] 다이얼로그 응답 전송 실패: " + command.getDialogType());
+        }
+    }
+
+    private Map<String, String> newAttributeMap() {
+        return new LinkedHashMap<>();
+    }
+
+    private String getAttr(Map<String, String> attrs, String key, String fallback) {
+        if (attrs == null) {
+            return fallback;
+        }
+        String value = attrs.get(key);
+        return (value == null || value.isEmpty()) ? fallback : value;
+    }
+
+    private int getIntAttr(Map<String, String> attrs, String key, int fallback) {
+        if (attrs == null) {
+            return fallback;
+        }
+        String raw = attrs.get(key);
+        if (raw == null || raw.isEmpty()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 
     private void refreshLocalHighlight() {
