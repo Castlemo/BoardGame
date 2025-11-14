@@ -523,9 +523,15 @@ public class GameUI implements PlayerInputSink {
             log("보드에서 원하는 칸을 클릭하세요.");
 
             // 도시 선택 안내 다이얼로그 표시
-            CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
-            broadcastDialog(DialogSyncPayload.builder(DialogType.CITY_SELECTION).build());
-            selectionDialog.setVisible(true);
+            int playerIndex = currentPlayerIndex;
+            broadcastDialogForPlayer(
+                DialogSyncPayload.builder(DialogType.CITY_SELECTION).build(),
+                playerIndex
+            );
+            showLocalDialogForPlayer(
+                playerIndex,
+                () -> new CitySelectionDialog(frame).setVisible(true)
+            );
         } else {
             state = GameState.WAITING_FOR_ROLL;
             setActionButtons(true, false, false, false, false, false);
@@ -799,13 +805,17 @@ public class GameUI implements PlayerInputSink {
             case ISLAND:
                 player.jailTurns = 2; // 2턴 갇힘
                 // 무인도 다이얼로그 표시
-                IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
-                broadcastDialog(
+                int islandPlayerIndex = currentPlayerIndex;
+                broadcastDialogForPlayer(
                     DialogSyncPayload.builder(DialogType.ISLAND_STATUS)
                         .putInt("jailTurns", player.jailTurns)
-                        .build()
+                        .build(),
+                    islandPlayerIndex
                 );
-                islandDialog.setVisible(true);
+                showLocalDialogForPlayer(
+                    islandPlayerIndex,
+                    () -> new IslandDialog(frame, player.jailTurns).setVisible(true)
+                );
 
                 log("무인도에 도착했습니다!");
                 clearDoubleState("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
@@ -898,14 +908,18 @@ public class GameUI implements PlayerInputSink {
                 int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
 
                 // 다이얼로그 표시
-                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
-                broadcastDialog(
+                int playerIndex = currentPlayerIndex;
+                broadcastDialogForPlayer(
                     DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
                         .put("cityName", city.name)
                         .putInt("pulledCount", pulledCount)
-                        .build()
+                        .build(),
+                    playerIndex
                 );
-                magneticDialog.setVisible(true);
+                showLocalDialogForPlayer(
+                    playerIndex,
+                    () -> new DualMagneticDialog(frame, city.name, pulledCount).setVisible(true)
+                );
 
                 if (pulledCount > 0) {
                     log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1186,14 +1200,18 @@ public class GameUI implements PlayerInputSink {
                 int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
 
                 // 다이얼로그 표시
-                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
-                broadcastDialog(
+                int playerIndex = currentPlayerIndex;
+                broadcastDialogForPlayer(
                     DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
                         .put("cityName", city.name)
                         .putInt("pulledCount", pulledCount)
-                        .build()
+                        .build(),
+                    playerIndex
                 );
-                magneticDialog.setVisible(true);
+                showLocalDialogForPlayer(
+                    playerIndex,
+                    () -> new DualMagneticDialog(frame, city.name, pulledCount).setVisible(true)
+                );
 
                 if (pulledCount > 0) {
                     log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1218,14 +1236,16 @@ public class GameUI implements PlayerInputSink {
 
         int takeoverCost = city.getTakeoverPrice();
 
-        broadcastDialog(
+        int playerIndex = currentPlayerIndex;
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
                 .put("cityName", city.name)
                 .put("ownerName", seller.name)
                 .putInt("level", city.level)
                 .putInt("cost", takeoverCost)
                 .putInt("playerCash", buyer.cash)
-                .build()
+                .build(),
+            playerIndex
         );
 
         Map<String, String> attrs = newDialogAttributes();
@@ -1235,7 +1255,6 @@ public class GameUI implements PlayerInputSink {
         attrs.put("cost", Integer.toString(takeoverCost));
         attrs.put("playerCash", Integer.toString(buyer.cash));
         enterDialogWaitState();
-        int playerIndex = currentPlayerIndex;
         CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
             playerIndex,
             DialogType.TAKEOVER_CONFIRM,
@@ -1258,14 +1277,16 @@ public class GameUI implements PlayerInputSink {
 
         int takeoverCost = spot.price;
 
-        broadcastDialog(
+        int playerIndex = currentPlayerIndex;
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.TAKEOVER_CONFIRM)
                 .put("cityName", spot.name)
                 .put("ownerName", seller.name)
                 .putInt("level", 1)
                 .putInt("cost", takeoverCost)
                 .putInt("playerCash", buyer.cash)
-                .build()
+                .build(),
+            playerIndex
         );
 
         Map<String, String> attrs = newDialogAttributes();
@@ -1275,7 +1296,6 @@ public class GameUI implements PlayerInputSink {
         attrs.put("cost", Integer.toString(takeoverCost));
         attrs.put("playerCash", Integer.toString(buyer.cash));
         enterDialogWaitState();
-        int playerIndex = currentPlayerIndex;
         CompletableFuture<DialogResponsePayload> future = requestDialogFromPlayer(
             playerIndex,
             DialogType.TAKEOVER_CONFIRM,
@@ -1439,17 +1459,22 @@ public class GameUI implements PlayerInputSink {
         log("⬆️ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
         String upgradeGuideMessage = "원하는 도시를 선택해주세요!\n\n보드에서 본인 소유 도시(레벨 1~3)를 클릭하면 1단계 업그레이드됩니다.";
-        broadcastDialog(
+        int playerIndex = currentPlayerIndex;
+        broadcastDialogForPlayer(
             DialogSyncPayload.builder(DialogType.UPGRADE_GUIDE)
                 .put("title", "도시 업그레이드")
                 .put("message", upgradeGuideMessage)
-                .build()
+                .build(),
+            playerIndex
         );
-        JOptionPane.showMessageDialog(
-            frame,
-            upgradeGuideMessage,
-            "도시 업그레이드",
-            JOptionPane.INFORMATION_MESSAGE
+        showLocalDialogForPlayer(
+            playerIndex,
+            () -> JOptionPane.showMessageDialog(
+                frame,
+                upgradeGuideMessage,
+                "도시 업그레이드",
+                JOptionPane.INFORMATION_MESSAGE
+            )
         );
 
         // 보드 클릭 대기 상태로 전환
@@ -1501,15 +1526,19 @@ public class GameUI implements PlayerInputSink {
             int landmarkPos = selectedLandmarkCity.id;
             int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
 
+            int playerIndex = currentPlayerIndex;
             // 다이얼로그 표시
-            DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
-            broadcastDialog(
+            broadcastDialogForPlayer(
                 DialogSyncPayload.builder(DialogType.DUAL_MAGNETIC)
                     .put("cityName", selectedLandmarkCity.name)
                     .putInt("pulledCount", pulledCount)
-                    .build()
+                    .build(),
+                playerIndex
             );
-            magneticDialog.setVisible(true);
+            showLocalDialogForPlayer(
+                playerIndex,
+                () -> new DualMagneticDialog(frame, selectedLandmarkCity.name, pulledCount).setVisible(true)
+            );
 
             if (pulledCount > 0) {
                 log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1640,14 +1669,13 @@ public class GameUI implements PlayerInputSink {
 
         log("⚠️ 페이즈 딜리트 발동! " + deletedCity.name + "가 삭제됩니다!");
 
-        // 삭제 다이얼로그 표시
-        PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, deletedCity.name);
+        // 삭제 다이얼로그 표시 - 전 플레이어 공통 안내
         broadcastDialog(
             DialogSyncPayload.builder(DialogType.PHASE_DELETE)
                 .put("cityName", deletedCity.name)
                 .build()
         );
-        deleteDialog.setVisible(true);
+        new PhaseDeleteDialog(frame, deletedCity.name).setVisible(true);
 
         // 보드 업데이트
         frame.getBoardPanel().repaint();
