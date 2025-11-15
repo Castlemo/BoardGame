@@ -1,0 +1,177 @@
+package com.marblegame.ui;
+
+import javax.swing.*;
+import java.awt.*;
+
+/**
+ * 게임 모드 선택 다이얼로그
+ * 로컬 게임 또는 네트워크 멀티플레이 선택
+ */
+public class GameModeDialog extends JDialog {
+    private int choice = 0; // 0 = 취소, 1 = 로컬 게임, 2 = 네트워크 멀티플레이
+
+    // 다크 테마 색상
+    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
+    private static final Color PANEL_DARK = new Color(44, 47, 51);
+    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
+    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
+    private static final Color BUTTON_LOCAL = new Color(52, 152, 219);     // 파란색
+    private static final Color BUTTON_NETWORK = new Color(155, 89, 182);   // 보라색
+    private static final Color HIGHLIGHT_COLOR = new Color(46, 204, 113);  // 녹색
+
+    public GameModeDialog(JFrame parent) {
+        super(parent, "모두의 마블 2.0", true);
+
+        initComponents();
+        pack();
+        setLocationRelativeTo(parent);
+        setResizable(false);
+    }
+
+    private void initComponents() {
+        setLayout(new BorderLayout(0, 0));
+        getContentPane().setBackground(BACKGROUND_DARK);
+
+        // 헤더 패널
+        JPanel headerPanel = createHeaderPanel();
+        add(headerPanel, BorderLayout.NORTH);
+
+        // 버튼 패널
+        JPanel buttonPanel = createButtonPanel();
+        add(buttonPanel, BorderLayout.CENTER);
+
+        // 푸터 패널
+        JPanel footerPanel = createFooterPanel();
+        add(footerPanel, BorderLayout.SOUTH);
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(PANEL_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 20, 25, 20));
+
+        JLabel titleLabel = new JLabel("🎮 모두의 마블 2.0");
+        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 32));
+        titleLabel.setForeground(HIGHLIGHT_COLOR);
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel subtitleLabel = new JLabel("게임 모드를 선택하세요");
+        subtitleLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+        subtitleLabel.setForeground(TEXT_SECONDARY);
+        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        panel.add(titleLabel);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(subtitleLabel);
+
+        return panel;
+    }
+
+    private JPanel createButtonPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(BACKGROUND_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+
+        // 로컬 게임 버튼
+        JButton localButton = createModeButton(
+            "🏠 로컬 게임",
+            "한 컴퓨터에서 2-4명이 번갈아 플레이",
+            BUTTON_LOCAL,
+            1
+        );
+
+        // 네트워크 멀티플레이 버튼
+        JButton networkButton = createModeButton(
+            "🌐 네트워크 멀티플레이",
+            "LAN 환경에서 친구들과 함께 플레이",
+            BUTTON_NETWORK,
+            2
+        );
+
+        panel.add(localButton);
+        panel.add(Box.createVerticalStrut(15));
+        panel.add(networkButton);
+
+        return panel;
+    }
+
+    private JButton createModeButton(String title, String description, Color bgColor, int choiceValue) {
+        JButton button = new JButton();
+        button.setLayout(new BorderLayout(10, 5));
+        button.setPreferredSize(new Dimension(450, 80));
+        button.setMaximumSize(new Dimension(450, 80));
+        button.setBackground(bgColor);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setOpaque(true);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // 버튼 내용 패널
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setOpaque(false);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+
+        // 타이틀
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // 설명
+        JLabel descLabel = new JLabel(description);
+        descLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+        descLabel.setForeground(new Color(245, 245, 245));
+        descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        contentPanel.add(titleLabel);
+        contentPanel.add(Box.createVerticalStrut(5));
+        contentPanel.add(descLabel);
+
+        button.add(contentPanel, BorderLayout.CENTER);
+
+        // 호버 효과
+        Color hoverColor = bgColor.brighter();
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(hoverColor);
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(bgColor);
+            }
+        });
+
+        // 버튼 클릭 이벤트
+        button.addActionListener(e -> {
+            choice = choiceValue;
+            dispose();
+        });
+
+        return button;
+    }
+
+    private JPanel createFooterPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new FlowLayout(FlowLayout.CENTER));
+        panel.setBackground(BACKGROUND_DARK);
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 25, 20));
+
+        JLabel versionLabel = new JLabel("v2.0 Network Edition");
+        versionLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+        versionLabel.setForeground(TEXT_SECONDARY);
+
+        panel.add(versionLabel);
+
+        return panel;
+    }
+
+    /**
+     * 사용자 선택 반환
+     * @return 0 (취소), 1 (로컬 게임), 2 (네트워크 멀티플레이)
+     */
+    public int getChoice() {
+        return choice;
+    }
+}
