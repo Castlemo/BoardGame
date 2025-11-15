@@ -1,6 +1,8 @@
 package com.marblegame.network.protocol;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -127,6 +129,18 @@ public class MessageSerializer {
             }
             sb.append("}");
             return sb.toString();
+        } else if (value instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Object> list = (List<Object>) value;
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < list.size(); i++) {
+                if (i > 0) {
+                    sb.append(",");
+                }
+                sb.append(serializeValue(list.get(i)));
+            }
+            sb.append("]");
+            return sb.toString();
         } else {
             // 기본적으로 toString() 사용
             return "\"" + escapeJson(value.toString()) + "\"";
@@ -241,9 +255,73 @@ public class MessageSerializer {
             return Double.parseDouble(valueStr);
         } else if (valueStr.startsWith("{") && valueStr.endsWith("}")) {
             return parseData(valueStr);
+        } else if (valueStr.startsWith("[") && valueStr.endsWith("]")) {
+            return parseList(valueStr);
         } else {
             return valueStr;
         }
+    }
+
+    private static List<Object> parseList(String listStr) {
+        List<Object> list = new ArrayList<>();
+        listStr = listStr.trim();
+        if (!listStr.startsWith("[") || !listStr.endsWith("]")) {
+            return list;
+        }
+
+        String content = listStr.substring(1, listStr.length() - 1).trim();
+        if (content.isEmpty()) {
+            return list;
+        }
+
+        int depth = 0;
+        int start = 0;
+        boolean inString = false;
+        boolean escape = false;
+
+        for (int i = 0; i < content.length(); i++) {
+            char c = content.charAt(i);
+
+            if (escape) {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) {
+                continue;
+            }
+
+            if (c == '{' || c == '[') {
+                depth++;
+            } else if (c == '}' || c == ']') {
+                depth--;
+            } else if (c == ',' && depth == 0) {
+                String element = content.substring(start, i).trim();
+                if (!element.isEmpty()) {
+                    list.add(parseValue(element));
+                }
+                start = i + 1;
+            }
+        }
+
+        if (start < content.length()) {
+            String element = content.substring(start).trim();
+            if (!element.isEmpty()) {
+                list.add(parseValue(element));
+            }
+        }
+
+        return list;
     }
 
     /**

@@ -10,9 +10,16 @@ import com.marblegame.network.ui.CreateRoomDialog;
 import com.marblegame.network.ui.JoinRoomDialog;
 import com.marblegame.network.ui.LobbyPanel;
 import com.marblegame.network.ui.NetworkMenuDialog;
+import com.marblegame.network.NetConstants;
+import com.marblegame.network.sync.GameStateMapper;
+import com.marblegame.network.sync.GameStateSnapshot;
 import com.marblegame.ui.GameModeDialog;
 
 import javax.swing.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -23,6 +30,8 @@ public class Main {
     private static GameServer server;
     private static GameClient client;
     private static LobbyPanel lobbyPanel;
+    private static GameUI gameUI;
+    private static boolean networkHost;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -126,6 +135,7 @@ public class Main {
                 @Override
                 public void onMessageReceived(String playerId, Message message) {
                     System.out.println("메시지 수신: " + message.getType());
+                    handleServerSideAction(playerId, message);
                 }
             });
 
@@ -160,6 +170,11 @@ public class Main {
                 @Override
                 public void onDisconnected() {
                     System.out.println("서버 연결 종료");
+                    if (gameUI != null) {
+                        gameUI.dispose();
+                        gameUI = null;
+                    }
+                    networkHost = false;
                 }
 
                 @Override
@@ -225,6 +240,11 @@ public class Main {
             @Override
             public void onDisconnected() {
                 System.out.println("서버 연결 종료");
+                if (gameUI != null) {
+                    gameUI.dispose();
+                    gameUI = null;
+                }
+                networkHost = false;
                 if (lobbyPanel != null) {
                     lobbyPanel.dispose();
                 }
@@ -269,6 +289,11 @@ public class Main {
                     if (server != null) {
                         server.stop();
                     }
+                    if (gameUI != null) {
+                        gameUI.dispose();
+                        gameUI = null;
+                    }
+                    networkHost = false;
                     showGameModeSelection();
                 }
             });
@@ -291,7 +316,7 @@ public class Main {
         switch (message.getType()) {
             case PLAYER_JOIN:
                 // 플레이어 참가 알림
-                if (message.getString("status") != null && message.getString("status").equals("joined")) {
+                if (server == null && message.getString("status") != null && message.getString("status").equals("joined")) {
                     // 자신이 참가한 경우
                     Integer playerCount = message.getInt("playerCount");
                     if (lobbyPanel == null && playerCount != null) {
@@ -301,25 +326,21 @@ public class Main {
                     }
                 }
                 updatePlayerList();
+                updateLobbyPlayerCount(message.getInt("playerCount"));
                 break;
 
             case PLAYER_LEAVE:
                 // 플레이어 퇴장 알림
                 updatePlayerList();
+                updateLobbyPlayerCount(message.getInt("playerCount"));
                 break;
 
             case GAME_START:
-                // 게임 시작
-                SwingUtilities.invokeLater(() -> {
-                    if (lobbyPanel != null) {
-                        lobbyPanel.dispose();
-                    }
-                    JOptionPane.showMessageDialog(null,
-                        "게임이 시작됩니다!",
-                        "알림",
-                        JOptionPane.INFORMATION_MESSAGE);
-                    // TODO: Phase 3에서 GameUI 시작
-                });
+                handleGameStartMessage(message);
+                break;
+
+            case GAME_STATE_UPDATE:
+                handleGameStateUpdate(message);
                 break;
 
             case ERROR:
@@ -336,6 +357,33 @@ public class Main {
         }
     }
 
+    private static void handleGameStartMessage(Message message) {
+        Object playersObj = message.get("players");
+        List<GameUI.PlayerSetup> setups = parsePlayerSetups(playersObj);
+        Integer initialCashValue = message.getInt("initialCash");
+        int initialCash = initialCashValue != null ? initialCashValue : NetConstants.DEFAULT_INITIAL_CASH;
+        String hostId = message.getString("hostId");
+        boolean isHostGame = client != null && client.getPlayerId() != null && hostId != null
+            && hostId.equals(client.getPlayerId());
+        startNetworkGame(isHostGame, setups, initialCash);
+    }
+
+    private static void handleGameStateUpdate(Message message) {
+        if (networkHost || gameUI == null) {
+            return;
+        }
+
+        Map<String, Object> data = message.getData();
+        if (data == null) {
+            return;
+        }
+
+        GameStateSnapshot snapshot = GameStateMapper.fromMap(data);
+        if (snapshot != null) {
+            gameUI.applyNetworkSnapshot(snapshot);
+        }
+    }
+
     /**
      * 플레이어 목록 업데이트
      */
@@ -344,7 +392,145 @@ public class Main {
             RoomManager roomManager = server.getRoomManager();
             SwingUtilities.invokeLater(() -> {
                 lobbyPanel.updatePlayerList(roomManager.getPlayers());
+                lobbyPanel.updatePlayerCount(roomManager.getPlayerCount());
             });
         }
+    }
+
+    private static void updateLobbyPlayerCount(Integer playerCount) {
+        if (lobbyPanel != null && playerCount != null) {
+            lobbyPanel.updatePlayerCount(playerCount);
+        }
+    }
+
+    private static void startNetworkGame(boolean isHostGame, List<GameUI.PlayerSetup> setups, int initialCash) {
+        if (setups == null || setups.isEmpty()) {
+            setups = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                setups.add(new GameUI.PlayerSetup(i, null, "Player" + (char)('A' + i)));
+            }
+        }
+
+        final List<GameUI.PlayerSetup> finalSetups = setups;
+        networkHost = isHostGame;
+
+        SwingUtilities.invokeLater(() -> {
+            if (lobbyPanel != null) {
+                lobbyPanel.dispose();
+                lobbyPanel = null;
+            }
+
+            if (gameUI != null) {
+                gameUI.dispose();
+            }
+
+            GameUI.GameStateSyncListener syncListener = isHostGame ? Main::broadcastGameState : null;
+            GameUI.NetworkActionSender actionSender = !isHostGame && client != null
+                ? Main::sendClientAction
+                : null;
+            GameUI.NetworkSettings settings = new GameUI.NetworkSettings(
+                isHostGame,
+                client != null ? client.getPlayerId() : null,
+                finalSetups,
+                syncListener,
+                actionSender
+            );
+
+            gameUI = new GameUI(finalSetups.size(), initialCash, settings);
+        });
+    }
+
+    private static void broadcastGameState(GameStateSnapshot snapshot) {
+        if (server == null || snapshot == null) {
+            return;
+        }
+
+        Message stateMessage = new Message(MessageType.GAME_STATE_UPDATE);
+        stateMessage.setData(GameStateMapper.toMap(snapshot));
+        server.broadcast(stateMessage);
+    }
+
+    private static void sendClientAction(MessageType type, Map<String, Object> payload) {
+        if (client == null) {
+            return;
+        }
+        client.sendAction(type, payload);
+    }
+
+    private static void handleServerSideAction(String playerId, Message message) {
+        if (!networkHost || gameUI == null || message == null) {
+            return;
+        }
+
+        switch (message.getType()) {
+            case ROLL_DICE:
+                Integer section = message.getInt("section");
+                gameUI.handleRemoteRoll(playerId, section != null ? section : 1, message.getString("diceMode"));
+                break;
+            case BUY_CITY:
+                gameUI.handleRemotePurchase(playerId,
+                    message.getString("target"),
+                    message.getInt("level"),
+                    message.getInt("tileId"));
+                break;
+            case UPGRADE:
+                gameUI.handleRemoteUpgrade(playerId, message.getInt("tileId"));
+                break;
+            case PASS:
+                gameUI.handleRemoteSkip(playerId);
+                break;
+            case JAIL_CHOICE:
+                gameUI.handleRemoteEscape(playerId, message.getString("choice"));
+                break;
+            case TAKEOVER:
+                gameUI.handleRemoteTakeover(playerId,
+                    message.getString("target"),
+                    message.getInt("tileId"),
+                    message.getString("choice"));
+                break;
+            case CITY_SELECTION:
+                gameUI.handleRemoteTileSelection(playerId,
+                    message.getInt("tileId"),
+                    message.getString("context"));
+                break;
+            default:
+                break;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<GameUI.PlayerSetup> parsePlayerSetups(Object playersObj) {
+        List<GameUI.PlayerSetup> setups = new ArrayList<>();
+        if (playersObj instanceof List) {
+            for (Object entryObj : (List<?>) playersObj) {
+                if (entryObj instanceof Map) {
+                    Map<String, Object> entry = (Map<String, Object>) entryObj;
+                    int index = safeInt(entry.get("index"), setups.size());
+                    String playerId = safeString(entry.get("playerId"));
+                    String name = safeString(entry.get("name"));
+                    if (name == null) {
+                        name = "Player" + (index + 1);
+                    }
+                    setups.add(new GameUI.PlayerSetup(index, playerId, name));
+                }
+            }
+            setups.sort(Comparator.comparingInt(GameUI.PlayerSetup::getIndex));
+        }
+        return setups;
+    }
+
+    private static int safeInt(Object value, int defaultValue) {
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return value != null ? Integer.parseInt(value.toString()) : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static String safeString(Object value) {
+        return value != null ? value.toString() : null;
     }
 }

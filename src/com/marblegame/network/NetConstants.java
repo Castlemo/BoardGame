@@ -8,12 +8,15 @@ public class NetConstants {
     public static final int DEFAULT_PORT = 9999;
 
     // 타임아웃 설정 (밀리초)
-    public static final int SOCKET_TIMEOUT = 30000;  // 30초
+    public static final int SOCKET_TIMEOUT = 0;  // 0 = 무한 대기 (Heartbeat 도입 전 임시)
     public static final int CONNECTION_TIMEOUT = 10000;  // 10초
 
     // 플레이어 제한
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
+
+    // 기본 게임 설정
+    public static final int DEFAULT_INITIAL_CASH = 1_500_000;
 
     // 하트비트 설정
     public static final int HEARTBEAT_INTERVAL = 5000;  // 5초마다 핑

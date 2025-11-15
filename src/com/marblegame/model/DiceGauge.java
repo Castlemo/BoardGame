@@ -92,6 +92,10 @@ public class DiceGauge {
      * @return 주사위 합 (2~12)
      */
     private int rollBiased(int section) {
+        return rollBiasedForSection(section);
+    }
+
+    public static int rollBiasedForSection(int section) {
         int index = Math.max(1, Math.min(4, section)) - 1;
         int[] pool = SECTION_SUM_POOLS[index];
         int choice = (int)(Math.random() * pool.length);

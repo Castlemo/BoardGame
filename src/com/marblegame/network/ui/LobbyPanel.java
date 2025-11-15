@@ -1,5 +1,6 @@
 package com.marblegame.network.ui;
 
+import com.marblegame.network.NetConstants;
 import com.marblegame.network.server.RoomManager;
 
 import javax.swing.*;
@@ -17,6 +18,7 @@ public class LobbyPanel extends JFrame {
     private final boolean isHost;
     private final int maxPlayers;
     private LobbyListener listener;
+    private int currentPlayerCount = 0;
 
     // 다크 테마 색상
     private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
@@ -191,13 +193,21 @@ public class LobbyPanel extends JFrame {
             playerListPanel.revalidate();
             playerListPanel.repaint();
 
-            // 게임 시작 버튼 활성화 상태 업데이트 (호스트만)
-            if (isHost && startButton != null) {
-                boolean canStart = players.size() >= 2;
-                startButton.setEnabled(canStart);
-                startButton.setBackground(canStart ? BUTTON_START : BUTTON_DISABLED);
-            }
+            updatePlayerCountInternal(players.size());
         });
+    }
+
+    public void updatePlayerCount(int playerCount) {
+        SwingUtilities.invokeLater(() -> updatePlayerCountInternal(playerCount));
+    }
+
+    private void updatePlayerCountInternal(int playerCount) {
+        this.currentPlayerCount = playerCount;
+        if (isHost && startButton != null) {
+            boolean canStart = currentPlayerCount >= NetConstants.MIN_PLAYERS;
+            startButton.setEnabled(canStart);
+            startButton.setBackground(canStart ? BUTTON_START : BUTTON_DISABLED);
+        }
     }
 
     private JPanel createPlayerCard(String playerName, boolean isHostPlayer) {

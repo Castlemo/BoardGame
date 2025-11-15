@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.Map;
 
 /**
  * 게임 클라이언트
@@ -131,6 +132,16 @@ public class GameClient {
         } catch (Exception e) {
             System.err.println("메시지 전송 실패: " + e.getMessage());
         }
+    }
+
+    public void sendAction(MessageType type, Map<String, Object> payload) {
+        Message message = new Message(type, playerId);
+        if (payload != null) {
+            for (Map.Entry<String, Object> entry : payload.entrySet()) {
+                message.addData(entry.getKey(), entry.getValue());
+            }
+        }
+        sendMessage(message);
     }
 
     /**

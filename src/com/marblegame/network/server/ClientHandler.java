@@ -11,6 +11,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 클라이언트 핸들러
@@ -179,6 +183,22 @@ public class ClientHandler implements Runnable {
             // 모든 플레이어에게 게임 시작 알림
             Message startMessage = new Message(MessageType.GAME_START);
             startMessage.addData("playerCount", roomManager.getPlayerCount());
+            startMessage.addData("initialCash", NetConstants.DEFAULT_INITIAL_CASH);
+
+            List<RoomManager.PlayerInfo> currentPlayers = roomManager.getPlayers();
+            List<Map<String, Object>> playerData = new ArrayList<>();
+            for (int i = 0; i < currentPlayers.size(); i++) {
+                RoomManager.PlayerInfo info = currentPlayers.get(i);
+                Map<String, Object> entry = new HashMap<>();
+                entry.put("index", i);
+                entry.put("playerId", info.getPlayerId());
+                entry.put("name", info.getPlayerName());
+                playerData.add(entry);
+            }
+            startMessage.addData("players", playerData);
+            if (!currentPlayers.isEmpty()) {
+                startMessage.addData("hostId", currentPlayers.get(0).getPlayerId());
+            }
             roomManager.broadcast(startMessage);
 
             // 서버에 게임 시작 통보

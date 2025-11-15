@@ -5,7 +5,8 @@ package com.marblegame.model;
  * 이름, 현금, 위치, 무인도 턴, 파산 여부 관리
  */
 public class Player {
-    public final String name;
+    public final String playerId;
+    public String name;
     public int cash;
     public int pos = 0;
     public int jailTurns = 0;
@@ -14,6 +15,11 @@ public class Player {
     public boolean hasExtraChance = false; // 관광지 선택지로 획득한 추가 주사위 기회
 
     public Player(String name, int cash) {
+        this(null, name, cash);
+    }
+
+    public Player(String playerId, String name, int cash) {
+        this.playerId = playerId;
         this.name = name;
         this.cash = cash;
     }
