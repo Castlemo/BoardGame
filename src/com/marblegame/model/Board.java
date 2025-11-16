@@ -89,4 +89,19 @@ public class Board {
         }
         return result;
     }
+
+    public void resetBoard() {
+        for (Tile tile : tiles) {
+            if (tile instanceof City) {
+                City city = (City) tile;
+                city.owner = -1;
+                city.level = 0;
+                city.hasOlympicBoost = false;
+            } else if (tile instanceof TouristSpot) {
+                TouristSpot spot = (TouristSpot) tile;
+                spot.owner = -1;
+                spot.setLocked(false);
+            }
+        }
+    }
 }

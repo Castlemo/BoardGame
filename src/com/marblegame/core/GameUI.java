@@ -152,6 +152,7 @@ public class GameUI {
     private int lastEventSequence = 0;
     private GameStateSnapshot.EventState lastEventState;
     private int lastHandledEventId = 0;
+    private final boolean[] bankruptcyAnnounced;
     private static final String ACTION_ROLL = "ROLL";
     private static final String ACTION_PURCHASE = "PURCHASE";
     private static final String ACTION_UPGRADE = "UPGRADE";
@@ -179,6 +180,7 @@ public class GameUI {
         }
 
         this.players = new Player[resolvedPlayerCount];
+        this.bankruptcyAnnounced = new boolean[resolvedPlayerCount];
         this.dice = new Dice();
 
         if (networkMode && !setups.isEmpty()) {
@@ -819,7 +821,7 @@ public class GameUI {
             }
 
             if (player.bankrupt) {
-                log(player.name + "이(가) 파산했습니다!");
+                announceBankruptcy(currentPlayerIndex);
                 endTurn();
             } else {
                 // 랜드마크는 인수 불가
@@ -943,13 +945,13 @@ public class GameUI {
                 log("🔓 관광지 잠금이 해제되었습니다.");
 
                 if (player.bankrupt) {
-                    log(player.name + "이(가) 파산했습니다!");
+                    announceBankruptcy(currentPlayerIndex);
                 }
                 endTurn();
             } else {
                 // 잠금되지 않은 경우 인수 선택지 제공
                 if (player.bankrupt) {
-                    log(player.name + "이(가) 파산했습니다!");
+                    announceBankruptcy(currentPlayerIndex);
                     endTurn();
                 } else {
                     // 통행료 지불 후 인수 선택지 제공
@@ -1462,7 +1464,7 @@ public class GameUI {
         frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -tax);
 
         if (player.bankrupt) {
-            log(player.name + "이(가) 파산했습니다!");
+            announceBankruptcy(currentPlayerIndex);
         }
 
         notifyTaxEvent(player.name, tax);
@@ -1647,7 +1649,7 @@ public class GameUI {
                 frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, toll);
 
                 if (player.bankrupt) {
-                    log(player.name + "이(가) 파산했습니다!");
+                    announceBankruptcy(i);
                 }
             }
         }
@@ -1697,6 +1699,7 @@ public class GameUI {
 
         // 파산 시 더블 및 Extra Chance 무효화
         if (player.bankrupt) {
+            announceBankruptcy(currentPlayerIndex);
             log("💀 파산으로 인해 더블과 Extra Chance가 무효가 되었습니다.");
             consecutiveDoubles = 0;
             lastD1 = 0;
@@ -1821,6 +1824,7 @@ public class GameUI {
             log("🎉 승자: " + winner.name + " 🎉");
             log("승리 조건: " + victoryType);
             log("최종 자산: " + String.format("%,d", winner.cash) + "원");
+            notifyGameOverEvent(winner, victoryType);
 
             // 재시작 옵션이 포함된 다이얼로그
             int choice = JOptionPane.showOptionDialog(
@@ -1845,13 +1849,70 @@ public class GameUI {
     }
 
     private void restartGame() {
-        // 현재 프레임 닫기
-        frame.dispose();
+        if (networkMode && isHost) {
+            // 네트워크 모드: 게임 상태 리셋 및 클라이언트에 알림
+            resetGameState();
+            notifyGameRestart();
+        } else if (!networkMode) {
+            // 로컬 모드: 새 GameUI 생성
+            frame.dispose();
+            SwingUtilities.invokeLater(() -> {
+                new GameUI(players.length, 1000000);
+            });
+        }
+        // 클라이언트는 서버로부터 재시작 명령을 받아 처리
+    }
 
-        // 새 게임 시작
-        SwingUtilities.invokeLater(() -> {
-            new GameUI(players.length, 1000000);
-        });
+    private void resetGameState() {
+        // 게임 상태 초기화
+        state = GameState.WAITING_FOR_ROLL;
+        turnCount = 0;
+        currentPlayerIndex = 0;
+        consecutiveDoubles = 0;
+        lastD1 = 0;
+        lastD2 = 0;
+        diceMode = DiceMode.NORMAL;
+
+        // 플레이어 상태 초기화
+        for (int i = 0; i < players.length; i++) {
+            players[i].cash = 1000000;
+            players[i].pos = 0;
+            players[i].jailTurns = 0;
+            players[i].bankrupt = false;
+            players[i].hasRailroadTicket = false;
+            players[i].hasExtraChance = false;
+            bankruptcyAnnounced[i] = false;
+        }
+
+        // 보드 상태 초기화
+        board.resetBoard();
+
+        // UI 업데이트
+        updateDisplay();
+        log("=== 새 게임 시작 ===");
+        log(players[0].name + "의 턴입니다.");
+        setActionButtons(true, false, false, false, false, false);
+
+        // 네트워크 상태 동기화
+        if (networkMode && isHost) {
+            notifyStateSync();
+        }
+    }
+
+    private void notifyGameRestart() {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        pushNetworkEvent(MessageType.GAME_RESTART, new HashMap<>());
+    }
+
+    public void handleRemoteGameRestart() {
+        if (networkMode && !isHost) {
+            SwingUtilities.invokeLater(() -> {
+                log("=== 호스트가 새 게임을 시작했습니다 ===");
+                // 클라이언트는 호스트로부터 상태 동기화를 받아 자동 업데이트됨
+            });
+        }
     }
 
     private void startMovementAnimation(Player player, int steps) {
@@ -2169,6 +2230,51 @@ public class GameUI {
         });
     }
 
+    public void handlePlayerDisconnect(String playerId) {
+        if (!networkMode || !isHost || playerId == null) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            // 플레이어 찾기
+            int disconnectedIndex = -1;
+            for (int i = 0; i < players.length; i++) {
+                if (playerId.equals(players[i].playerId)) {
+                    disconnectedIndex = i;
+                    break;
+                }
+            }
+
+            if (disconnectedIndex < 0) {
+                return;
+            }
+
+            Player disconnectedPlayer = players[disconnectedIndex];
+
+            // 이미 파산한 경우 무시
+            if (disconnectedPlayer.bankrupt) {
+                return;
+            }
+
+            // 연결 끊김으로 인한 파산 처리
+            log("⚠️ " + disconnectedPlayer.name + " 연결 끊김! 자동 파산 처리됩니다.");
+            disconnectedPlayer.bankrupt = true;
+            announceBankruptcy(disconnectedIndex);
+
+            // 현재 턴이 연결 끊긴 플레이어의 턴이면 다음 턴으로
+            if (currentPlayerIndex == disconnectedIndex) {
+                log("연결 끊긴 플레이어의 턴을 건너뜁니다.");
+                consecutiveDoubles = 0;
+                endTurn();
+            }
+
+            // 게임 종료 체크
+            if (isGameOver()) {
+                endGame();
+            }
+        });
+    }
+
     public void dispose() {
         if (frame != null) {
             SwingUtilities.invokeLater(() -> frame.dispose());
@@ -2294,6 +2400,15 @@ public class GameUI {
                 break;
             case "TOURIST_LANDING_EVENT":
                 handleRemoteTouristLandingEvent(eventState.getData());
+                break;
+            case "PLAYER_BANKRUPT":
+                handleRemoteBankruptEvent(eventState.getData());
+                break;
+            case "GAME_OVER":
+                handleRemoteGameOverEvent(eventState.getData());
+                break;
+            case "GAME_RESTART":
+                handleRemoteGameRestart();
                 break;
             default:
                 break;
@@ -2438,13 +2553,32 @@ public class GameUI {
         } else {
             message = "🎲 " + spot + "에서 추가 주사위 선택";
         }
-        showInfoDialog("관광지 선택", message);
+        log(message);
     }
 
     private void handleRemoteRailroadSelectionEvent(Map<String, Object> data) {
         String playerName = safeMapString(data, "player", "플레이어");
         String tileName = safeMapString(data, "tile", "알 수 없는 칸");
         showInfoDialog("특수 이동", playerName + " → " + tileName + " 선택");
+    }
+
+    private void handleRemoteBankruptEvent(Map<String, Object> data) {
+        String playerName = safeMapString(data, "player", "플레이어");
+        log(playerName + "이(가) 파산했습니다!");
+        showInfoDialog("파산", playerName + "이(가) 파산했습니다!");
+    }
+
+    private void handleRemoteGameOverEvent(Map<String, Object> data) {
+        String winnerName = safeMapString(data, "winner", "플레이어");
+        String victoryType = safeMapString(data, "victoryType", "승리");
+        int cash = safeMapInt(data, "cash", 0);
+        log("🎉 승자: " + winnerName + " 🎉");
+        log("승리 조건: " + victoryType);
+        showInfoDialog(
+            "게임 종료",
+            winnerName + " 승리!\n승리 조건: " + victoryType + "\n최종 자산: " +
+                String.format("%,d", cash) + "원\n\n호스트가 \"새 게임\"을 선택하면 자동으로 재시작됩니다."
+        );
     }
 
     private void handleRemoteIslandEvent(Map<String, Object> data) {
@@ -2783,6 +2917,29 @@ public class GameUI {
         pushNetworkEvent(MessageType.MAGNETIC_EVENT, data);
     }
 
+    private void notifyBankruptcyEvent(Player player) {
+        if (!networkMode || !isHost || player == null) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", player.name);
+        data.put("playerId", player.playerId);
+        data.put("cash", player.cash);
+        pushNetworkEvent(MessageType.PLAYER_BANKRUPT, data);
+    }
+
+    private void notifyGameOverEvent(Player winner, String victoryType) {
+        if (!networkMode || !isHost || winner == null) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("winner", winner.name);
+        data.put("winnerId", winner.playerId);
+        data.put("victoryType", victoryType);
+        data.put("cash", winner.cash);
+        pushNetworkEvent(MessageType.GAME_OVER, data);
+    }
+
     private Map<String, Object> createDiceEventData(int sum, int dice1, int dice2,
                                                     boolean isDouble, boolean suppressed, int doubleCount) {
         Map<String, Object> data = new HashMap<>();
@@ -2819,6 +2976,19 @@ public class GameUI {
             pendingEvent.getId() == lastEventState.getId()) {
             lastEventState = null;
         }
+    }
+
+    private void announceBankruptcy(int playerIndex) {
+        if (playerIndex < 0 || playerIndex >= players.length) {
+            return;
+        }
+        if (bankruptcyAnnounced[playerIndex]) {
+            return;
+        }
+        bankruptcyAnnounced[playerIndex] = true;
+        Player bankruptPlayer = players[playerIndex];
+        log(bankruptPlayer.name + "이(가) 파산했습니다!");
+        notifyBankruptcyEvent(bankruptPlayer);
     }
 
     private int clampPlayerIndex(int index, int length) {

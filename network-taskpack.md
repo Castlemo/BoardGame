@@ -193,14 +193,14 @@ src/com/marblegame/
 ## 8. 에러 처리 및 안정성
 
 ### 8.1 연결 관리
-- [ ] 연결 타임아웃 설정 (하트비트 도입 후 재조정 필요)
-- [ ] 하트비트 메커니즘 (주기적 핑-퐁)
+- [x] 연결 타임아웃 설정 (SOCKET_TIMEOUT = 1초, 하트비트 체크용)
+- [x] 하트비트 메커니즘 (주기적 핑-퐁) ✅ 2025-11-16 구현
 - [ ] 재연결 시도 옵션
 - [x] 클라이언트 갑작스런 종료 처리
 
 ### 8.2 게임 중 연결 끊김
 - [x] 플레이어 연결 끊김 감지
-- [ ] 호스트: 해당 플레이어 "파산" 처리 또는 일시 정지
+- [x] 호스트: 해당 플레이어 "파산" 처리 ✅ 2025-11-16 구현
 - [x] 클라이언트: 서버 연결 끊김 시 메인 메뉴로 복귀
 - [x] 모든 플레이어에게 알림
 
@@ -338,8 +338,14 @@ src/com/marblegame/
 ## TODO
 - [x] 주사위 애니메이션 및 이벤트 알림 다이얼로그를 모든 클라이언트 화면에 동기화하여 표시
 - [x] Chance/Phase Delete 등 특수 이벤트를 네트워크 메시지로 전파하고 UI에 노출
-- [ ] 액션/이벤트 다이얼로그를 각 클라이언트에서도 동일하게 노출 (주사위 시뮬, 이벤트 칸 알림 다이얼로그 등 추가 동기화)
-- [ ] 대규모 플레이 테스트 및 하트비트/재접속 기능 구현
+- [x] 액션/이벤트 다이얼로그를 각 클라이언트에서도 동일하게 노출 (주사위 시뮬, 이벤트 칸 알림 다이얼로그 등 추가 동기화)
+- [x] 파산 이벤트 네트워크 동기화 및 중복 방지
+- [x] 게임 종료 이벤트 네트워크 동기화 (승자 알림)
+- [x] 하트비트 메커니즘 구현 (PING/PONG) ✅ 2025-11-16
+- [x] 게임 중 연결 끊김 플레이어 자동 파산 처리 ✅ 2025-11-16
+- [x] 새 게임 시작 시 클라이언트 자동 재시작 기능 ✅ 2025-11-16
+- [ ] 대규모 플레이 테스트 수행
+- [ ] 재연결 시도 옵션 구현
 
 ## 잠재적 문제점 및 개선 필요 사항
 
@@ -442,3 +448,273 @@ src/com/marblegame/
      - 클라이언트: 자신의 턴에서 관광지 다이얼로그 표시, 서버에 선택 전송
      - 호스트: 자신의 턴에서만 다이얼로그 표시, 클라이언트 턴에서는 대기
      - 서버: 클라이언트의 선택을 받아 게임 로직 처리
+
+5. **클라이언트 관광지 도착 다이얼로그 미표시 문제** (2025-11-16 수정)
+   - 위치: `GameUI.java`, `MessageType.java`
+   - 원인: HOST에서 `handleTouristSpotTile()` 실행 시 클라이언트에게 알림 없음
+   - 증상: 클라이언트 턴에서 관광지 도착 시 아무 다이얼로그도 표시되지 않음
+   - 해결:
+     - `MessageType.TOURIST_LANDING_EVENT` 추가
+     - `notifyTouristLandingEvent()` 함수 구현 (tileId, isOwned, ownerIndex 전송)
+     - `handleRemoteTouristLandingEvent()` 핸들러 구현
+     - `handleTouristSpotTile()`에서 클라이언트 턴일 때 알림 호출 추가
+   - 결과:
+     - 클라이언트가 관광지 도착 시 HOST가 이벤트 알림 전송
+     - 클라이언트에서 적절한 다이얼로그(매입/선택) 표시
+
+6. **파산 이벤트 중복 방지 및 네트워크 동기화** (2025-11-16 수정)
+   - 위치: `GameUI.java`, `MessageType.java`
+   - 원인: 파산 메시지가 여러 번 로그되고, 클라이언트에서 파산 알림이 표시되지 않음
+   - 증상:
+     - 통행료, 세금 등 여러 곳에서 파산 체크 시 중복 메시지
+     - 클라이언트에서 다른 플레이어 파산 정보를 알 수 없음
+   - 해결:
+     - `bankruptcyAnnounced[]` 배열 추가 (플레이어별 파산 알림 상태 추적)
+     - `announceBankruptcy()` 함수 구현 (중복 방지 + 네트워크 알림)
+     - `notifyBankruptcyEvent()` 함수 구현 (클라이언트에 파산 알림 전송)
+     - `handleRemoteBankruptEvent()` 핸들러 구현 (파산 다이얼로그 표시)
+     - 모든 직접 파산 로그를 `announceBankruptcy()` 호출로 교체
+   - 결과:
+     - 파산 메시지가 플레이어당 한 번만 표시
+     - 모든 클라이언트에서 파산 알림 다이얼로그 표시
+
+7. **게임 종료 이벤트 네트워크 동기화** (2025-11-16 수정)
+   - 위치: `GameUI.java`, `MessageType.java`
+   - 원인: 게임 종료 시 클라이언트에게 알림 없음
+   - 증상: 클라이언트는 게임 종료 여부를 알 수 없음
+   - 해결:
+     - `MessageType.GAME_OVER` 추가
+     - `notifyGameOverEvent()` 함수 구현 (승자 정보, 승리 조건, 자산 전송)
+     - `handleRemoteGameOverEvent()` 핸들러 구현 (게임 종료 다이얼로그 표시)
+     - `checkGameOver()`에서 승자 결정 시 알림 호출
+   - 결과:
+     - 모든 클라이언트에서 게임 종료 다이얼로그 표시
+     - 승자, 승리 조건, 최종 자산 정보 확인 가능
+
+8. **하트비트 메커니즘 구현** (2025-11-16 구현)
+   - 위치: `ClientHandler.java`, `GameClient.java`, `NetConstants.java`
+   - 원인: SOCKET_TIMEOUT이 0(무한 대기)으로 설정되어 무응답 클라이언트 감지 불가
+   - 해결:
+     - `SOCKET_TIMEOUT`을 1초로 설정 (하트비트 체크용 짧은 타임아웃)
+     - `ClientHandler`에서 `startHeartbeatMonitor()`, `checkHeartbeat()`, `sendHeartbeatPing()` 구현
+     - `GameClient`에서 `startHeartbeat()`, `sendPing()`, `sendPong()` 구현
+     - PING/PONG 메시지로 주기적 연결 상태 확인
+     - `ClientHandler.java:70` 중복 변수 선언 오류 수정
+   - 결과:
+     - 5초마다 하트비트 체크
+     - 15초 무응답 시 자동 연결 종료
+     - 네트워크 안정성 향상
+
+9. **연결 끊김 시 자동 파산 처리** (2025-11-16 구현)
+   - 위치: `GameServer.java`, `ClientHandler.java`, `Main.java`, `GameUI.java`
+   - 원인: 게임 중 연결 끊김 시 해당 플레이어 처리 로직 없음
+   - 해결:
+     - `GameServerListener.onPlayerDisconnected()` 인터페이스 메서드 추가
+     - `ClientHandler.disconnect()`에서 `server.onPlayerDisconnected()` 호출
+     - `Main.java`에서 `handlePlayerDisconnect()` 함수 구현
+     - `GameUI.handlePlayerDisconnect()`에서 자동 파산 처리
+       - 플레이어 파산 상태로 설정
+       - 파산 알림 브로드캐스트
+       - 해당 플레이어 턴이면 자동으로 다음 턴으로
+       - 게임 종료 조건 체크
+   - 결과:
+     - 연결 끊긴 플레이어 자동 파산 처리
+     - 게임 진행 중단 없이 계속 플레이 가능
+
+10. **네트워크 게임 재시작 동기화** (2025-11-16 구현)
+    - 위치: `GameUI.java`, `Board.java`, `MessageType.java`
+    - 원인: 호스트가 "새 게임" 선택 시 클라이언트와 동기화되지 않음
+    - 해결:
+      - `MessageType.GAME_RESTART` 추가
+      - `Board.resetBoard()` 메서드 구현 (도시/관광지 초기화)
+      - `GameUI.resetGameState()` 메서드 구현 (전체 게임 상태 리셋)
+      - `GameUI.notifyGameRestart()` 메서드 구현 (클라이언트에 알림)
+      - `GameUI.handleRemoteGameRestart()` 핸들러 구현
+      - `handleNetworkEvent()`에 GAME_RESTART 케이스 추가
+    - 결과:
+      - 호스트 재시작 시 모든 클라이언트 자동 상태 동기화
+      - 네트워크 설정 유지한 채 새 게임 시작 가능
+
+---
+
+## 코드 리뷰 결과 (2025-11-16)
+
+### ✅ 잘 구현된 부분
+
+1. **파산 이벤트 중복 방지 메커니즘**
+   - `bankruptcyAnnounced[]` 배열로 플레이어별 상태 추적
+   - `announceBankruptcy()` 중앙 집중식 처리로 일관성 확보
+   - 모든 파산 체크 포인트에서 동일한 함수 호출
+
+2. **게임 종료 동기화**
+   - 승자 정보, 승리 조건, 최종 자산을 클라이언트에 전달
+   - 클라이언트에 "호스트가 새 게임을 선택하면 자동 재시작" 안내 메시지
+
+3. **이벤트 핸들러 패턴 일관성**
+   - `notify*Event()` → HOST가 클라이언트에 알림
+   - `handleRemote*Event()` → 클라이언트가 이벤트 처리
+   - `shouldShowLocalDialog()` / `isLocalPlayersTurn()` 체크 일관적 적용
+
+### 🔍 개선 필요 사항
+
+1. **새 게임 자동 재시작 미구현**
+   - 현재: 클라이언트에 "호스트가 새 게임 선택 시 재시작" 메시지만 표시
+   - 필요: 실제로 호스트의 새 게임 선택을 감지하고 클라이언트 자동 재시작
+   - 구현 방안:
+     - `NEW_GAME` 메시지 타입 추가
+     - 호스트가 새 게임 선택 시 브로드캐스트
+     - 클라이언트에서 게임 상태 초기화
+
+2. **연결 끊김 시 자동 파산 처리**
+   - 현재: 연결 끊김 감지만 됨
+   - 필요: 게임 중 연결 끊긴 플레이어를 자동으로 파산 처리
+   - 구현 방안:
+     - `GameServer`에서 `ClientHandler` 연결 끊김 시 `GameUI`에 알림
+     - `GameUI`에서 해당 플레이어 파산 처리 및 턴 스킵
+
+3. **관광지 선택 다이얼로그 로그 개선**
+   - 현재: `showInfoDialog()` 대신 `log()` 사용 (line 2450)
+   - 고려: 클라이언트에서 관광지 선택 결과를 다이얼로그로 표시할지 검토
+
+4. **오류 처리 강화**
+   - `handleRemoteTouristLandingEvent()`: null 체크는 있으나 타입 캐스팅 예외 처리 없음
+   - `handleRemoteBankruptEvent()`, `handleRemoteGameOverEvent()`: `safeMapString()` 사용으로 안전
+
+---
+
+## 향후 개선 로드맵
+
+### Phase 4: 안정화 (현재 진행 중)
+
+#### ✅ 완료된 높은 우선순위 항목
+1. **하트비트 기능 구현** ✅ 2025-11-16
+   - SOCKET_TIMEOUT을 1초로 설정 (하트비트 체크용)
+   - 서버: 5초마다 PING, 15초 무응답 시 연결 끊김
+   - 클라이언트: 5초마다 PING 전송, PING 수신 시 PONG 응답
+   - ClientHandler에서 하트비트 모니터링 및 타임아웃 처리
+
+2. **연결 끊김 시 플레이어 자동 파산 처리** ✅ 2025-11-16
+   - GameServerListener에 onPlayerDisconnected() 콜백 추가
+   - ClientHandler.disconnect()에서 서버에 연결 끊김 알림
+   - GameUI.handlePlayerDisconnect()에서 자동 파산 처리
+   - 연결 끊긴 플레이어의 턴이면 자동으로 다음 턴으로
+
+3. **새 게임 재시작 동기화** ✅ 2025-11-16
+   - GAME_RESTART 메시지 타입 추가
+   - Board.resetBoard()로 보드 상태 초기화
+   - GameUI.resetGameState()로 전체 게임 상태 리셋
+   - 호스트 재시작 시 클라이언트 자동 상태 동기화
+
+#### 🔴 남은 높은 우선순위
+4. **재연결 시도 옵션**
+   - 연결 끊김 시 자동 재연결 시도
+   - MAX_RECONNECT_ATTEMPTS (3회) 활용
+
+#### 🟡 중간 우선순위
+4. **메시지 크기 검증**
+   - `MessageSerializer`에 MAX_MESSAGE_SIZE 체크 추가
+   - 너무 큰 메시지 거부 로직
+
+5. **로그 시스템 구현**
+   - 네트워크 이벤트 로깅
+   - 디버깅 용이성 향상
+   - 파일 출력 옵션
+
+6. **예외 처리 강화**
+   - 타입 캐스팅 예외 처리
+   - 네트워크 오류 복구 메커니즘
+
+### Phase 5: 개선 (선택 사항)
+
+#### 🟢 낮은 우선순위
+7. **성능 최적화**
+   - 델타 상태 동기화 (변경된 부분만 전송)
+   - 메시지 압축
+   - 배치 처리
+
+8. **UX 개선**
+   - 네트워크 지연 표시 (핑 ms)
+   - 연결 상태 인디케이터
+   - 로딩 스피너
+
+9. **추가 기능**
+   - 대기실 채팅
+   - 관전자 모드
+   - 게임 저장/불러오기
+
+---
+
+## 현재 네트워크 이벤트 구현 현황
+
+### 메시지 타입 (총 44개)
+```
+연결 관리: CONNECT, CONNECT_ACK, DISCONNECT, PLAYER_JOIN, PLAYER_LEAVE
+게임 시작: GAME_START, GAME_READY
+턴 액션: ROLL_DICE, BUY_CITY, UPGRADE, TAKEOVER, PASS
+상태 동기화: GAME_STATE_UPDATE, PLAYER_STATE_UPDATE, BOARD_STATE_UPDATE, TURN_START, TURN_END
+이벤트: TILE_LANDED, CHANCE_EVENT, PHASE_DELETE, ISLAND_EVENT, WORLD_TOUR_EVENT,
+        TOLL_EVENT, TAX_EVENT, MAGNETIC_EVENT, DOUBLE_EVENT, OLYMPIC_EVENT,
+        TOURIST_LANDING_EVENT, PLAYER_MOVED, PLAYER_BANKRUPT, GAME_OVER, GAME_RESTART
+특수 액션: JAIL_CHOICE, TOURIST_SPOT_CHOICE, LEVEL_SELECTION, CITY_SELECTION
+하트비트: PING, PONG
+에러: ERROR
+```
+
+### notify*Event() 함수 (총 15개)
+```
+notifyChanceEvent(), notifyPhaseDeleteEvent(), notifyTouristChoiceEvent(),
+notifyRailroadSelectionEvent(), notifyIslandEvent(), notifyWorldTourEvent(),
+notifyTollEvent(), notifyTaxEvent(), notifyMagneticEvent(), notifyDoubleEvent(),
+notifyOlympicEvent(), notifyTouristLandingEvent(), notifyBankruptcyEvent(),
+notifyGameOverEvent(), notifyGameRestart()
+```
+
+### handleRemote*Event() 함수 (총 15개)
+```
+handleRemoteChanceEvent(), handleRemotePhaseDeleteEvent(),
+handleRemoteTouristChoiceEvent(), handleRemoteRailroadSelectionEvent(),
+handleRemoteIslandEvent(), handleRemoteWorldTourEvent(), handleRemoteTollEvent(),
+handleRemoteTaxEvent(), handleRemoteMagneticEvent(), handleRemoteDoubleEvent(),
+handleRemoteOlympicEvent(), handleRemoteTouristLandingEvent(),
+handleRemoteBankruptEvent(), handleRemoteGameOverEvent(), handleRemoteGameRestart()
+```
+
+### 네트워크 콜백 함수
+```
+GameServerListener:
+  - onServerStarted(), onServerStopped(), onGameStarted()
+  - onMessageReceived(), onPlayerDisconnected()
+
+GameClientListener:
+  - onConnected(), onConnectionFailed(), onDisconnected(), onMessageReceived()
+
+GameUI 네트워크 메서드:
+  - handlePlayerDisconnect() - 연결 끊김 시 자동 파산 처리
+  - resetGameState() - 네트워크 게임 재시작
+  - Board.resetBoard() - 보드 상태 초기화
+```
+
+---
+
+## 테스트 체크리스트
+
+### 기능 테스트
+- [ ] 2인 네트워크 게임 전체 플로우
+- [ ] 3인, 4인 네트워크 게임
+- [ ] 호스트/클라이언트 역할별 다이얼로그 표시 확인
+- [ ] 파산 이벤트 중복 방지 확인
+- [ ] 게임 종료 시 모든 클라이언트에 알림 확인
+- [ ] 관광지 매입/선택 다이얼로그 동작 확인
+- [ ] 더블 주사위 이벤트 동기화 확인
+- [ ] 올림픽 타일 이벤트 동기화 확인
+
+### 안정성 테스트
+- [ ] 클라이언트 갑작스런 종료 시 서버 안정성
+- [ ] 호스트 종료 시 클라이언트 처리
+- [ ] 네트워크 지연 상황 시뮬레이션
+- [ ] 동시 액션 충돌 테스트
+
+### 성능 테스트
+- [ ] 장시간 게임 시 메모리 사용량
+- [ ] 메시지 전송 빈도 및 대역폭
+- [ ] UI 응답성

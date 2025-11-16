@@ -7,8 +7,12 @@ public class NetConstants {
     // 기본 포트
     public static final int DEFAULT_PORT = 9999;
 
+    // 하트비트 설정 (타임아웃보다 먼저 정의)
+    public static final int HEARTBEAT_INTERVAL = 5000;  // 5초마다 핑
+    public static final int HEARTBEAT_TIMEOUT = 15000;  // 15초 응답 없으면 연결 끊김
+
     // 타임아웃 설정 (밀리초)
-    public static final int SOCKET_TIMEOUT = HEARTBEAT_TIMEOUT; // allow heartbeat detection
+    public static final int SOCKET_TIMEOUT = 1000;  // 1초 (하트비트 체크용 짧은 타임아웃)
     public static final int CONNECTION_TIMEOUT = 10000;  // 10초
 
     // 플레이어 제한
@@ -17,10 +21,6 @@ public class NetConstants {
 
     // 기본 게임 설정
     public static final int DEFAULT_INITIAL_CASH = 1_500_000;
-
-    // 하트비트 설정
-    public static final int HEARTBEAT_INTERVAL = 5000;  // 5초마다 핑
-    public static final int HEARTBEAT_TIMEOUT = 15000;  // 15초 응답 없으면 연결 끊김
 
     // 메시지 크기 제한
     public static final int MAX_MESSAGE_SIZE = 1048576;  // 1MB

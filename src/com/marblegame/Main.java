@@ -137,6 +137,12 @@ public class Main {
                     System.out.println("메시지 수신: " + message.getType());
                     handleServerSideAction(playerId, message);
                 }
+
+                @Override
+                public void onPlayerDisconnected(String playerId) {
+                    System.out.println("플레이어 연결 끊김: " + playerId);
+                    handlePlayerDisconnect(playerId);
+                }
             });
 
             server.start();
@@ -502,6 +508,13 @@ public class Main {
             default:
                 break;
         }
+    }
+
+    private static void handlePlayerDisconnect(String playerId) {
+        if (!networkHost || gameUI == null || playerId == null) {
+            return;
+        }
+        gameUI.handlePlayerDisconnect(playerId);
     }
 
     @SuppressWarnings("unchecked")

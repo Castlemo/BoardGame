@@ -67,7 +67,7 @@ public class ClientHandler implements Runnable {
             String line;
             while (running) {
                 try {
-                    String line = in.readLine();
+                    line = in.readLine();
                     if (line == null) {
                         break;
                     }
@@ -327,6 +327,8 @@ public class ClientHandler implements Runnable {
 
         running = false;
 
+        String disconnectedPlayerId = playerId;
+
         // 방에서 플레이어 제거
         if (playerId != null) {
             roomManager.removePlayer(playerId);
@@ -335,6 +337,9 @@ public class ClientHandler implements Runnable {
             Message leaveMessage = new Message(MessageType.PLAYER_LEAVE, playerId);
             leaveMessage.addData("playerCount", roomManager.getPlayerCount());
             roomManager.broadcast(leaveMessage);
+
+            // 게임 중 연결 끊김 처리 (서버에 알림)
+            server.onPlayerDisconnected(disconnectedPlayerId);
         }
 
         // 소켓 닫기

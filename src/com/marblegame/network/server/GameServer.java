@@ -223,6 +223,16 @@ public class GameServer {
     }
 
     /**
+     * 플레이어 연결 끊김 처리 (게임 중)
+     * @param playerId 연결 끊긴 플레이어 ID
+     */
+    public void onPlayerDisconnected(String playerId) {
+        if (listener != null && playerId != null) {
+            listener.onPlayerDisconnected(playerId);
+        }
+    }
+
+    /**
      * 서버 이벤트 리스너 인터페이스
      */
     public interface GameServerListener {
@@ -230,5 +240,6 @@ public class GameServer {
         void onServerStopped();
         void onGameStarted();
         void onMessageReceived(String playerId, Message message);
+        default void onPlayerDisconnected(String playerId) {}
     }
 }
