@@ -845,6 +845,19 @@ public class GameUI {
             // 미소유 관광지 → 매입 다이얼로그 → 선택지 다이얼로그
             log(touristSpot.name + "은(는) 미소유 관광지입니다. (가격: " + String.format("%,d", touristSpot.price) + "원)");
 
+            // 네트워크 클라이언트는 별도 처리
+            if (isNetworkClient()) {
+                handleClientUnownedTouristSpot(touristSpot, player);
+                return;
+            }
+
+            // 호스트가 아닌 다른 플레이어의 턴이면 클라이언트에게 알림
+            if (!shouldShowLocalDialog()) {
+                log("클라이언트의 관광지 매입 결정을 기다립니다...");
+                notifyTouristLandingEvent(touristSpot);
+                return;
+            }
+
             // 매입 다이얼로그 표시
             TouristSpotPurchaseDialog purchaseDialog = new TouristSpotPurchaseDialog(
                 frame,
@@ -872,6 +885,20 @@ public class GameUI {
         } else if (touristSpot.owner == currentPlayerIndex) {
             // 본인 소유 관광지 → 선택지 다이얼로그만 표시
             log(touristSpot.name + "은(는) 본인 소유 관광지입니다.");
+
+            // 네트워크 클라이언트는 별도 처리
+            if (isNetworkClient()) {
+                handleClientOwnedTouristSpot(touristSpot, player);
+                return;
+            }
+
+            // 호스트가 아닌 다른 플레이어의 턴이면 클라이언트에게 알림
+            if (!shouldShowLocalDialog()) {
+                log("클라이언트의 관광지 선택을 기다립니다...");
+                notifyTouristLandingEvent(touristSpot);
+                return;
+            }
+
             showTouristSpotChoiceDialog(touristSpot, player);
 
         } else {
@@ -2104,6 +2131,40 @@ public class GameUI {
         });
     }
 
+    public void handleRemoteTouristSpotChoice(String playerId, Integer tileId, String choiceValue, Boolean purchased) {
+        if (!networkMode || !isHost || !isCurrentNetworkPlayer(playerId)) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            if (tileId == null || !(currentTile instanceof TouristSpot)) {
+                log("유효하지 않은 관광지 선택입니다.");
+                endTurn();
+                return;
+            }
+
+            TouristSpot touristSpot = (TouristSpot) currentTile;
+            Player player = players[currentPlayerIndex];
+
+            // 매입 처리 (매입 요청이 있었다면)
+            if (purchased != null && purchased && !touristSpot.isOwned()) {
+                if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
+                    log("✅ " + touristSpot.name + "을(를) 매입했습니다!");
+                    frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
+                } else {
+                    log("❌ 매입 실패!");
+                }
+            }
+
+            // 선택지 처리
+            TouristSpotChoiceDialog.Choice choice = parseTouristChoice(choiceValue);
+            if (applyTouristSpotChoice(touristSpot, player, choice)) {
+                notifyTouristChoiceEvent(touristSpot.name, choice);
+            }
+            endTurn();
+        });
+    }
+
     public void dispose() {
         if (frame != null) {
             SwingUtilities.invokeLater(() -> frame.dispose());
@@ -2226,6 +2287,9 @@ public class GameUI {
                 break;
             case "OLYMPIC_EVENT":
                 handleRemoteOlympicEvent(eventState.getData());
+                break;
+            case "TOURIST_LANDING_EVENT":
+                handleRemoteTouristLandingEvent(eventState.getData());
                 break;
             default:
                 break;
@@ -2460,6 +2524,44 @@ public class GameUI {
         log("올림픽에 도착했습니다!");
     }
 
+    private void handleRemoteTouristLandingEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
+
+        Integer tileId = (Integer) data.get("tileId");
+        Boolean isOwned = (Boolean) data.get("isOwned");
+        Integer ownerIndex = (Integer) data.get("ownerIndex");
+
+        if (tileId == null) {
+            return;
+        }
+
+        // 타일 ID로 관광지 찾기
+        TouristSpot touristSpot = null;
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof TouristSpot && tile.id == tileId) {
+                touristSpot = (TouristSpot) tile;
+                break;
+            }
+        }
+
+        if (touristSpot == null) {
+            return;
+        }
+
+        Player player = players[currentPlayerIndex];
+
+        if (isOwned != null && !isOwned) {
+            // 미소유 관광지
+            handleClientUnownedTouristSpot(touristSpot, player);
+        } else if (ownerIndex != null && ownerIndex == currentPlayerIndex) {
+            // 본인 소유 관광지
+            handleClientOwnedTouristSpot(touristSpot, player);
+        }
+        // 타인 소유 관광지는 통행료 지불이므로 다이얼로그 필요 없음
+    }
+
     private void handleClientTouristPurchase(TouristSpot touristSpot, Player player) {
         TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
             frame,
@@ -2479,6 +2581,61 @@ public class GameUI {
         payload.put("target", "TOURIST");
         payload.put("tileId", touristSpot.id);
         sendNetworkActionAndAwait(MessageType.BUY_CITY, payload, "구매 결과를 기다리는 중입니다...");
+    }
+
+    private void handleClientUnownedTouristSpot(TouristSpot touristSpot, Player player) {
+        // 미소유 관광지 매입 다이얼로그
+        TouristSpotPurchaseDialog purchaseDialog = new TouristSpotPurchaseDialog(
+            frame,
+            touristSpot.name,
+            touristSpot.price,
+            player.cash
+        );
+        purchaseDialog.setVisible(true);
+
+        boolean purchased = false;
+        if (purchaseDialog.isConfirmed()) {
+            // 매입 요청 전송
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("target", "TOURIST");
+            payload.put("tileId", touristSpot.id);
+            sendNetworkAction(MessageType.BUY_CITY, payload);
+            log("관광지 매입 요청을 전송했습니다.");
+            purchased = true;
+        } else {
+            log("매입을 취소했습니다.");
+        }
+
+        // 선택지 다이얼로그 표시 (잠금/주사위)
+        TouristSpotChoiceDialog choiceDialog = new TouristSpotChoiceDialog(
+            frame,
+            touristSpot.name
+        );
+        choiceDialog.setVisible(true);
+
+        TouristSpotChoiceDialog.Choice choice = choiceDialog.getSelectedChoice();
+        Map<String, Object> choicePayload = new HashMap<>();
+        choicePayload.put("target", "TOURIST_CHOICE");
+        choicePayload.put("tileId", touristSpot.id);
+        choicePayload.put("choice", choice.name());
+        choicePayload.put("purchased", purchased);
+        sendNetworkActionAndAwait(MessageType.TOURIST_SPOT_CHOICE, choicePayload, "관광지 선택 결과를 기다리는 중입니다...");
+    }
+
+    private void handleClientOwnedTouristSpot(TouristSpot touristSpot, Player player) {
+        // 본인 소유 관광지 선택지 다이얼로그
+        TouristSpotChoiceDialog choiceDialog = new TouristSpotChoiceDialog(
+            frame,
+            touristSpot.name
+        );
+        choiceDialog.setVisible(true);
+
+        TouristSpotChoiceDialog.Choice choice = choiceDialog.getSelectedChoice();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("target", "TOURIST_CHOICE");
+        payload.put("tileId", touristSpot.id);
+        payload.put("choice", choice.name());
+        sendNetworkActionAndAwait(MessageType.TOURIST_SPOT_CHOICE, payload, "관광지 선택 결과를 기다리는 중입니다...");
     }
 
     private void notifyChanceEvent(String playerName, int reward) {
@@ -2537,6 +2694,17 @@ public class GameUI {
         Map<String, Object> data = new HashMap<>();
         data.put("player", playerName);
         pushNetworkEvent(MessageType.OLYMPIC_EVENT, data);
+    }
+
+    private void notifyTouristLandingEvent(TouristSpot touristSpot) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("tileId", touristSpot.id);
+        data.put("isOwned", touristSpot.isOwned());
+        data.put("ownerIndex", touristSpot.owner);
+        pushNetworkEvent(MessageType.TOURIST_LANDING_EVENT, data);
     }
 
     private void notifyIslandEvent(String playerName, int turns) {

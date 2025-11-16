@@ -425,3 +425,20 @@ src/com/marblegame/
      - 호스트 턴 이벤트 → 호스트만 다이얼로그 표시
      - 클라이언트 턴 이벤트 → 클라이언트만 다이얼로그 표시
      - 페이즈 딜리트 등 → 모든 플레이어에게 표시
+
+4. **관광지 다이얼로그 네트워크 분기 처리** (2025-11-16 수정)
+   - 위치: `GameUI.java`, `Main.java`
+   - 원인: `handleTouristSpotTile()`에서 네트워크 모드 체크 없이 다이얼로그 즉시 표시
+   - 증상:
+     - 클라이언트 턴에서 호스트 화면에 관광지 매입/선택 다이얼로그 표시
+     - 호스트가 클라이언트 대신 결정
+   - 해결:
+     - `handleTouristSpotTile()`에 네트워크 분기 추가 (line 848-858, 888-898)
+     - `handleClientUnownedTouristSpot()` 함수 구현 (클라이언트용 미소유 관광지)
+     - `handleClientOwnedTouristSpot()` 함수 구현 (클라이언트용 본인 소유 관광지)
+     - `handleRemoteTouristSpotChoice()` 서버 핸들러 구현 (line 2132-2164)
+     - `Main.handleServerSideAction()`에 `TOURIST_SPOT_CHOICE` 케이스 추가
+   - 결과:
+     - 클라이언트: 자신의 턴에서 관광지 다이얼로그 표시, 서버에 선택 전송
+     - 호스트: 자신의 턴에서만 다이얼로그 표시, 클라이언트 턴에서는 대기
+     - 서버: 클라이언트의 선택을 받아 게임 로직 처리

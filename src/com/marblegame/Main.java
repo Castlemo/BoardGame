@@ -493,6 +493,12 @@ public class Main {
                     message.getInt("tileId"),
                     message.getString("context"));
                 break;
+            case TOURIST_SPOT_CHOICE:
+                gameUI.handleRemoteTouristSpotChoice(playerId,
+                    message.getInt("tileId"),
+                    message.getString("choice"),
+                    message.getBoolean("purchased"));
+                break;
             default:
                 break;
         }

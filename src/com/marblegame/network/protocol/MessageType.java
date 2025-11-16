@@ -40,6 +40,7 @@ public enum MessageType {
     MAGNETIC_EVENT,
     DOUBLE_EVENT,          // 더블 주사위 이벤트
     OLYMPIC_EVENT,         // 올림픽 이벤트
+    TOURIST_LANDING_EVENT, // 관광지 도착 이벤트 (클라이언트 다이얼로그 트리거)
     PLAYER_MOVED,          // 플레이어 이동
     PLAYER_BANKRUPT,       // 플레이어 파산
 
