@@ -11,10 +11,13 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * 클라이언트 핸들러
@@ -28,6 +31,10 @@ public class ClientHandler implements Runnable {
     private PrintWriter out;
     private String playerId;
     private volatile boolean running;
+    private volatile long lastHeartbeat;
+    private Timer heartbeatTimer;
+    private volatile boolean awaitingPong;
+    private volatile long lastPingSent;
 
     /**
      * ClientHandler 생성자
@@ -53,12 +60,23 @@ public class ClientHandler implements Runnable {
             out = new PrintWriter(socket.getOutputStream(), true);
 
             System.out.println("클라이언트 연결됨: " + socket.getInetAddress().getHostAddress());
+            lastHeartbeat = System.currentTimeMillis();
+            startHeartbeatMonitor();
 
             // 메시지 수신 루프
             String line;
-            while (running && (line = in.readLine()) != null) {
+            while (running) {
                 try {
+                    String line = in.readLine();
+                    if (line == null) {
+                        break;
+                    }
                     handleMessage(line);
+                } catch (SocketTimeoutException ste) {
+                    if (System.currentTimeMillis() - lastHeartbeat > NetConstants.HEARTBEAT_TIMEOUT) {
+                        System.out.println("Heartbeat timeout: " + playerId);
+                        break;
+                    }
                 } catch (Exception e) {
                     System.err.println("메시지 처리 중 오류: " + e.getMessage());
                     e.printStackTrace();
@@ -72,6 +90,7 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.err.println("클라이언트 통신 오류: " + e.getMessage());
         } finally {
+            stopHeartbeatMonitor();
             disconnect();
         }
     }
@@ -84,6 +103,7 @@ public class ClientHandler implements Runnable {
         try {
             Message message = MessageSerializer.deserialize(line);
             System.out.println("메시지 수신: " + message.getType() + " from " + message.getPlayerId());
+            refreshHeartbeat();
 
             // 메시지 타입별 처리
             switch (message.getType()) {
@@ -105,6 +125,9 @@ public class ClientHandler implements Runnable {
 
                 case PING:
                     handlePing(message);
+                    break;
+                case PONG:
+                    handlePong(message);
                     break;
 
                 default:
@@ -212,9 +235,58 @@ public class ClientHandler implements Runnable {
      * 핑 처리
      */
     private void handlePing(Message message) {
+        refreshHeartbeat();
         Message pong = new Message(MessageType.PONG);
         pong.addData("timestamp", System.currentTimeMillis());
         sendMessage(pong);
+    }
+
+    private void handlePong(Message message) {
+        refreshHeartbeat();
+    }
+
+    private void refreshHeartbeat() {
+        lastHeartbeat = System.currentTimeMillis();
+        awaitingPong = false;
+    }
+
+    private void startHeartbeatMonitor() {
+        stopHeartbeatMonitor();
+        heartbeatTimer = new Timer("ServerHeartbeat-" + socket.getPort(), true);
+        heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                checkHeartbeat();
+            }
+        }, NetConstants.HEARTBEAT_INTERVAL, NetConstants.HEARTBEAT_INTERVAL);
+    }
+
+    private void stopHeartbeatMonitor() {
+        if (heartbeatTimer != null) {
+            heartbeatTimer.cancel();
+            heartbeatTimer = null;
+        }
+    }
+
+    private void checkHeartbeat() {
+        if (!running) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!awaitingPong && now - lastHeartbeat >= NetConstants.HEARTBEAT_INTERVAL) {
+            sendHeartbeatPing();
+        } else if (awaitingPong && now - lastPingSent >= NetConstants.HEARTBEAT_TIMEOUT) {
+            System.out.println("하트비트 시간 초과: " +
+                (playerId != null ? playerId : socket.getInetAddress().getHostAddress()));
+            disconnect();
+        }
+    }
+
+    private void sendHeartbeatPing() {
+        Message ping = new Message(MessageType.PING);
+        sendMessage(ping);
+        awaitingPong = true;
+        lastPingSent = System.currentTimeMillis();
     }
 
     /**
@@ -248,6 +320,7 @@ public class ClientHandler implements Runnable {
      * 연결 종료
      */
     public void disconnect() {
+        stopHeartbeatMonitor();
         if (!running) {
             return;
         }

@@ -810,7 +810,7 @@ public class GameUI {
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
             frame.getOverlayPanel().showMoneyChange(city.owner, toll);
 
-            notifyTollEvent(player.name, owner.name, city.name, city.level, toll, city.hasOlympicBoost, playerCashBefore, false);
+            notifyTollEvent(player.name, owner.name, city.name, city.level, toll, city.hasOlympicBoost, false);
 
             // 올림픽 효과 해제 (한 번 통행료 지불 후)
             if (city.hasOlympicBoost) {
@@ -935,7 +935,7 @@ public class GameUI {
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
             frame.getOverlayPanel().showMoneyChange(touristSpot.owner, toll);
 
-            notifyTollEvent(player.name, owner.name, touristSpot.name, 1, toll, false, playerCashBefore, true);
+            notifyTollEvent(player.name, owner.name, touristSpot.name, 1, toll, false, true);
 
             // 잠금된 관광지는 통행료 지불 후 잠금 해제
             if (touristSpot.isLocked()) {
@@ -2008,6 +2008,10 @@ public class GameUI {
 
         if (isNetworkClient()) {
             applyClientAvailableActions(snapshot.getAvailableActions());
+            int snapshotSequence = snapshot.getEventSequence();
+            if (snapshot.getEventState() == null && snapshotSequence > lastHandledEventId) {
+                lastHandledEventId = snapshotSequence; // late joiners skip history
+            }
             handleNetworkEvent(snapshot.getEventState());
         }
     }
@@ -2461,25 +2465,42 @@ public class GameUI {
     }
 
     private void handleRemoteTaxEvent(Map<String, Object> data) {
-        if (!isLocalPlayersTurn()) {
+        String playerName = safeMapString(data, "player", "플레이어");
+        String playerId = safeMapString(data, "playerId", null);
+        int amount = safeMapInt(data, "amount", 0);
+
+        if (!isLocalPlayer(playerId)) {
+            log(playerName + "이(가) 세금 " + String.format("%,d", amount) + "원을 납부했습니다.");
             return;
         }
-        String playerName = safeMapString(data, "player", "플레이어");
-        int amount = safeMapInt(data, "amount", 0);
-        showInfoDialog("세금", playerName + "이(가) 세금 " + String.format("%,d", amount) + "원을 납부했습니다.");
+
+        Player local = getLocalPlayer();
+        int currentCash = local != null ? local.cash : 0;
+        int balanceBefore = currentCash + amount;
+        TaxPaymentDialog dialog = new TaxPaymentDialog(frame, balanceBefore, amount);
+        dialog.setVisible(true);
     }
 
     private void handleRemoteTollEvent(Map<String, Object> data) {
-        if (!isLocalPlayersTurn()) {
-            return;
-        }
+        String playerId = safeMapString(data, "playerId", null);
+        String playerName = safeMapString(data, "player", "플레이어");
         String tile = safeMapString(data, "tile", "타일");
         String owner = safeMapString(data, "owner", "소유자");
         int level = safeMapInt(data, "level", 1);
         int toll = safeMapInt(data, "toll", 0);
         boolean olympic = safeMapBoolean(data, "olympic", false);
-        int cash = safeMapInt(data, "cash", 0);
         boolean tourist = safeMapBoolean(data, "tourist", false);
+
+        if (!isLocalPlayer(playerId)) {
+            String context = tourist ? "관광지" : "도시";
+            log(playerName + "이(가) " + tile + " " + context + " 통행료 " +
+                String.format("%,d", toll) + "원을 지불했습니다.");
+            return;
+        }
+
+        Player local = getLocalPlayer();
+        int currentCash = local != null ? local.cash : 0;
+        int balanceBefore = currentCash + toll; // derive from local state to avoid stale host data
         TollPaymentDialog dialog = new TollPaymentDialog(
             frame,
             tile,
@@ -2487,14 +2508,9 @@ public class GameUI {
             level,
             toll,
             olympic,
-            cash
+            balanceBefore
         );
         dialog.setVisible(true);
-        if (tourist) {
-            log(tile + " 관광지 통행료: " + String.format("%,d", toll));
-        } else {
-            log(tile + " 통행료: " + String.format("%,d", toll));
-        }
     }
 
     private void handleRemoteMagneticEvent(Map<String, Object> data) {
@@ -2713,6 +2729,7 @@ public class GameUI {
         }
         Map<String, Object> data = new HashMap<>();
         data.put("player", playerName);
+        data.put("playerId", players[currentPlayerIndex].playerId);
         data.put("turns", turns);
         pushNetworkEvent(MessageType.ISLAND_EVENT, data);
     }
@@ -2723,6 +2740,7 @@ public class GameUI {
         }
         Map<String, Object> data = new HashMap<>();
         data.put("player", playerName);
+        data.put("playerId", players[currentPlayerIndex].playerId);
         pushNetworkEvent(MessageType.WORLD_TOUR_EVENT, data);
     }
 
@@ -2732,23 +2750,25 @@ public class GameUI {
         }
         Map<String, Object> data = new HashMap<>();
         data.put("player", playerName);
+        data.put("playerId", players[currentPlayerIndex].playerId);
         data.put("amount", amount);
         pushNetworkEvent(MessageType.TAX_EVENT, data);
     }
 
     private void notifyTollEvent(String playerName, String ownerName, String tileName, int level,
-                                 int toll, boolean olympic, int playerCash, boolean tourist) {
+                                 int toll, boolean olympic, boolean tourist) {
         if (!networkMode || !isHost) {
             return;
         }
+        Player payer = players[currentPlayerIndex];
         Map<String, Object> data = new HashMap<>();
         data.put("player", playerName);
+        data.put("playerId", payer.playerId);
         data.put("owner", ownerName);
         data.put("tile", tileName);
         data.put("level", level);
         data.put("toll", toll);
         data.put("olympic", olympic);
-        data.put("cash", playerCash);
         data.put("tourist", tourist);
         pushNetworkEvent(MessageType.TOLL_EVENT, data);
     }
@@ -2780,6 +2800,7 @@ public class GameUI {
             return;
         }
 
+        GameStateSnapshot.EventState pendingEvent = lastEventState;
         GameStateSnapshot snapshot = GameStateMapper.capture(
             board,
             players,
@@ -2790,9 +2811,14 @@ public class GameUI {
             lastD2,
             lastD1 != 0 && lastD1 == lastD2,
             new ArrayList<>(currentAvailableActions),
-            lastEventState
+            pendingEvent
         );
+        snapshot.setEventSequence(lastEventSequence);
         gameStateSyncListener.onStateChanged(snapshot);
+        if (pendingEvent != null && lastEventState != null &&
+            pendingEvent.getId() == lastEventState.getId()) {
+            lastEventState = null;
+        }
     }
 
     private int clampPlayerIndex(int index, int length) {
@@ -2843,6 +2869,24 @@ public class GameUI {
             return Boolean.parseBoolean((String) value);
         }
         return defaultValue;
+    }
+
+    private boolean isLocalPlayer(String playerId) {
+        if (playerId == null || localPlayerIndex < 0 || localPlayerIndex >= players.length) {
+            return false;
+        }
+        if (localPlayerId != null) {
+            return playerId.equals(localPlayerId);
+        }
+        Player local = players[localPlayerIndex];
+        return local.playerId != null && local.playerId.equals(playerId);
+    }
+
+    private Player getLocalPlayer() {
+        if (localPlayerIndex >= 0 && localPlayerIndex < players.length) {
+            return players[localPlayerIndex];
+        }
+        return null;
     }
 
     private void showInfoDialog(String title, String message) {

@@ -12,6 +12,8 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * 게임 클라이언트
@@ -28,6 +30,7 @@ public class GameClient {
     private Thread listenerThread;
     private volatile boolean connected;
     private GameClientListener listener;
+    private Timer heartbeatTimer;
 
     /**
      * GameClient 생성자
@@ -74,6 +77,7 @@ public class GameClient {
             serverListener = new ServerListener(in, this);
             listenerThread = new Thread(serverListener, "ServerListenerThread");
             listenerThread.start();
+            startHeartbeat();
 
             if (listener != null) {
                 listener.onConnected();
@@ -151,6 +155,15 @@ public class GameClient {
     void onMessageReceived(Message message) {
         System.out.println("메시지 수신: " + message.getType());
 
+        if (message.getType() == MessageType.PING) {
+            sendPong();
+            return;
+        }
+
+        if (message.getType() == MessageType.PONG) {
+            return;
+        }
+
         // 리스너에 전달
         if (listener != null) {
             listener.onMessageReceived(message);
@@ -164,6 +177,7 @@ public class GameClient {
         if (connected) {
             connected = false;
             System.out.println("서버 연결 종료됨");
+            stopHeartbeat();
 
             if (listener != null) {
                 listener.onDisconnected();
@@ -186,6 +200,7 @@ public class GameClient {
         sendMessage(disconnectMsg);
 
         connected = false;
+        stopHeartbeat();
 
         // 리스너 종료
         if (serverListener != null) {
@@ -226,6 +241,36 @@ public class GameClient {
 
     public void setListener(GameClientListener listener) {
         this.listener = listener;
+    }
+
+    private void sendPing() {
+        Message ping = new Message(MessageType.PING, playerId);
+        sendMessage(ping);
+    }
+
+    private void sendPong() {
+        Message pong = new Message(MessageType.PONG, playerId);
+        sendMessage(pong);
+    }
+
+    private void startHeartbeat() {
+        stopHeartbeat();
+        heartbeatTimer = new Timer("ClientHeartbeat", true);
+        heartbeatTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (connected) {
+                    sendPing();
+                }
+            }
+        }, 0, NetConstants.HEARTBEAT_INTERVAL);
+    }
+
+    private void stopHeartbeat() {
+        if (heartbeatTimer != null) {
+            heartbeatTimer.cancel();
+            heartbeatTimer = null;
+        }
     }
 
     /**

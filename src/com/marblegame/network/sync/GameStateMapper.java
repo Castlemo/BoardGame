@@ -186,6 +186,7 @@ public final class GameStateMapper {
         map.put("touristSpots", spotList);
 
         map.put("availableActions", new ArrayList<>(snapshot.getAvailableActions()));
+        map.put("eventSequence", snapshot.getEventSequence());
 
         GameStateSnapshot.EventState eventState = snapshot.getEventState();
         if (eventState != null) {
@@ -212,6 +213,7 @@ public final class GameStateMapper {
         snapshot.setTurnCount(toInt(map.get("turnCount"), 0));
         snapshot.setCurrentPlayerIndex(toInt(map.get("currentPlayerIndex"), 0));
         snapshot.setPhase(stringValue(map.get("phase")));
+        snapshot.setEventSequence(toInt(map.get("eventSequence"), 0));
 
         Object diceObj = map.get("dice");
         if (diceObj instanceof Map) {

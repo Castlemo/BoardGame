@@ -18,6 +18,7 @@ public class GameStateSnapshot {
     private final List<CityState> cities = new ArrayList<>();
     private final List<TouristSpotState> touristSpots = new ArrayList<>();
     private final List<String> availableActions = new ArrayList<>();
+    private int eventSequence;
     private EventState eventState;
 
     public int getTurnCount() {
@@ -81,6 +82,14 @@ public class GameStateSnapshot {
 
     public void setEventState(EventState eventState) {
         this.eventState = eventState;
+    }
+
+    public int getEventSequence() {
+        return eventSequence;
+    }
+
+    public void setEventSequence(int eventSequence) {
+        this.eventSequence = eventSequence;
     }
 
     /**

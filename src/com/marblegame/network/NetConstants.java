@@ -8,7 +8,7 @@ public class NetConstants {
     public static final int DEFAULT_PORT = 9999;
 
     // 타임아웃 설정 (밀리초)
-    public static final int SOCKET_TIMEOUT = 0;  // 0 = 무한 대기 (Heartbeat 도입 전 임시)
+    public static final int SOCKET_TIMEOUT = HEARTBEAT_TIMEOUT; // allow heartbeat detection
     public static final int CONNECTION_TIMEOUT = 10000;  // 10초
 
     // 플레이어 제한

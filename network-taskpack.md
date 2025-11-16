@@ -338,15 +338,15 @@ src/com/marblegame/
 ## TODO
 - [x] 주사위 애니메이션 및 이벤트 알림 다이얼로그를 모든 클라이언트 화면에 동기화하여 표시
 - [x] Chance/Phase Delete 등 특수 이벤트를 네트워크 메시지로 전파하고 UI에 노출
+- [ ] 액션/이벤트 다이얼로그를 각 클라이언트에서도 동일하게 노출 (주사위 시뮬, 이벤트 칸 알림 다이얼로그 등 추가 동기화)
 - [ ] 대규모 플레이 테스트 및 하트비트/재접속 기능 구현
 
 ## 잠재적 문제점 및 개선 필요 사항
 
 ### 🟡 중요도: 중간
-1. **SOCKET_TIMEOUT = 0 (무한 대기)**
-   - 위치: `NetConstants.java:11`
-   - 문제: 연결 끊김 감지 불가
-   - 해결: Heartbeat 구현 후 적절한 값으로 변경 필요
+1. **SOCKET_TIMEOUT/Heartbeat (해결됨 2025-11-16)**
+   - 위치: `NetConstants.java`, `GameClient.java`, `ClientHandler.java`
+   - 조치: 소켓 타임아웃을 하트비트 타임아웃으로 복구하고 서버↔클라이언트 PING/PONG 루프를 구현하여 무응답 클라이언트 감지
 
 2. **MessageSerializer 크기 검증 없음**
    - 위치: `MessageSerializer.java`
