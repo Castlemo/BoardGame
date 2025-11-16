@@ -149,6 +149,9 @@ public class GameUI {
     private final List<String> currentAvailableActions = new ArrayList<>();
     private int localPlayerIndex = -1;
     private boolean awaitingNetworkResolution = false;
+    private int lastEventSequence = 0;
+    private GameStateSnapshot.EventState lastEventState;
+    private int lastHandledEventId = 0;
     private static final String ACTION_ROLL = "ROLL";
     private static final String ACTION_PURCHASE = "PURCHASE";
     private static final String ACTION_UPGRADE = "UPGRADE";
@@ -493,6 +496,11 @@ public class GameUI {
         lastD1 = finalD1;
         lastD2 = finalD2;
 
+        if (networkMode && isHost) {
+            pushNetworkEvent(MessageType.ROLL_DICE, createDiceEventData(finalResult, finalD1, finalD2,
+                finalIsDouble, finalShowSuppressionDialog, finalConsecutiveDoubles));
+        }
+
         frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
             if (finalIsDouble) {
                 log("🎲 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
@@ -649,6 +657,7 @@ public class GameUI {
                 log("무인도에 도착했습니다!");
                 clearDoubleState("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
+                notifyIslandEvent(player.name, player.jailTurns);
                 endTurn();
                 break;
 
@@ -664,6 +673,7 @@ public class GameUI {
                 chanceDialog.setVisible(true);
 
                 log("찬스 카드! " + String.format("%,d", chanceReward) + "원을 받았습니다!");
+                notifyChanceEvent(player.name, chanceReward);
                 endTurn();
                 break;
 
@@ -697,6 +707,7 @@ public class GameUI {
                 clearDoubleState("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true; // 전국철도와 동일한 효과
+                notifyWorldTourEvent(player.name);
                 endTurn();
                 break;
         }
@@ -734,6 +745,8 @@ public class GameUI {
                     log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
                 }
 
+                notifyMagneticEvent(city.name, pulledCount);
+
                 endTurn();
                 return;
             }
@@ -760,6 +773,7 @@ public class GameUI {
             }
 
             // 통행료 지불 확인 다이얼로그
+            int playerCashBefore = player.cash;
             TollPaymentDialog tollDialog = new TollPaymentDialog(
                 frame,
                 city.name,
@@ -767,7 +781,7 @@ public class GameUI {
                 city.level,
                 toll,
                 city.hasOlympicBoost,
-                player.cash
+                playerCashBefore
             );
             tollDialog.setVisible(true);
 
@@ -777,6 +791,8 @@ public class GameUI {
             // 자산 변동 표시
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
             frame.getOverlayPanel().showMoneyChange(city.owner, toll);
+
+            notifyTollEvent(player.name, owner.name, city.name, city.level, toll, city.hasOlympicBoost, playerCashBefore, false);
 
             // 올림픽 효과 해제 (한 번 통행료 지불 후)
             if (city.hasOlympicBoost) {
@@ -853,6 +869,7 @@ public class GameUI {
             }
 
             // 통행료 지불 확인 다이얼로그 (관광지는 레벨 1로 표시)
+            int playerCashBefore = player.cash;
             TollPaymentDialog tollDialog = new TollPaymentDialog(
                 frame,
                 touristSpot.name,
@@ -860,7 +877,7 @@ public class GameUI {
                 1,  // 관광지는 레벨 개념 없음
                 toll,
                 false,  // 관광지는 올림픽 효과 없음
-                player.cash
+                playerCashBefore
             );
             tollDialog.setVisible(true);
 
@@ -870,6 +887,8 @@ public class GameUI {
             // 자산 변동 표시
             frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -toll);
             frame.getOverlayPanel().showMoneyChange(touristSpot.owner, toll);
+
+            notifyTollEvent(player.name, owner.name, touristSpot.name, 1, toll, false, playerCashBefore, true);
 
             // 잠금된 관광지는 통행료 지불 후 잠금 해제
             if (touristSpot.isLocked()) {
@@ -1021,11 +1040,13 @@ public class GameUI {
             case LOCK:
                 ruleEngine.lockTouristSpot(touristSpot, currentPlayerIndex);
                 log("🔒 " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
+                notifyTouristChoiceEvent(touristSpot.name, choice);
                 return true;
 
             case EXTRA_ROLL:
                 player.hasExtraChance = true;
                 log("🎲 추가 주사위 기회를 획득했습니다!");
+                notifyTouristChoiceEvent(touristSpot.name, choice);
                 return true;
 
             default:
@@ -1338,6 +1359,7 @@ public class GameUI {
         currentTile = selectedTile;
         frame.getBoardPanel().setTileClickEnabled(false);
         log("선택한 칸에서 이벤트를 처리합니다.");
+        notifyRailroadSelectionEvent(player.name, selectedTile.name);
         handleTileLanding();
     }
 
@@ -1393,6 +1415,8 @@ public class GameUI {
         if (player.bankrupt) {
             log(player.name + "이(가) 파산했습니다!");
         }
+
+        notifyTaxEvent(player.name, tax);
 
         // 세금 납부 후 즉시 턴 종료
         endTurn();
@@ -1609,6 +1633,8 @@ public class GameUI {
         // 삭제 다이얼로그 표시
         PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, deletedCity.name);
         deleteDialog.setVisible(true);
+
+        notifyPhaseDeleteEvent(deletedCity.name);
 
         // 보드 업데이트
         frame.getBoardPanel().repaint();
@@ -2118,6 +2144,57 @@ public class GameUI {
         awaitingNetworkResolution = false;
     }
 
+    private void handleNetworkEvent(GameStateSnapshot.EventState eventState) {
+        if (!isNetworkClient() || eventState == null) {
+            return;
+        }
+
+        if (eventState.getId() <= lastHandledEventId) {
+            return;
+        }
+        lastHandledEventId = eventState.getId();
+
+        String type = eventState.getType();
+        if (type == null) {
+            return;
+        }
+
+        switch (type) {
+            case "CHANCE_EVENT":
+                handleRemoteChanceEvent(eventState.getData());
+                break;
+            case "PHASE_DELETE":
+                handleRemotePhaseDelete(eventState.getData());
+                break;
+            case "TOURIST_SPOT_CHOICE":
+                handleRemoteTouristChoiceEvent(eventState.getData());
+                break;
+            case "CITY_SELECTION":
+                handleRemoteRailroadSelectionEvent(eventState.getData());
+                break;
+            case "ROLL_DICE":
+                handleRemoteDiceAnimation(eventState.getData());
+                break;
+            case "ISLAND_EVENT":
+                handleRemoteIslandEvent(eventState.getData());
+                break;
+            case "WORLD_TOUR_EVENT":
+                handleRemoteWorldTourEvent(eventState.getData());
+                break;
+            case "TAX_EVENT":
+                handleRemoteTaxEvent(eventState.getData());
+                break;
+            case "TOLL_EVENT":
+                handleRemoteTollEvent(eventState.getData());
+                break;
+            case "MAGNETIC_EVENT":
+                handleRemoteMagneticEvent(eventState.getData());
+                break;
+            default:
+                break;
+        }
+    }
+
     private void sendNetworkAction(MessageType type, Map<String, Object> payload) {
         if (!isNetworkClient() || networkActionSender == null) {
             return;
@@ -2143,6 +2220,19 @@ public class GameUI {
         sendNetworkAction(type, payload);
         awaitingNetworkResolution = true;
         awaitNetworkResponse(waitingMessage);
+    }
+
+    private void pushNetworkEvent(MessageType type, Map<String, Object> data) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        lastEventSequence++;
+        GameStateSnapshot.EventState eventState = new GameStateSnapshot.EventState();
+        eventState.setId(lastEventSequence);
+        eventState.setType(type.name());
+        eventState.setData(data);
+        this.lastEventState = eventState;
+        notifyStateSync();
     }
 
     private void handleNetworkDiceRelease() {
@@ -2190,6 +2280,114 @@ public class GameUI {
         sendNetworkActionAndAwait(MessageType.BUY_CITY, payload, "구매 결과를 기다리는 중입니다...");
     }
 
+    private void handleRemoteChanceEvent(Map<String, Object> data) {
+        int reward = safeMapInt(data, "reward", ruleEngine.getChanceReward());
+        ChanceDialog chanceDialog = new ChanceDialog(frame, reward);
+        chanceDialog.setVisible(true);
+        log("찬스 카드 이벤트로 " + String.format("%,d", reward) + "원을 획득했습니다.");
+    }
+
+    private void handleRemotePhaseDelete(Map<String, Object> data) {
+        String cityName = data != null && data.get("city") != null
+            ? data.get("city").toString()
+            : "??";
+        PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, cityName);
+        deleteDialog.setVisible(true);
+        log("⚠️ 페이즈 딜리트: " + cityName + "이(가) 삭제되었습니다.");
+    }
+
+    private void handleRemoteDiceAnimation(Map<String, Object> data) {
+        int dice1 = safeMapInt(data, "d1", 1);
+        int dice2 = safeMapInt(data, "d2", 1);
+        boolean isDouble = safeMapBoolean(data, "double", false);
+        boolean suppressed = safeMapBoolean(data, "suppressed", false);
+        int doubleCount = safeMapInt(data, "doubleCount", consecutiveDoubles);
+        lastD1 = dice1;
+        lastD2 = dice2;
+
+        frame.getActionPanel().getDiceAnimationPanel().startAnimation(dice1, dice2, () -> {
+            int sum = dice1 + dice2;
+            if (isDouble) {
+                log("🎲 주사위: [" + dice1 + ", " + dice2 + "] = " + sum + " - 더블!");
+            } else {
+                log("주사위: [" + dice1 + ", " + dice2 + "] = " + sum);
+            }
+
+            if (suppressed) {
+                DoubleSuppressedDialog suppressedDialog = new DoubleSuppressedDialog(frame, dice1, doubleCount);
+                suppressedDialog.setVisible(true);
+            }
+        });
+    }
+
+    private void handleRemoteTouristChoiceEvent(Map<String, Object> data) {
+        String spot = safeMapString(data, "spot", "관광지");
+        String choiceValue = safeMapString(data, "choice", TouristSpotChoiceDialog.Choice.LOCK.name());
+        TouristSpotChoiceDialog.Choice choice = parseTouristChoice(choiceValue);
+        String message;
+        if (choice == TouristSpotChoiceDialog.Choice.LOCK) {
+            message = "🔒 " + spot + " 잠금 선택";
+        } else {
+            message = "🎲 " + spot + "에서 추가 주사위 선택";
+        }
+        showInfoDialog("관광지 선택", message);
+    }
+
+    private void handleRemoteRailroadSelectionEvent(Map<String, Object> data) {
+        String playerName = safeMapString(data, "player", "플레이어");
+        String tileName = safeMapString(data, "tile", "알 수 없는 칸");
+        showInfoDialog("특수 이동", playerName + " → " + tileName + " 선택");
+    }
+
+    private void handleRemoteIslandEvent(Map<String, Object> data) {
+        int turns = safeMapInt(data, "turns", 2);
+        IslandDialog dialog = new IslandDialog(frame, turns);
+        dialog.setVisible(true);
+    }
+
+    private void handleRemoteWorldTourEvent(Map<String, Object> data) {
+        WorldTourDialog dialog = new WorldTourDialog(frame);
+        dialog.setVisible(true);
+    }
+
+    private void handleRemoteTaxEvent(Map<String, Object> data) {
+        String playerName = safeMapString(data, "player", "플레이어");
+        int amount = safeMapInt(data, "amount", 0);
+        showInfoDialog("세금", playerName + "이(가) 세금 " + String.format("%,d", amount) + "원을 납부했습니다.");
+    }
+
+    private void handleRemoteTollEvent(Map<String, Object> data) {
+        String tile = safeMapString(data, "tile", "타일");
+        String owner = safeMapString(data, "owner", "소유자");
+        int level = safeMapInt(data, "level", 1);
+        int toll = safeMapInt(data, "toll", 0);
+        boolean olympic = safeMapBoolean(data, "olympic", false);
+        int cash = safeMapInt(data, "cash", 0);
+        boolean tourist = safeMapBoolean(data, "tourist", false);
+        TollPaymentDialog dialog = new TollPaymentDialog(
+            frame,
+            tile,
+            owner,
+            level,
+            toll,
+            olympic,
+            cash
+        );
+        dialog.setVisible(true);
+        if (tourist) {
+            log(tile + " 관광지 통행료: " + String.format("%,d", toll));
+        } else {
+            log(tile + " 통행료: " + String.format("%,d", toll));
+        }
+    }
+
+    private void handleRemoteMagneticEvent(Map<String, Object> data) {
+        String city = safeMapString(data, "city", "도시");
+        int pulled = safeMapInt(data, "pulled", 0);
+        DualMagneticDialog dialog = new DualMagneticDialog(frame, city, pulled);
+        dialog.setVisible(true);
+    }
+
     private void handleClientTouristPurchase(TouristSpot touristSpot, Player player) {
         TouristSpotPurchaseDialog dialog = new TouristSpotPurchaseDialog(
             frame,
@@ -2211,6 +2409,113 @@ public class GameUI {
         sendNetworkActionAndAwait(MessageType.BUY_CITY, payload, "구매 결과를 기다리는 중입니다...");
     }
 
+    private void notifyChanceEvent(String playerName, int reward) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        data.put("reward", reward);
+        pushNetworkEvent(MessageType.CHANCE_EVENT, data);
+    }
+
+    private void notifyPhaseDeleteEvent(String cityName) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("city", cityName);
+        pushNetworkEvent(MessageType.PHASE_DELETE, data);
+    }
+
+    private void notifyTouristChoiceEvent(String spotName, TouristSpotChoiceDialog.Choice choice) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("spot", spotName);
+        data.put("choice", choice != null ? choice.name() : null);
+        pushNetworkEvent(MessageType.TOURIST_SPOT_CHOICE, data);
+    }
+
+    private void notifyRailroadSelectionEvent(String playerName, String tileName) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        data.put("tile", tileName);
+        pushNetworkEvent(MessageType.CITY_SELECTION, data);
+    }
+
+    private void notifyIslandEvent(String playerName, int turns) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        data.put("turns", turns);
+        pushNetworkEvent(MessageType.ISLAND_EVENT, data);
+    }
+
+    private void notifyWorldTourEvent(String playerName) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        pushNetworkEvent(MessageType.WORLD_TOUR_EVENT, data);
+    }
+
+    private void notifyTaxEvent(String playerName, int amount) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        data.put("amount", amount);
+        pushNetworkEvent(MessageType.TAX_EVENT, data);
+    }
+
+    private void notifyTollEvent(String playerName, String ownerName, String tileName, int level,
+                                 int toll, boolean olympic, int playerCash, boolean tourist) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        data.put("owner", ownerName);
+        data.put("tile", tileName);
+        data.put("level", level);
+        data.put("toll", toll);
+        data.put("olympic", olympic);
+        data.put("cash", playerCash);
+        data.put("tourist", tourist);
+        pushNetworkEvent(MessageType.TOLL_EVENT, data);
+    }
+
+    private void notifyMagneticEvent(String cityName, int pulled) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("city", cityName);
+        data.put("pulled", pulled);
+        pushNetworkEvent(MessageType.MAGNETIC_EVENT, data);
+    }
+
+    private Map<String, Object> createDiceEventData(int sum, int dice1, int dice2,
+                                                    boolean isDouble, boolean suppressed, int doubleCount) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("sum", sum);
+        data.put("d1", dice1);
+        data.put("d2", dice2);
+        data.put("double", isDouble);
+        data.put("suppressed", suppressed);
+        data.put("doubleCount", doubleCount);
+        return data;
+    }
+
     private void notifyStateSync() {
         if (!networkMode || !isHost || gameStateSyncListener == null) {
             return;
@@ -2225,7 +2530,8 @@ public class GameUI {
             lastD1,
             lastD2,
             lastD1 != 0 && lastD1 == lastD2,
-            new ArrayList<>(currentAvailableActions)
+            new ArrayList<>(currentAvailableActions),
+            lastEventState
         );
         gameStateSyncListener.onStateChanged(snapshot);
     }
@@ -2241,6 +2547,52 @@ public class GameUI {
             return length - 1;
         }
         return index;
+    }
+
+    private int safeMapInt(Map<String, Object> data, String key, int defaultValue) {
+        if (data == null) {
+            return defaultValue;
+        }
+        Object value = data.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        try {
+            return value != null ? Integer.parseInt(value.toString()) : defaultValue;
+        } catch (NumberFormatException ex) {
+            return defaultValue;
+        }
+    }
+
+    private String safeMapString(Map<String, Object> data, String key, String defaultValue) {
+        if (data == null) {
+            return defaultValue;
+        }
+        Object value = data.get(key);
+        return value != null ? value.toString() : defaultValue;
+    }
+
+    private boolean safeMapBoolean(Map<String, Object> data, String key, boolean defaultValue) {
+        if (data == null) {
+            return defaultValue;
+        }
+        Object value = data.get(key);
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+        return defaultValue;
+    }
+
+    private void showInfoDialog(String title, String message) {
+        JOptionPane.showMessageDialog(
+            frame,
+            message,
+            title,
+            JOptionPane.INFORMATION_MESSAGE
+        );
     }
 
     /**

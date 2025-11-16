@@ -1,7 +1,9 @@
 package com.marblegame.network.sync;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 전체 게임 상태 스냅샷 DTO
@@ -16,6 +18,7 @@ public class GameStateSnapshot {
     private final List<CityState> cities = new ArrayList<>();
     private final List<TouristSpotState> touristSpots = new ArrayList<>();
     private final List<String> availableActions = new ArrayList<>();
+    private EventState eventState;
 
     public int getTurnCount() {
         return turnCount;
@@ -70,6 +73,14 @@ public class GameStateSnapshot {
         if (actions != null) {
             availableActions.addAll(actions);
         }
+    }
+
+    public EventState getEventState() {
+        return eventState;
+    }
+
+    public void setEventState(EventState eventState) {
+        this.eventState = eventState;
     }
 
     /**
@@ -291,6 +302,39 @@ public class GameStateSnapshot {
 
         public void setLockedBy(Integer lockedBy) {
             this.lockedBy = lockedBy;
+        }
+    }
+
+    /**
+     * 최근 발생한 이벤트 정보
+     */
+    public static class EventState {
+        private int id;
+        private String type;
+        private Map<String, Object> data = new HashMap<>();
+
+        public int getId() {
+            return id;
+        }
+
+        public void setId(int id) {
+            this.id = id;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data != null ? new HashMap<>(data) : new HashMap<>();
         }
     }
 }

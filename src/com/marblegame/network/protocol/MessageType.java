@@ -33,6 +33,11 @@ public enum MessageType {
     TILE_LANDED,           // 타일 도착 이벤트
     CHANCE_EVENT,          // 찬스 이벤트
     PHASE_DELETE,          // 페이즈 딜리트 이벤트
+    ISLAND_EVENT,
+    WORLD_TOUR_EVENT,
+    TOLL_EVENT,
+    TAX_EVENT,
+    MAGNETIC_EVENT,
     PLAYER_MOVED,          // 플레이어 이동
     PLAYER_BANKRUPT,       // 플레이어 파산
 

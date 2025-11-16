@@ -22,12 +22,14 @@ public final class GameStateMapper {
      */
     public static GameStateSnapshot capture(Board board, Player[] players, int currentPlayerIndex,
                                             int turnCount, String phase, int dice1, int dice2,
-                                            boolean isDouble, List<String> availableActions) {
+                                            boolean isDouble, List<String> availableActions,
+                                            GameStateSnapshot.EventState eventState) {
         GameStateSnapshot snapshot = new GameStateSnapshot();
         snapshot.setTurnCount(turnCount);
         snapshot.setCurrentPlayerIndex(currentPlayerIndex);
         snapshot.setPhase(phase);
         snapshot.setAvailableActions(availableActions);
+        snapshot.setEventState(eventState);
 
         GameStateSnapshot.DiceState diceState = new GameStateSnapshot.DiceState();
         diceState.setDice1(dice1);
@@ -185,6 +187,15 @@ public final class GameStateMapper {
 
         map.put("availableActions", new ArrayList<>(snapshot.getAvailableActions()));
 
+        GameStateSnapshot.EventState eventState = snapshot.getEventState();
+        if (eventState != null) {
+            Map<String, Object> eventMap = new HashMap<>();
+            eventMap.put("id", eventState.getId());
+            eventMap.put("type", eventState.getType());
+            eventMap.put("data", eventState.getData());
+            map.put("event", eventMap);
+        }
+
         return map;
     }
 
@@ -273,6 +284,21 @@ public final class GameStateMapper {
                 }
             }
             snapshot.setAvailableActions(actions);
+        }
+
+        Object eventObj = map.get("event");
+        if (eventObj instanceof Map) {
+            Map<String, Object> eventMap = (Map<String, Object>) eventObj;
+            GameStateSnapshot.EventState eventState = new GameStateSnapshot.EventState();
+            eventState.setId(toInt(eventMap.get("id"), 0));
+            eventState.setType(stringValue(eventMap.get("type")));
+            Object dataObj = eventMap.get("data");
+            if (dataObj instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) dataObj;
+                eventState.setData(data);
+            }
+            snapshot.setEventState(eventState);
         }
 
         return snapshot;
