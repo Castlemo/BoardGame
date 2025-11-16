@@ -5,6 +5,8 @@ import com.marblegame.network.NetConstants;
 import javax.swing.*;
 import java.awt.*;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 
 /**
  * 방 만들기 다이얼로그
@@ -136,6 +138,33 @@ public class CreateRoomDialog extends JDialog {
 
     private String getLocalIPAddress() {
         try {
+            // 모든 네트워크 인터페이스를 검색하여 LAN IP 찾기
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                // 루프백이나 비활성 인터페이스 제외
+                if (iface.isLoopback() || !iface.isUp()) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    // IPv4 주소만 사용 (127.0.0.1 제외)
+                    if (addr.getHostAddress().contains(":")) {
+                        continue; // IPv6 건너뛰기
+                    }
+                    if (!addr.isLoopbackAddress()) {
+                        String ip = addr.getHostAddress();
+                        // 일반적인 사설 IP 대역 (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+                        if (ip.startsWith("192.168.") || ip.startsWith("10.") ||
+                            ip.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*")) {
+                            return ip;
+                        }
+                    }
+                }
+            }
+            // LAN IP를 찾지 못한 경우 기본값 사용
             return InetAddress.getLocalHost().getHostAddress();
         } catch (Exception e) {
             return "IP 주소를 가져올 수 없음";

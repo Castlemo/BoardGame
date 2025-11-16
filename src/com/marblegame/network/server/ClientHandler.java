@@ -77,6 +77,19 @@ public class ClientHandler implements Runnable {
                         System.out.println("Heartbeat timeout: " + playerId);
                         break;
                     }
+                } catch (SocketException se) {
+                    // 소켓 종료 시 발생 - 정상적인 종료로 처리
+                    if (running) {
+                        System.out.println("소켓 연결 종료: " +
+                            (playerId != null ? playerId : socket.getInetAddress().getHostAddress()));
+                    }
+                    break;
+                } catch (IOException ioe) {
+                    // 기타 IO 오류
+                    if (running) {
+                        System.err.println("메시지 읽기 오류: " + ioe.getMessage());
+                    }
+                    break;
                 } catch (Exception e) {
                     System.err.println("메시지 처리 중 오류: " + e.getMessage());
                     e.printStackTrace();

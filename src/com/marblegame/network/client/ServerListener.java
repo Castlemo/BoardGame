@@ -6,6 +6,7 @@ import com.marblegame.network.protocol.MessageSerializer;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 /**
  * 서버 메시지 수신 리스너
@@ -33,22 +34,38 @@ public class ServerListener implements Runnable {
 
         try {
             String line;
-            while (running && (line = in.readLine()) != null) {
+            while (running) {
                 try {
+                    line = in.readLine();
+                    if (line == null) {
+                        // 서버가 연결을 종료함
+                        break;
+                    }
                     handleMessage(line);
+                } catch (SocketTimeoutException e) {
+                    // 타임아웃은 정상 - 계속 대기
+                    continue;
+                } catch (SocketException e) {
+                    // 소켓 종료
+                    if (running) {
+                        System.out.println("서버 연결 종료됨");
+                    }
+                    break;
+                } catch (IOException e) {
+                    // 기타 IO 오류
+                    if (running) {
+                        System.err.println("서버 통신 오류: " + e.getMessage());
+                    }
+                    break;
                 } catch (Exception e) {
                     System.err.println("메시지 처리 중 오류: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
 
-        } catch (SocketException e) {
+        } catch (Exception e) {
             if (running) {
-                System.out.println("서버 연결 종료됨");
-            }
-        } catch (IOException e) {
-            if (running) {
-                System.err.println("서버 통신 오류: " + e.getMessage());
+                System.err.println("서버 리스너 오류: " + e.getMessage());
             }
         } finally {
             if (running) {

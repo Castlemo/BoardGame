@@ -5,10 +5,13 @@ import com.marblegame.network.protocol.Message;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,17 +52,19 @@ public class GameServer {
             return;
         }
 
-        // 서버 소켓 생성
-        serverSocket = new ServerSocket(port);
+        // 서버 소켓 생성 - 모든 네트워크 인터페이스에 바인딩 (0.0.0.0)
+        serverSocket = new ServerSocket();
+        serverSocket.setReuseAddress(true);
+        serverSocket.bind(new InetSocketAddress("0.0.0.0", port));
         executorService = Executors.newCachedThreadPool();
         running = true;
 
         // 로컬 IP 주소 출력
-        String localIP = InetAddress.getLocalHost().getHostAddress();
+        String localIP = getLanIPAddress();
         System.out.println("=================================");
         System.out.println("게임 서버 시작");
-        System.out.println("포트: " + port);
-        System.out.println("로컬 IP: " + localIP);
+        System.out.println("바인딩: 0.0.0.0:" + port + " (모든 인터페이스)");
+        System.out.println("LAN IP: " + localIP);
         System.out.println("최대 플레이어: " + roomManager.getMaxPlayers());
         System.out.println("=================================");
 
@@ -229,6 +234,40 @@ public class GameServer {
     public void onPlayerDisconnected(String playerId) {
         if (listener != null && playerId != null) {
             listener.onPlayerDisconnected(playerId);
+        }
+    }
+
+    /**
+     * LAN IP 주소 가져오기
+     * @return LAN IP 주소 문자열
+     */
+    private String getLanIPAddress() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr.getHostAddress().contains(":")) {
+                        continue; // IPv6 건너뛰기
+                    }
+                    if (!addr.isLoopbackAddress()) {
+                        String ip = addr.getHostAddress();
+                        if (ip.startsWith("192.168.") || ip.startsWith("10.") ||
+                            ip.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*")) {
+                            return ip;
+                        }
+                    }
+                }
+            }
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "Unknown";
         }
     }
 
