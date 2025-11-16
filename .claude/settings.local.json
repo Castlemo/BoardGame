@@ -4,7 +4,8 @@
       "Bash(mkdir:*)",
       "Bash(javac:*)",
       "Bash(java:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

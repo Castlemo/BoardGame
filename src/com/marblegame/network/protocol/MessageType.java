@@ -38,6 +38,8 @@ public enum MessageType {
     TOLL_EVENT,
     TAX_EVENT,
     MAGNETIC_EVENT,
+    DOUBLE_EVENT,          // 더블 주사위 이벤트
+    OLYMPIC_EVENT,         // 올림픽 이벤트
     PLAYER_MOVED,          // 플레이어 이동
     PLAYER_BANKRUPT,       // 플레이어 파산
 

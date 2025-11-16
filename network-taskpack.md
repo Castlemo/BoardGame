@@ -50,6 +50,9 @@ src/com/marblegame/
     ├── client/
     │   ├── GameClient.java      # 클라이언트 메인
     │   └── ServerListener.java  # 서버 메시지 수신
+    ├── sync/                         # ✅ 새로 추가됨
+    │   ├── GameStateSnapshot.java   # 게임 상태 스냅샷
+    │   └── GameStateMapper.java     # 상태 변환 유틸리티
     └── ui/
         ├── NetworkMenuDialog.java    # 네트워크 메뉴
         ├── CreateRoomDialog.java     # 방 생성
@@ -108,6 +111,8 @@ src/com/marblegame/
 - [x] JSON 직렬화 (Message → String)
 - [x] JSON 역직렬화 (String → Message)
 - [x] 에러 처리 (잘못된 JSON)
+- [x] List 직렬화/역직렬화 지원 (✅ 새로 추가됨)
+- [x] 중첩 객체 지원 (Map, List 재귀 처리)
 
 ### 5.3 메시지 타입별 데이터 구조
 - [x] `PLAYER_JOIN`: { name, color }
@@ -115,6 +120,15 @@ src/com/marblegame/
 - [x] `ROLL_DICE`: { diceSum, dice1, dice2, isDouble }
 - [x] `BUY_CITY`: { tileIndex }
 - [x] 기타 필요한 메시지 데이터 구조 정의
+- [x] 이벤트 메시지 타입 추가: `ISLAND_EVENT`, `WORLD_TOUR_EVENT`, `TOLL_EVENT`, `TAX_EVENT`, `MAGNETIC_EVENT`
+
+### 5.4 상태 동기화 패키지 (✅ 새로 구현됨)
+- [x] GameStateSnapshot 클래스 (게임 전체 상태 캡처)
+  - DiceState, PlayerState, CityState, TouristSpotState, EventState
+- [x] GameStateMapper 클래스 (상태 변환 유틸리티)
+  - capture(): 모델 → 스냅샷
+  - apply(): 스냅샷 → 모델
+  - toMap()/fromMap(): 직렬화용 변환
 
 ---
 
@@ -253,10 +267,11 @@ src/com/marblegame/
 6. ✅ LobbyPanel (플레이어 목록, 게임 시작)
 7. ✅ 호스트/클라이언트 연결 흐름 완성
 
-### Phase 3: 게임 동기화 (핵심)
-8. 기본 턴 동기화 (주사위, 이동)
-9. 액션 동기화 (구매, 업그레이드, 패스)
-10. 전체 게임 상태 동기화
+### Phase 3: 게임 동기화 (핵심) ✅ 완료
+8. ✅ 기본 턴 동기화 (주사위, 이동)
+9. ✅ 액션 동기화 (구매, 업그레이드, 패스)
+10. ✅ 전체 게임 상태 동기화
+11. ✅ 이벤트 동기화 (찬스, 무인도, 월드투어, 통행료 등)
 
 ### Phase 4: 안정화 (필수)
 11. 에러 처리 및 연결 끊김 대응
@@ -273,9 +288,10 @@ src/com/marblegame/
 ## 기술 스택
 
 - **네트워크**: Java Socket API (ServerSocket, Socket)
-- **직렬화**: org.json 또는 Gson 라이브러리
+- **직렬화**: 커스텀 JSON 구현 (외부 라이브러리 미사용) ✅ 구현 완료
 - **멀티스레딩**: Java Thread, ExecutorService
 - **UI**: Java Swing (기존 코드 스타일 유지)
+- **상태 관리**: GameStateSnapshot/Mapper 패턴 ✅ 새로 추가
 
 ---
 
@@ -294,11 +310,13 @@ src/com/marblegame/
 
 ### 추가 ✅
 - ✅ `src/com/marblegame/network/**` (전체 패키지)
-- ✅ `NetworkMain.java`: 네트워크 멀티플레이 진입점
+- ✅ `src/com/marblegame/network/sync/**` (상태 동기화 패키지)
+- ✅ `src/com/marblegame/ui/GameModeDialog.java` (게임 모드 선택)
+- ~~`NetworkMain.java`: 네트워크 멀티플레이 진입점~~ → Main.java에 통합됨
 
-### 수정
-- `Main.java`: 네트워크 모드 선택 추가
-- `GameUI.java`: 네트워크 모드 지원, 상태 동기화
+### 수정 ✅
+- ✅ `Main.java`: 네트워크 모드 선택 및 통합 (로컬/네트워크 모드)
+- ✅ `GameUI.java`: 네트워크 모드 지원, 상태 동기화, 원격 액션 처리
 - `GameFrame.java`: 네트워크 메뉴 추가
 - `RuleEngine.java`: 서버 측 검증 로직 추가 (필요 시)
 
@@ -310,7 +328,7 @@ src/com/marblegame/
 - [x] 방 참가 및 클라이언트 연결 기능
 - [x] 대기실에서 플레이어 목록 확인
 - [x] 호스트가 게임 시작 가능
-- [ ] 턴제 게임 동기화 (주사위, 이동, 액션)
+- [x] 턴제 게임 동기화 (주사위, 이동, 액션) ✅
 - [x] 모든 플레이어가 동일한 게임 상태 확인
 - [x] 연결 끊김 시 적절한 처리
 - [ ] LAN 환경에서 실제 테스트 완료
@@ -321,3 +339,89 @@ src/com/marblegame/
 - [x] 주사위 애니메이션 및 이벤트 알림 다이얼로그를 모든 클라이언트 화면에 동기화하여 표시
 - [x] Chance/Phase Delete 등 특수 이벤트를 네트워크 메시지로 전파하고 UI에 노출
 - [ ] 대규모 플레이 테스트 및 하트비트/재접속 기능 구현
+
+## 잠재적 문제점 및 개선 필요 사항
+
+### 🟡 중요도: 중간
+1. **SOCKET_TIMEOUT = 0 (무한 대기)**
+   - 위치: `NetConstants.java:11`
+   - 문제: 연결 끊김 감지 불가
+   - 해결: Heartbeat 구현 후 적절한 값으로 변경 필요
+
+2. **MessageSerializer 크기 검증 없음**
+   - 위치: `MessageSerializer.java`
+   - 문제: MAX_MESSAGE_SIZE(1MB) 설정만 있고 실제 검증 없음
+   - 해결: 직렬화/역직렬화 시 크기 체크 추가
+
+3. **연결 끊김 시 플레이어 파산 처리 미구현**
+   - 위치: `8.2 게임 중 연결 끊김`
+   - 문제: 게임 중 플레이어 연결 끊김 시 자동 파산 처리 없음
+   - 해결: GameUI에서 연결 끊김 플레이어 자동 처리
+
+### 🟢 중요도: 낮음
+4. **채팅 기능 미구현**
+   - 위치: `6.4 LobbyPanel`
+   - 상태: 선택 사항으로 남겨둠
+
+5. **로그 시스템 미구현**
+   - 위치: `8.3 예외 처리`
+   - 해결: 향후 디버깅 편의를 위해 로깅 프레임워크 도입 고려
+
+### ✅ 확인 완료
+- 모든 import 문 정상
+- 모든 Dialog 클래스 존재
+- 모든 handleRemote*() 메서드 구현 완료
+- 모든 notify*Event() 메서드 구현 완료 (notifyTaxEvent 포함)
+- MessageSerializer List 지원 완료
+- 컴파일 오류 없음 ✅
+
+### 🔧 수정된 버그
+1. **클라이언트 다이얼로그 미표시 문제** (2025-11-16 수정)
+   - 위치: `GameUI.java:1954`
+   - 원인: `applyNetworkSnapshot()`에서 `handleNetworkEvent()` 호출 누락
+   - 증상: 클라이언트 화면에서 이벤트 타일, 매입, 지불 등 모든 오버레이 다이얼로그가 표시되지 않음
+   - 해결: `handleNetworkEvent(snapshot.getEventState())` 호출 추가
+   - 결과: 클라이언트에서도 호스트와 동일한 이벤트 다이얼로그 표시됨
+
+2. **더블 주사위 다이얼로그 네트워크 전파 누락** (2025-11-16 수정)
+   - 위치: `GameUI.java:1678`, `MessageType.java`
+   - 원인: `DOUBLE_EVENT` 메시지 타입 및 네트워크 알림 함수 미구현
+   - 증상: 호스트에서만 더블 다이얼로그 표시, 클라이언트에서는 표시되지 않음
+   - 해결:
+     - `MessageType.DOUBLE_EVENT` 추가
+     - `notifyDoubleEvent()` 함수 구현
+     - `handleRemoteDoubleEvent()` 핸들러 구현
+     - `handleNetworkEvent()`에 DOUBLE_EVENT 케이스 추가
+   - 결과: 클라이언트에서도 더블 다이얼로그 표시됨
+
+3. **오버레이 다이얼로그 중복 표시 문제** (2025-11-16 수정 - 2차)
+   - 위치: `GameUI.java` - 게임 로직 내 다이얼로그 표시 부분
+   - 원인: 호스트가 자신의 턴이 아닐 때도 다이얼로그를 무조건 표시
+   - 증상:
+     - A 플레이어(클라이언트) 턴의 더블/무인도 이벤트가 호스트 화면에도 표시
+     - 호스트에서 확인 후 클라이언트에서 다시 표시
+   - 해결:
+     - `shouldShowLocalDialog()` 헬퍼 함수 추가 (line 306-314)
+       - 로컬 게임: 항상 true
+       - 호스트: 자신의 턴일 때만 true
+       - 클라이언트: 항상 false (handleRemote*Event를 통해서만 표시)
+     - 게임 로직 내 다이얼로그에 조건 추가:
+       - CHANCE: ChanceDialog (line 682-685)
+       - ISLAND: IslandDialog (line 664-667)
+       - WORLD_TOUR: WorldTourDialog (line 717-720)
+       - TAX: TaxPaymentDialog (line 1418-1425)
+       - TOLL (도시): TollPaymentDialog (line 793-804)
+       - TOLL (관광지): TollPaymentDialog (line 891-902)
+       - DOUBLE: DoubleDialog (line 1696-1699)
+       - OLYMPIC: OlympicDialog (line 1555-1558)
+       - DoubleSuppressedDialog (line 521)
+     - `handleRemote*Event()` 함수들은 `isLocalPlayersTurn()` 체크 유지
+   - 유지: 전체 플레이어 공유 이벤트 (PHASE_DELETE, MAGNETIC_EVENT)는 조건 없음
+   - 추가:
+     - `MessageType.OLYMPIC_EVENT` 추가
+     - `notifyOlympicEvent()` 함수 구현 (line 2532-2539)
+     - `handleRemoteOlympicEvent()` 핸들러 구현 (line 2453-2460)
+   - 결과:
+     - 호스트 턴 이벤트 → 호스트만 다이얼로그 표시
+     - 클라이언트 턴 이벤트 → 클라이언트만 다이얼로그 표시
+     - 페이즈 딜리트 등 → 모든 플레이어에게 표시

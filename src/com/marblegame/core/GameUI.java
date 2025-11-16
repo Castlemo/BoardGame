@@ -303,6 +303,16 @@ public class GameUI {
         return index != null && index == currentPlayerIndex;
     }
 
+    private boolean shouldShowLocalDialog() {
+        if (!networkMode) {
+            return true;
+        }
+        if (isHost) {
+            return localPlayerIndex >= 0 && localPlayerIndex == currentPlayerIndex;
+        }
+        return false;
+    }
+
     private boolean tileMatches(Integer tileId) {
         if (tileId == null || currentTile == null) {
             return true;
@@ -508,7 +518,7 @@ public class GameUI {
                 log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
             }
 
-            if (finalShowSuppressionDialog) {
+            if (finalShowSuppressionDialog && shouldShowLocalDialog()) {
                 DoubleSuppressedDialog suppressedDialog = new DoubleSuppressedDialog(
                     frame, finalD1, finalConsecutiveDoubles);
                 suppressedDialog.setVisible(true);
@@ -650,9 +660,11 @@ public class GameUI {
 
             case ISLAND:
                 player.jailTurns = 2; // 2턴 갇힘
-                // 무인도 다이얼로그 표시
-                IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
-                islandDialog.setVisible(true);
+                // 무인도 다이얼로그 표시 (자신의 턴일 때만)
+                if (shouldShowLocalDialog()) {
+                    IslandDialog islandDialog = new IslandDialog(frame, player.jailTurns);
+                    islandDialog.setVisible(true);
+                }
 
                 log("무인도에 도착했습니다!");
                 clearDoubleState("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
@@ -668,9 +680,11 @@ public class GameUI {
                 // 자산 변동 표시
                 frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, chanceReward);
 
-                // 찬스 다이얼로그 표시
-                ChanceDialog chanceDialog = new ChanceDialog(frame, chanceReward);
-                chanceDialog.setVisible(true);
+                // 찬스 다이얼로그 표시 (자신의 턴일 때만)
+                if (shouldShowLocalDialog()) {
+                    ChanceDialog chanceDialog = new ChanceDialog(frame, chanceReward);
+                    chanceDialog.setVisible(true);
+                }
 
                 log("찬스 카드! " + String.format("%,d", chanceReward) + "원을 받았습니다!");
                 notifyChanceEvent(player.name, chanceReward);
@@ -699,9 +713,11 @@ public class GameUI {
                 break;
 
             case WORLD_TOUR:
-                // 세계여행 다이얼로그 표시
-                WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
-                worldTourDialog.setVisible(true);
+                // 세계여행 다이얼로그 표시 (자신의 턴일 때만)
+                if (shouldShowLocalDialog()) {
+                    WorldTourDialog worldTourDialog = new WorldTourDialog(frame);
+                    worldTourDialog.setVisible(true);
+                }
 
                 log("세계여행에 도착했습니다!");
                 clearDoubleState("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
@@ -772,18 +788,20 @@ public class GameUI {
                 log("⚡ 올림픽 효과로 통행료 2배!");
             }
 
-            // 통행료 지불 확인 다이얼로그
+            // 통행료 지불 확인 다이얼로그 (자신의 턴일 때만)
             int playerCashBefore = player.cash;
-            TollPaymentDialog tollDialog = new TollPaymentDialog(
-                frame,
-                city.name,
-                owner.name,
-                city.level,
-                toll,
-                city.hasOlympicBoost,
-                playerCashBefore
-            );
-            tollDialog.setVisible(true);
+            if (shouldShowLocalDialog()) {
+                TollPaymentDialog tollDialog = new TollPaymentDialog(
+                    frame,
+                    city.name,
+                    owner.name,
+                    city.level,
+                    toll,
+                    city.hasOlympicBoost,
+                    playerCashBefore
+                );
+                tollDialog.setVisible(true);
+            }
 
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
@@ -868,18 +886,20 @@ public class GameUI {
                 log("🔒 이 관광지는 잠금 상태입니다! (인수 불가)");
             }
 
-            // 통행료 지불 확인 다이얼로그 (관광지는 레벨 1로 표시)
+            // 통행료 지불 확인 다이얼로그 (자신의 턴일 때만, 관광지는 레벨 1로 표시)
             int playerCashBefore = player.cash;
-            TollPaymentDialog tollDialog = new TollPaymentDialog(
-                frame,
-                touristSpot.name,
-                owner.name,
-                1,  // 관광지는 레벨 개념 없음
-                toll,
-                false,  // 관광지는 올림픽 효과 없음
-                playerCashBefore
-            );
-            tollDialog.setVisible(true);
+            if (shouldShowLocalDialog()) {
+                TollPaymentDialog tollDialog = new TollPaymentDialog(
+                    frame,
+                    touristSpot.name,
+                    owner.name,
+                    1,  // 관광지는 레벨 개념 없음
+                    toll,
+                    false,  // 관광지는 올림픽 효과 없음
+                    playerCashBefore
+                );
+                tollDialog.setVisible(true);
+            }
 
             log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
@@ -1398,13 +1418,15 @@ public class GameUI {
 
         log("국세청에 도착했습니다!");
 
-        // 세금 납부 확인 다이얼로그
-        TaxPaymentDialog taxDialog = new TaxPaymentDialog(
-            frame,
-            player.cash,
-            tax
-        );
-        taxDialog.setVisible(true);
+        // 세금 납부 확인 다이얼로그 (자신의 턴일 때만)
+        if (shouldShowLocalDialog()) {
+            TaxPaymentDialog taxDialog = new TaxPaymentDialog(
+                frame,
+                player.cash,
+                tax
+            );
+            taxDialog.setVisible(true);
+        }
 
         log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         ruleEngine.payTax(player);
@@ -1529,11 +1551,14 @@ public class GameUI {
     private void handleOlympicTile() {
         Player player = players[currentPlayerIndex];
 
-        // 올림픽 다이얼로그 표시
-        OlympicDialog olympicDialog = new OlympicDialog(frame);
-        olympicDialog.setVisible(true);
+        // 올림픽 다이얼로그 표시 (자신의 턴일 때만)
+        if (shouldShowLocalDialog()) {
+            OlympicDialog olympicDialog = new OlympicDialog(frame);
+            olympicDialog.setVisible(true);
+        }
 
         log("올림픽에 도착했습니다!");
+        notifyOlympicEvent(player.name);
 
         // 플레이어가 소유한 도시 찾기
         List<City> ownedCities = new java.util.ArrayList<>();
@@ -1670,9 +1695,14 @@ public class GameUI {
             if (checkAndHandleDouble()) {
                 log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
 
-                // 더블 다이얼로그 표시
-                DoubleDialog doubleDialog = new DoubleDialog(frame, lastD1, consecutiveDoubles);
-                doubleDialog.setVisible(true);
+                // 더블 다이얼로그 표시 (자신의 턴일 때만)
+                if (shouldShowLocalDialog()) {
+                    DoubleDialog doubleDialog = new DoubleDialog(frame, lastD1, consecutiveDoubles);
+                    doubleDialog.setVisible(true);
+                }
+
+                // 네트워크 이벤트 알림
+                notifyDoubleEvent(lastD1, consecutiveDoubles);
 
                 // 더블 상태로 전환 (다시 주사위 굴리기 가능)
                 state = GameState.WAITING_FOR_DOUBLE_ROLL;
@@ -1951,6 +1981,7 @@ public class GameUI {
 
         if (isNetworkClient()) {
             applyClientAvailableActions(snapshot.getAvailableActions());
+            handleNetworkEvent(snapshot.getEventState());
         }
     }
 
@@ -2190,6 +2221,12 @@ public class GameUI {
             case "MAGNETIC_EVENT":
                 handleRemoteMagneticEvent(eventState.getData());
                 break;
+            case "DOUBLE_EVENT":
+                handleRemoteDoubleEvent(eventState.getData());
+                break;
+            case "OLYMPIC_EVENT":
+                handleRemoteOlympicEvent(eventState.getData());
+                break;
             default:
                 break;
         }
@@ -2281,6 +2318,9 @@ public class GameUI {
     }
 
     private void handleRemoteChanceEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
         int reward = safeMapInt(data, "reward", ruleEngine.getChanceReward());
         ChanceDialog chanceDialog = new ChanceDialog(frame, reward);
         chanceDialog.setVisible(true);
@@ -2340,23 +2380,35 @@ public class GameUI {
     }
 
     private void handleRemoteIslandEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
         int turns = safeMapInt(data, "turns", 2);
         IslandDialog dialog = new IslandDialog(frame, turns);
         dialog.setVisible(true);
     }
 
     private void handleRemoteWorldTourEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
         WorldTourDialog dialog = new WorldTourDialog(frame);
         dialog.setVisible(true);
     }
 
     private void handleRemoteTaxEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
         String playerName = safeMapString(data, "player", "플레이어");
         int amount = safeMapInt(data, "amount", 0);
         showInfoDialog("세금", playerName + "이(가) 세금 " + String.format("%,d", amount) + "원을 납부했습니다.");
     }
 
     private void handleRemoteTollEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
         String tile = safeMapString(data, "tile", "타일");
         String owner = safeMapString(data, "owner", "소유자");
         int level = safeMapInt(data, "level", 1);
@@ -2386,6 +2438,26 @@ public class GameUI {
         int pulled = safeMapInt(data, "pulled", 0);
         DualMagneticDialog dialog = new DualMagneticDialog(frame, city, pulled);
         dialog.setVisible(true);
+    }
+
+    private void handleRemoteDoubleEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
+        int diceValue = safeMapInt(data, "diceValue", lastD1);
+        int doubleCount = safeMapInt(data, "doubleCount", consecutiveDoubles);
+        DoubleDialog doubleDialog = new DoubleDialog(frame, diceValue, doubleCount);
+        doubleDialog.setVisible(true);
+        log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
+    }
+
+    private void handleRemoteOlympicEvent(Map<String, Object> data) {
+        if (!isLocalPlayersTurn()) {
+            return;
+        }
+        OlympicDialog olympicDialog = new OlympicDialog(frame);
+        olympicDialog.setVisible(true);
+        log("올림픽에 도착했습니다!");
     }
 
     private void handleClientTouristPurchase(TouristSpot touristSpot, Player player) {
@@ -2446,6 +2518,25 @@ public class GameUI {
         data.put("player", playerName);
         data.put("tile", tileName);
         pushNetworkEvent(MessageType.CITY_SELECTION, data);
+    }
+
+    private void notifyDoubleEvent(int diceValue, int doubleCount) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("diceValue", diceValue);
+        data.put("doubleCount", doubleCount);
+        pushNetworkEvent(MessageType.DOUBLE_EVENT, data);
+    }
+
+    private void notifyOlympicEvent(String playerName) {
+        if (!networkMode || !isHost) {
+            return;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("player", playerName);
+        pushNetworkEvent(MessageType.OLYMPIC_EVENT, data);
     }
 
     private void notifyIslandEvent(String playerName, int turns) {
