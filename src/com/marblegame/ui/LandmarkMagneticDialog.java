@@ -6,7 +6,7 @@ import java.awt.*;
 /**
  * 랜드마크 마그네틱 효과 다이얼로그
  */
-public class DualMagneticDialog extends JDialog {
+public class LandmarkMagneticDialog extends JDialog {
     // 다크 테마 색상
     private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
     private static final Color PANEL_DARK = new Color(44, 47, 51);
@@ -15,7 +15,7 @@ public class DualMagneticDialog extends JDialog {
     private static final Color BUTTON_CONFIRM = new Color(142, 68, 173);  // 보라색 (자기장)
     private static final Color HIGHLIGHT_COLOR = new Color(155, 89, 182); // 밝은 보라색
 
-    public DualMagneticDialog(JFrame parent, String landmarkName, int pulledCount) {
+    public LandmarkMagneticDialog(JFrame parent, String landmarkName, int pulledCount) {
         super(parent, "랜드마크 마그네틱", true);
 
         initComponents(landmarkName, pulledCount);

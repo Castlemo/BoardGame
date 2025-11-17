@@ -487,7 +487,7 @@ public class RuleEngine {
     }
 
     /**
-     * 듀얼 마그네틱 코어: 양옆 4칸 이내의 거리 계산
+     * 랜드마크 마그네틱: 양옆 4칸 이내의 거리 계산
      * 삭제된 땅은 카운트에서 제외
      *
      * @param fromPos 시작 위치
@@ -524,14 +524,14 @@ public class RuleEngine {
     }
 
     /**
-     * 듀얼 마그네틱 코어: 양옆 4칸 이내의 플레이어를 끌어당김
+     * 랜드마크 마그네틱: 양옆 4칸 이내의 플레이어를 끌어당김
      *
      * @param landmarkPos 랜드마크 위치
      * @param players 모든 플레이어 배열
      * @param ownerIndex 랜드마크 소유자 인덱스
      * @return 끌려온 플레이어 수
      */
-    public int applyDualMagneticCore(int landmarkPos, Player[] players, int ownerIndex) {
+    public int applyLandmarkMagnetic(int landmarkPos, Player[] players, int ownerIndex) {
         int pulledCount = 0;
         final int MAGNETIC_RANGE = 4;
 

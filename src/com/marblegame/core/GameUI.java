@@ -776,22 +776,22 @@ public class GameUI {
             // 본인 소유 땅
             log(city.name + "은(는) 본인 소유입니다. (레벨: " + city.level + ")");
 
-            // 본인 랜드마크 도착 시 듀얼 마그네틱 코어 발동
+            // 본인 랜드마크 도착 시 랜드마크 마그네틱 발동
             if (city.isLandmark()) {
                 int landmarkPos = city.id;
-                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
                 // 다이얼로그 표시
-                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
-                    log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                    log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                     // 끌려온 플레이어들에게 통행료 징수
                     handleMagneticTollCollection(city);
                 } else {
-                    log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+                    log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
                 }
 
                 notifyMagneticEvent(city.name, pulledCount);
@@ -1242,16 +1242,16 @@ public class GameUI {
                 log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
 
                 int landmarkPos = city.id;
-                int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+                int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
-                DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, city.name, pulledCount);
+                LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
-                    log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                    log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
                     handleMagneticTollCollection(city);
                 } else {
-                    log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+                    log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
                 }
             }
         } else {
@@ -1581,22 +1581,22 @@ public class GameUI {
         log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
         log("남은 잔액: " + String.format("%,d", player.cash) + "원");
 
-        // 랜드마크 건설 시 듀얼 마그네틱 코어 발동
+        // 랜드마크 건설 시 랜드마크 마그네틱 발동
         if (selectedLandmarkCity.level == 4) {
             int landmarkPos = selectedLandmarkCity.id;
-            int pulledCount = ruleEngine.applyDualMagneticCore(landmarkPos, players, currentPlayerIndex);
+            int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
             // 다이얼로그 표시
-            DualMagneticDialog magneticDialog = new DualMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
+            LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
             magneticDialog.setVisible(true);
 
             if (pulledCount > 0) {
-                log("🧲 듀얼 마그네틱 코어 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                 // 끌려온 플레이어들에게 통행료 징수
                 handleMagneticTollCollection(selectedLandmarkCity);
             } else {
-                log("🧲 듀얼 마그네틱 코어 발동! 범위 내 플레이어가 없습니다.");
+                log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
             }
         }
 
@@ -2691,7 +2691,7 @@ public class GameUI {
     private void handleRemoteMagneticEvent(Map<String, Object> data) {
         String city = safeMapString(data, "city", "도시");
         int pulled = safeMapInt(data, "pulled", 0);
-        DualMagneticDialog dialog = new DualMagneticDialog(frame, city, pulled);
+        LandmarkMagneticDialog dialog = new LandmarkMagneticDialog(frame, city, pulled);
         dialog.setVisible(true);
     }
 
