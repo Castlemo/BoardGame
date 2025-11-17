@@ -53,6 +53,14 @@ public class OverlayPanel extends JPanel {
     private JButton oddButton;
     private JButton evenButton;
 
+    // 추가됨: 채팅 패널
+    private ChatPanel chatPanel;
+    private static final int CHAT_PANEL_WIDTH = 180;
+    private static final int CHAT_PANEL_HEIGHT = 250;
+
+    // 네트워크 채팅 콜백
+    private java.util.function.BiConsumer<String, String> networkChatCallback; // type, content
+
     // 다크 테마 색상
     private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
     private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
@@ -159,6 +167,55 @@ public class OverlayPanel extends JPanel {
             playerCards.add(card);
             add(card);
         }
+
+        // 7. 채팅 패널 생성 및 추가
+        chatPanel = new ChatPanel();
+        chatPanel.setMessageSendCallback(message -> {
+            // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
+            if (networkChatCallback != null) {
+                networkChatCallback.accept("message", message);
+            } else {
+                // 로컬 모드: 바로 표시
+                if (players.size() > 0) {
+                    int currentPlayerIndex = getCurrentPlayerIndex();
+                    String playerName = players.get(currentPlayerIndex).name;
+                    chatPanel.addPlayerMessage(currentPlayerIndex, playerName, message);
+                }
+            }
+        });
+        chatPanel.setEmojiSendCallback(emoji -> {
+            // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
+            if (networkChatCallback != null) {
+                networkChatCallback.accept("emoji", emoji);
+            } else {
+                // 로컬 모드: 바로 표시
+                if (players.size() > 0) {
+                    int currentPlayerIndex = getCurrentPlayerIndex();
+                    String playerName = players.get(currentPlayerIndex).name;
+                    chatPanel.addEmojiMessage(currentPlayerIndex, playerName, emoji);
+                }
+            }
+        });
+        add(chatPanel);
+    }
+
+    /**
+     * 네트워크 채팅 콜백 설정
+     * @param callback BiConsumer<type, content> - type: "message" or "emoji", content: 메시지 내용
+     */
+    public void setNetworkChatCallback(java.util.function.BiConsumer<String, String> callback) {
+        this.networkChatCallback = callback;
+    }
+
+    // 현재 플레이어 인덱스 (턴 라벨에서 추출)
+    private int currentPlayerIndex = 0;
+
+    public void setCurrentPlayerIndex(int index) {
+        this.currentPlayerIndex = index;
+    }
+
+    private int getCurrentPlayerIndex() {
+        return currentPlayerIndex;
     }
 
     /**
@@ -544,6 +601,17 @@ public class OverlayPanel extends JPanel {
         // 5. 행동 버튼 패널 배치
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
                                    BUTTON_PANEL_WIDTH, buttonPanelHeight);
+
+        // 6. 채팅 패널 배치 (보드 내부 우측)
+        int scaledChatWidth = (int)(CHAT_PANEL_WIDTH * scaleFactor);
+        int scaledChatHeight = (int)(CHAT_PANEL_HEIGHT * scaleFactor);
+        chatPanel.setBounds(
+            innerRight - scaledChatWidth - scaledCardMargin,
+            innerTop + scaledCardMargin,
+            scaledChatWidth,
+            scaledChatHeight
+        );
+        chatPanel.updateFontSize(scaleFactor);
     }
 
     /**
@@ -565,6 +633,13 @@ public class OverlayPanel extends JPanel {
      */
     public GaugePanel getGaugePanel() {
         return gaugePanel;
+    }
+
+    /**
+     * 채팅 패널 반환 (외부에서 제어용)
+     */
+    public ChatPanel getChatPanel() {
+        return chatPanel;
     }
 
     /**

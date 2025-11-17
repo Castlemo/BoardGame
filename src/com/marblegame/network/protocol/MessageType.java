@@ -56,6 +56,10 @@ public enum MessageType {
     PING,                  // 핑
     PONG,                  // 퐁
 
+    // 채팅
+    CHAT_MESSAGE,          // 텍스트 채팅 메시지
+    CHAT_EMOJI,            // 이모지 반응 메시지
+
     // 에러
     ERROR                  // 에러 메시지
 }

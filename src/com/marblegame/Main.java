@@ -358,8 +358,56 @@ public class Main {
                     JOptionPane.ERROR_MESSAGE);
                 break;
 
+            case CHAT_MESSAGE:
+                handleChatMessage(message);
+                break;
+
+            case CHAT_EMOJI:
+                handleChatEmoji(message);
+                break;
+
             default:
                 break;
+        }
+    }
+
+    /**
+     * 채팅 메시지 처리
+     */
+    private static void handleChatMessage(Message message) {
+        if (gameUI == null) {
+            return;
+        }
+
+        Integer playerIndex = message.getInt("playerIndex");
+        String playerName = message.getString("playerName");
+        String content = message.getString("content");
+
+        if (playerIndex != null && playerName != null && content != null) {
+            SwingUtilities.invokeLater(() -> {
+                gameUI.getFrame().getOverlayPanel().getChatPanel()
+                    .addPlayerMessage(playerIndex, playerName, content);
+            });
+        }
+    }
+
+    /**
+     * 이모지 메시지 처리
+     */
+    private static void handleChatEmoji(Message message) {
+        if (gameUI == null) {
+            return;
+        }
+
+        Integer playerIndex = message.getInt("playerIndex");
+        String playerName = message.getString("playerName");
+        String emoji = message.getString("content");
+
+        if (playerIndex != null && playerName != null && emoji != null) {
+            SwingUtilities.invokeLater(() -> {
+                gameUI.getFrame().getOverlayPanel().getChatPanel()
+                    .addEmojiMessage(playerIndex, playerName, emoji);
+            });
         }
     }
 
@@ -431,7 +479,8 @@ public class Main {
             }
 
             GameUI.GameStateSyncListener syncListener = isHostGame ? Main::broadcastGameState : null;
-            GameUI.NetworkActionSender actionSender = !isHostGame && client != null
+            // 호스트와 클라이언트 모두 actionSender를 가짐 (채팅 등을 위해)
+            GameUI.NetworkActionSender actionSender = client != null
                 ? Main::sendClientAction
                 : null;
             GameUI.NetworkSettings settings = new GameUI.NetworkSettings(
@@ -504,6 +553,13 @@ public class Main {
                     message.getInt("tileId"),
                     message.getString("choice"),
                     message.getBoolean("purchased"));
+                break;
+            case CHAT_MESSAGE:
+            case CHAT_EMOJI:
+                // 채팅 메시지는 모든 클라이언트에게 브로드캐스트
+                if (server != null) {
+                    server.broadcast(message);
+                }
                 break;
             default:
                 break;

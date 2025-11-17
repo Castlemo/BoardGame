@@ -276,6 +276,37 @@ public class GameUI {
 
         // 보드 타일 클릭 (전국철도 선택용)
         frame.getBoardPanel().setTileClickListener(tileIndex -> onTileSelected(tileIndex));
+
+        // 네트워크 채팅 콜백 설정
+        if (networkMode) {
+            frame.getOverlayPanel().setNetworkChatCallback((type, content) -> {
+                sendChatMessage(type, content);
+            });
+        }
+    }
+
+    /**
+     * 채팅 메시지 전송 (네트워크)
+     */
+    private void sendChatMessage(String type, String content) {
+        if (!networkMode || networkActionSender == null) {
+            return;
+        }
+
+        // 로컬 플레이어의 인덱스와 이름을 사용 (자신의 턴이 아니어도 채팅 가능)
+        int senderIndex = localPlayerIndex >= 0 ? localPlayerIndex : currentPlayerIndex;
+        String senderName = players[senderIndex].name;
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("playerIndex", senderIndex);
+        payload.put("playerName", senderName);
+        payload.put("content", content);
+
+        if ("emoji".equals(type)) {
+            networkActionSender.sendAction(MessageType.CHAT_EMOJI, payload);
+        } else {
+            networkActionSender.sendAction(MessageType.CHAT_MESSAGE, payload);
+        }
     }
 
     private void enterPassiveNetworkMode() {
@@ -1767,6 +1798,9 @@ public class GameUI {
             turnCount++;
         }
 
+        // 채팅 패널에 현재 플레이어 인덱스 업데이트
+        frame.getOverlayPanel().setCurrentPlayerIndex(currentPlayerIndex);
+
         startTurn();
     }
 
@@ -2279,6 +2313,13 @@ public class GameUI {
         if (frame != null) {
             SwingUtilities.invokeLater(() -> frame.dispose());
         }
+    }
+
+    /**
+     * GameFrame 반환
+     */
+    public GameFrame getFrame() {
+        return frame;
     }
 
     private void log(String message) {
