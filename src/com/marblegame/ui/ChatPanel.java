@@ -13,12 +13,13 @@ import java.util.function.Consumer;
  * 보드 우측에 위치하며, 메시지 표시와 입력 기능 제공
  */
 public class ChatPanel extends JPanel {
-    private static final Color BACKGROUND = new Color(52, 73, 94);
-    private static final Color TEXT_PRIMARY = new Color(236, 240, 241);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
-    private static final Color BUTTON_COLOR = new Color(41, 128, 185);
-    private static final Color MESSAGE_BG = new Color(44, 62, 80);
-    private static final Color INPUT_BG = new Color(33, 47, 61);
+    // UIConstants에서 가져온 색상 (로컬 별칭)
+    private static final Color BACKGROUND = UIConstants.BORDER_DEFAULT; // 52, 73, 94
+    private static final Color TEXT_PRIMARY = UIConstants.TEXT_PRIMARY;
+    private static final Color TEXT_SECONDARY = UIConstants.TEXT_SECONDARY;
+    private static final Color BUTTON_COLOR = UIConstants.BUTTON_ROLL;
+    private static final Color MESSAGE_BG = UIConstants.PANEL_DARK;
+    private static final Color INPUT_BG = UIConstants.INPUT_BG;
 
     private JTextPane chatArea;
     private JButton chatButton;
@@ -29,7 +30,7 @@ public class ChatPanel extends JPanel {
     private Consumer<String> messageSendCallback;
     private Consumer<String> emojiSendCallback;
 
-    // 플레이어 색상
+    // 플레이어 색상 (채팅 전용)
     private static final Color[] PLAYER_COLORS = {
         new Color(231, 76, 60),   // Red
         new Color(52, 152, 219),  // Blue
@@ -53,7 +54,7 @@ public class ChatPanel extends JPanel {
     private void initComponents() {
         // 헤더
         JLabel headerLabel = new JLabel("💬 채팅", SwingConstants.CENTER);
-        headerLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+        headerLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 14));
         headerLabel.setForeground(TEXT_PRIMARY);
         headerLabel.setBorder(new EmptyBorder(0, 0, 5, 0));
         add(headerLabel, BorderLayout.NORTH);
@@ -63,14 +64,14 @@ public class ChatPanel extends JPanel {
         chatArea.setEditable(false);
         chatArea.setBackground(MESSAGE_BG);
         chatArea.setForeground(TEXT_PRIMARY);
-        chatArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+        chatArea.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, 11));
         chatArea.setContentType("text/html");
         chatArea.setText(getInitialHTML());
 
         scrollPane = new JScrollPane(chatArea);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(30, 39, 46)));
+        scrollPane.setBorder(BorderFactory.createLineBorder(UIConstants.BORDER_DARK));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         // 스크롤바 스타일링
@@ -159,7 +160,7 @@ public class ChatPanel extends JPanel {
 
     private JButton createChatButton() {
         JButton button = new JButton("💬 채팅하기");
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
+        button.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 12));
         button.setBackground(BUTTON_COLOR);
         button.setForeground(TEXT_PRIMARY);
         button.setFocusPainted(false);
@@ -224,23 +225,23 @@ public class ChatPanel extends JPanel {
         dialog.setResizable(false);
 
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBackground(new Color(32, 33, 36));
+        mainPanel.setBackground(UIConstants.BACKGROUND_DARK);
         mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
         // 제목
         JLabel titleLabel = new JLabel("💬 메시지 입력");
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+        titleLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 16));
         titleLabel.setForeground(TEXT_PRIMARY);
         mainPanel.add(titleLabel, BorderLayout.NORTH);
 
         // 입력 필드
         JTextField inputField = new JTextField();
-        inputField.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+        inputField.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, 14));
         inputField.setBackground(INPUT_BG);
         inputField.setForeground(TEXT_PRIMARY);
         inputField.setCaretColor(TEXT_PRIMARY);
         inputField.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(52, 73, 94)),
+            BorderFactory.createLineBorder(UIConstants.BORDER_DEFAULT),
             new EmptyBorder(8, 10, 8, 10)
         ));
         mainPanel.add(inputField, BorderLayout.CENTER);
@@ -250,7 +251,7 @@ public class ChatPanel extends JPanel {
         buttonPanel.setOpaque(false);
 
         JButton sendButton = new JButton("전송");
-        sendButton.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
+        sendButton.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 12));
         sendButton.setBackground(BUTTON_COLOR);
         sendButton.setForeground(TEXT_PRIMARY);
         sendButton.setFocusPainted(false);
@@ -258,8 +259,8 @@ public class ChatPanel extends JPanel {
         sendButton.setPreferredSize(new Dimension(80, 32));
 
         JButton cancelButton = new JButton("취소");
-        cancelButton.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-        cancelButton.setBackground(new Color(127, 140, 141));
+        cancelButton.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 12));
+        cancelButton.setBackground(UIConstants.BUTTON_CANCEL);
         cancelButton.setForeground(TEXT_PRIMARY);
         cancelButton.setFocusPainted(false);
         cancelButton.setBorderPainted(false);
@@ -400,8 +401,8 @@ public class ChatPanel extends JPanel {
         int headerFontSize = (int)(14 * scaleFactor);
         int buttonFontSize = (int)(12 * scaleFactor);
 
-        chatArea.setFont(new Font("Malgun Gothic", Font.PLAIN, baseFontSize));
-        chatButton.setFont(new Font("Malgun Gothic", Font.BOLD, buttonFontSize));
+        chatArea.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, baseFontSize));
+        chatButton.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, buttonFontSize));
 
         // HTML 스타일 업데이트는 복잡하므로 기본 폰트만 변경
     }

@@ -1529,12 +1529,9 @@ public class GameUI {
         // 간단한 안내 메시지 다이얼로그 표시
         log("⬆️ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
-        JOptionPane.showMessageDialog(
-            frame,
-            "원하는 도시를 선택해주세요!\n\n보드에서 본인 소유 도시(레벨 1~3)를 클릭하면 1단계 업그레이드됩니다.",
-            "도시 업그레이드",
-            JOptionPane.INFORMATION_MESSAGE
-        );
+        // 다크 테마 다이얼로그 표시
+        CityUpgradeNoticeDialog upgradeDialog = new CityUpgradeNoticeDialog(frame);
+        upgradeDialog.setVisible(true);
 
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;

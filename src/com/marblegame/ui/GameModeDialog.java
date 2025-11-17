@@ -10,15 +10,6 @@ import java.awt.*;
 public class GameModeDialog extends JDialog {
     private int choice = 0; // 0 = 취소, 1 = 로컬 게임, 2 = 네트워크 멀티플레이
 
-    // 다크 테마 색상
-    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
-    private static final Color PANEL_DARK = new Color(44, 47, 51);
-    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
-    private static final Color BUTTON_LOCAL = new Color(52, 152, 219);     // 파란색
-    private static final Color BUTTON_NETWORK = new Color(155, 89, 182);   // 보라색
-    private static final Color HIGHLIGHT_COLOR = new Color(46, 204, 113);  // 녹색
-
     public GameModeDialog(JFrame parent) {
         super(parent, "모두의 마블 2.0", true);
 
@@ -30,7 +21,7 @@ public class GameModeDialog extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(0, 0));
-        getContentPane().setBackground(BACKGROUND_DARK);
+        getContentPane().setBackground(UIConstants.BACKGROUND_DARK);
 
         // 헤더 패널
         JPanel headerPanel = createHeaderPanel();
@@ -48,17 +39,17 @@ public class GameModeDialog extends JDialog {
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(PANEL_DARK);
+        panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 20, 25, 20));
 
         JLabel titleLabel = new JLabel("🎮 모두의 마블 2.0");
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 32));
-        titleLabel.setForeground(HIGHLIGHT_COLOR);
+        titleLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 32));
+        titleLabel.setForeground(UIConstants.STATUS_SUCCESS);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel subtitleLabel = new JLabel("게임 모드를 선택하세요");
-        subtitleLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-        subtitleLabel.setForeground(TEXT_SECONDARY);
+        subtitleLabel.setFont(UIConstants.FONT_BODY);
+        subtitleLabel.setForeground(UIConstants.TEXT_SECONDARY);
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         panel.add(titleLabel);
@@ -71,14 +62,14 @@ public class GameModeDialog extends JDialog {
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
         // 로컬 게임 버튼
         JButton localButton = createModeButton(
             "🏠 로컬 게임",
             "한 컴퓨터에서 2-4명이 번갈아 플레이",
-            BUTTON_LOCAL,
+            UIConstants.STATUS_INFO,
             1
         );
 
@@ -86,7 +77,7 @@ public class GameModeDialog extends JDialog {
         JButton networkButton = createModeButton(
             "🌐 네트워크 멀티플레이",
             "LAN 환경에서 친구들과 함께 플레이",
-            BUTTON_NETWORK,
+            UIConstants.HIGHLIGHT_PURPLE,
             2
         );
 
@@ -116,13 +107,13 @@ public class GameModeDialog extends JDialog {
 
         // 타이틀
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
-        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setFont(UIConstants.FONT_SUBTITLE);
+        titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // 설명
         JLabel descLabel = new JLabel(description);
-        descLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+        descLabel.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, 13));
         descLabel.setForeground(new Color(245, 245, 245));
         descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -155,12 +146,12 @@ public class GameModeDialog extends JDialog {
     private JPanel createFooterPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new FlowLayout(FlowLayout.CENTER));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 25, 20));
 
         JLabel versionLabel = new JLabel("v2.0 Network Edition");
-        versionLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
-        versionLabel.setForeground(TEXT_SECONDARY);
+        versionLabel.setFont(UIConstants.FONT_CAPTION);
+        versionLabel.setForeground(UIConstants.TEXT_SECONDARY);
 
         panel.add(versionLabel);
 

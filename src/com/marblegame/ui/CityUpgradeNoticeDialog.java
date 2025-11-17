@@ -4,12 +4,12 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * 도시 선택 안내 다이얼로그 (세계여행/전국철도용)
+ * Start 칸 도착 시 도시 업그레이드 안내 다이얼로그
  */
-public class CitySelectionDialog extends JDialog {
+public class CityUpgradeNoticeDialog extends JDialog {
 
-    public CitySelectionDialog(JFrame parent) {
-        super(parent, "도시 선택", true);
+    public CityUpgradeNoticeDialog(JFrame parent) {
+        super(parent, "도시 업그레이드", true);
 
         initComponents();
         pack();
@@ -40,9 +40,9 @@ public class CitySelectionDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("📍 도시 선택");
+        JLabel titleLabel = new JLabel("⬆️ 도시 업그레이드");
         titleLabel.setFont(UIConstants.FONT_TITLE);
-        titleLabel.setForeground(UIConstants.STATUS_INFO);
+        titleLabel.setForeground(UIConstants.BUTTON_UPGRADE); // 주황색
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         panel.add(titleLabel);
@@ -56,18 +56,19 @@ public class CitySelectionDialog extends JDialog {
         panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
-        JLabel messageLabel = new JLabel("원하는 칸을 선택하세요!");
+        JLabel messageLabel = new JLabel("원하는 도시를 선택해주세요!");
         messageLabel.setFont(UIConstants.FONT_HEADER);
         messageLabel.setForeground(UIConstants.TEXT_PRIMARY);
         messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel hintLabel = new JLabel("보드의 원하는 칸을 클릭하세요.");
+        JLabel hintLabel = new JLabel("<html><center>보드에서 본인 소유 도시(레벨 1~3)를<br>클릭하면 1단계 업그레이드됩니다.</center></html>");
         hintLabel.setFont(UIConstants.FONT_BODY);
         hintLabel.setForeground(UIConstants.TEXT_SECONDARY);
         hintLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+
         panel.add(messageLabel);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(Box.createVerticalStrut(15));
         panel.add(hintLabel);
 
         return panel;
@@ -79,7 +80,7 @@ public class CitySelectionDialog extends JDialog {
         panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
 
-        JButton confirmButton = UIConstants.createStyledButton("확인", UIConstants.STATUS_INFO);
+        JButton confirmButton = UIConstants.createStyledButton("확인", UIConstants.BUTTON_UPGRADE);
         confirmButton.addActionListener(e -> dispose());
 
         panel.add(confirmButton);

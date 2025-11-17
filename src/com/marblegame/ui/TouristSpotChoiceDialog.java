@@ -16,11 +16,7 @@ public class TouristSpotChoiceDialog extends JDialog {
     private Choice selectedChoice = null;
     private final String spotName;
 
-    // 다크 테마 색상
-    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
-    private static final Color PANEL_DARK = new Color(44, 47, 51);
-    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
+    // 관광지 선택 버튼 색상
     private static final Color BUTTON_LOCK = new Color(231, 76, 60);      // 빨간색
     private static final Color BUTTON_EXTRA = new Color(52, 152, 219);    // 파란색
 
@@ -36,7 +32,7 @@ public class TouristSpotChoiceDialog extends JDialog {
 
     private void initComponents() {
         setLayout(new BorderLayout(0, 0));
-        getContentPane().setBackground(BACKGROUND_DARK);
+        getContentPane().setBackground(UIConstants.BACKGROUND_DARK);
 
         // 헤더 패널
         JPanel headerPanel = createHeaderPanel();
@@ -57,19 +53,19 @@ public class TouristSpotChoiceDialog extends JDialog {
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(PANEL_DARK);
+        panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
         // 관광지 이름
         JLabel titleLabel = new JLabel(spotName);
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
-        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setFont(UIConstants.FONT_SUBTITLE);
+        titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // 안내 메시지
         JLabel messageLabel = new JLabel("행동을 선택하세요");
-        messageLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-        messageLabel.setForeground(TEXT_SECONDARY);
+        messageLabel.setFont(UIConstants.FONT_BODY);
+        messageLabel.setForeground(UIConstants.TEXT_SECONDARY);
         messageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         panel.add(titleLabel);
@@ -85,7 +81,7 @@ public class TouristSpotChoiceDialog extends JDialog {
     private JPanel createInfoPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         // 선택지 설명
@@ -111,12 +107,12 @@ public class TouristSpotChoiceDialog extends JDialog {
         linePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setFont(UIConstants.FONT_SMALL_BOLD);
+        titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
 
         JLabel descLabel = new JLabel("  → " + desc);
-        descLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
-        descLabel.setForeground(TEXT_SECONDARY);
+        descLabel.setFont(UIConstants.FONT_CAPTION);
+        descLabel.setForeground(UIConstants.TEXT_SECONDARY);
 
         linePanel.add(titleLabel);
         linePanel.add(descLabel);
@@ -131,7 +127,7 @@ public class TouristSpotChoiceDialog extends JDialog {
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
 
         // 잠금, 주사위 한 번 더
@@ -162,10 +158,10 @@ public class TouristSpotChoiceDialog extends JDialog {
      */
     private JButton createButton(String text, Color bgColor, int width) {
         JButton button = new JButton(text);
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+        button.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 13));
         button.setPreferredSize(new Dimension(width, 40));
         button.setBackground(bgColor);
-        button.setForeground(TEXT_PRIMARY);
+        button.setForeground(UIConstants.TEXT_PRIMARY);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
         button.setOpaque(true);

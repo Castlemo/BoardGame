@@ -64,18 +64,18 @@ public class OverlayPanel extends JPanel {
     // 네트워크 채팅 콜백
     private java.util.function.BiConsumer<String, String> networkChatCallback; // type, content
 
-    // 다크 테마 색상
-    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
-    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
-    private static final Color ACCENT_COLOR = new Color(138, 180, 248);
+    // UIConstants에서 가져온 다크 테마 색상 (로컬 별칭)
+    private static final Color BACKGROUND_DARK = UIConstants.BACKGROUND_DARK;
+    private static final Color TEXT_PRIMARY = UIConstants.TEXT_PRIMARY;
+    private static final Color ACCENT_COLOR = UIConstants.ACCENT_COLOR;
 
-    // 버튼 색상
-    private static final Color BUTTON_ROLL = new Color(41, 128, 185);
-    private static final Color BUTTON_PURCHASE = new Color(39, 174, 96);
-    private static final Color BUTTON_UPGRADE = new Color(243, 156, 18);
-    private static final Color BUTTON_TAKEOVER = new Color(142, 68, 173);
-    private static final Color BUTTON_SKIP = new Color(127, 140, 141);
-    private static final Color BUTTON_ESCAPE = new Color(192, 57, 43);
+    // UIConstants에서 가져온 버튼 색상 (로컬 별칭)
+    private static final Color BUTTON_ROLL = UIConstants.BUTTON_ROLL;
+    private static final Color BUTTON_PURCHASE = UIConstants.BUTTON_PURCHASE;
+    private static final Color BUTTON_UPGRADE = UIConstants.BUTTON_UPGRADE;
+    private static final Color BUTTON_TAKEOVER = UIConstants.BUTTON_TAKEOVER;
+    private static final Color BUTTON_SKIP = UIConstants.BUTTON_SKIP;
+    private static final Color BUTTON_ESCAPE = UIConstants.BUTTON_ESCAPE;
 
     public OverlayPanel(List<Player> players) {
         this(players, false); // 기본값: 로컬 모드
@@ -103,7 +103,7 @@ public class OverlayPanel extends JPanel {
     private void initComponents() {
         // 1. 턴 라벨
         turnLabel = new JLabel("Turn #1", SwingConstants.CENTER);
-        turnLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
+        turnLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 24));
         turnLabel.setForeground(ACCENT_COLOR);
         turnLabel.setOpaque(true);
         turnLabel.setBackground(new Color(BACKGROUND_DARK.getRed(), BACKGROUND_DARK.getGreen(),
@@ -241,11 +241,11 @@ public class OverlayPanel extends JPanel {
                     g2.fillRoundRect(2, 2, width - 4, height - 4, arc, arc);
 
                     // 배경 (회색)
-                    g2.setColor(new Color(60, 63, 65));
+                    g2.setColor(UIConstants.BUTTON_DISABLED);
                     g2.fillRoundRect(0, 0, width - 4, height - 6, arc, arc);
 
                     // 텍스트
-                    g2.setColor(new Color(150, 150, 150));
+                    g2.setColor(UIConstants.TEXT_DISABLED);
                     g2.setFont(getFont());
                     FontMetrics fm = g2.getFontMetrics();
                     int textX = (width - fm.stringWidth(text)) / 2;
@@ -321,7 +321,7 @@ public class OverlayPanel extends JPanel {
         };
 
         int fontSize = Math.max(10, (int)(14 * scaleFactor));
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, fontSize));
+        button.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, fontSize));
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
@@ -568,7 +568,7 @@ public class OverlayPanel extends JPanel {
         int currentY = startY;
 
         // 폰트 크기도 스케일 적용 (30% 축소)
-        turnLabel.setFont(new Font("Malgun Gothic", Font.BOLD, (int)(17 * scaleFactor))); // 24 * 0.7
+        turnLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, (int)(17 * scaleFactor))); // 24 * 0.7
 
         // 1. 턴 라벨 배치
         turnLabel.setBounds(cx - TURN_LABEL_WIDTH / 2, currentY,
@@ -755,7 +755,7 @@ public class OverlayPanel extends JPanel {
         int fontSize = Math.max(10, (int)(14 * scaleFactor));
         int buttonWidth = (int)(260 * scaleFactor);
         int buttonHeight = (int)(40 * scaleFactor); // 게임형 UI로 약간 더 높게
-        Font buttonFont = new Font("Malgun Gothic", Font.BOLD, fontSize);
+        Font buttonFont = new Font(UIConstants.FONT_NAME, Font.BOLD, fontSize);
         Dimension buttonSize = new Dimension(buttonWidth, buttonHeight);
 
         JButton[] buttons = {rollDiceButton, purchaseButton, upgradeButton, takeoverButton, skipButton, escapeButton};
@@ -843,10 +843,12 @@ public class OverlayPanel extends JPanel {
      * 소형 플레이어 정보 카드 (200x120)
      */
     private class CompactPlayerCard extends JPanel {
-        private static final Color CARD_BACKGROUND = new Color(52, 73, 94);
-        private static final Color TEXT_PRIMARY = new Color(236, 240, 241);
-        private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
+        // UIConstants에서 가져온 색상 (로컬 별칭)
+        private static final Color CARD_BACKGROUND = UIConstants.BORDER_DEFAULT; // 52, 73, 94
+        private static final Color TEXT_PRIMARY = UIConstants.TEXT_PRIMARY;
+        private static final Color TEXT_SECONDARY = UIConstants.TEXT_SECONDARY;
 
+        // 플레이어 색상 (카드 전용)
         private static final Color[] PLAYER_COLORS = {
             new Color(231, 76, 60),   // Red
             new Color(52, 152, 219),  // Blue
@@ -916,7 +918,7 @@ public class OverlayPanel extends JPanel {
             // 플레이어 이름 (스케일 적용 폰트)
             g2.setColor(TEXT_PRIMARY);
             int nameFontSize = Math.max(8, (int)(12 * scaleFactor));
-            Font nameFont = new Font("Malgun Gothic", Font.BOLD, nameFontSize);
+            Font nameFont = new Font(UIConstants.FONT_NAME, Font.BOLD, nameFontSize);
             g2.setFont(nameFont);
             int nameX = (int)(10 * scaleFactor);
             int nameY = (int)(20 * scaleFactor);
@@ -924,7 +926,7 @@ public class OverlayPanel extends JPanel {
 
             // 정보 텍스트 (스케일 적용 폰트)
             int infoFontSize = Math.max(7, (int)(11 * scaleFactor));
-            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, infoFontSize);
+            Font infoFont = new Font(UIConstants.FONT_NAME, Font.PLAIN, infoFontSize);
             g2.setFont(infoFont);
             g2.setColor(TEXT_PRIMARY);
             int infoY = (int)(38 * scaleFactor);
@@ -940,11 +942,11 @@ public class OverlayPanel extends JPanel {
                 if (moneyChange > 0) {
                     // 수입: 초록색
                     changeText = String.format("+%,d", moneyChange);
-                    changeColor = new Color(46, 204, 113);
+                    changeColor = UIConstants.STATUS_SUCCESS;
                 } else {
                     // 지출: 빨간색
                     changeText = String.format("%,d", moneyChange);
-                    changeColor = new Color(231, 76, 60);
+                    changeColor = UIConstants.STATUS_ERROR;
                 }
 
                 // 페이드 아웃 효과
@@ -955,7 +957,7 @@ public class OverlayPanel extends JPanel {
                 g2.setColor(new Color(changeColor.getRed(), changeColor.getGreen(), changeColor.getBlue(),
                     (int)(alpha * 255)));
                 int changeFontSize = Math.max(7, (int)(12 * scaleFactor));
-                Font changeFont = new Font("Malgun Gothic", Font.BOLD, changeFontSize);
+                Font changeFont = new Font(UIConstants.FONT_NAME, Font.BOLD, changeFontSize);
                 g2.setFont(changeFont);
 
                 // 보유금액 텍스트 오른쪽에 표시

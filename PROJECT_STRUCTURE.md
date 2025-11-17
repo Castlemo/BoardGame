@@ -37,6 +37,7 @@ src/com/marblegame/
 │   ├── Dice.java                  # 주사위 로직 (2D6, 더블 판정)
 │   └── DiceGauge.java             # 게이지 바 모델 (구간별 확률)
 ├── ui/
+│   ├── UIConstants.java           # 중앙 집중식 UI 상수 (색상, 폰트, 유틸리티)
 │   ├── GameFrame.java             # 메인 윈도우 프레임
 │   ├── BoardPanel.java            # 보드 렌더링 + 이동 애니메이션
 │   ├── OverlayPanel.java          # 플레이어 카드, 주사위, 버튼, 채팅
@@ -45,7 +46,7 @@ src/com/marblegame/
 │   ├── GaugePanel.java            # 주사위 게이지 바 UI
 │   ├── CompactPlayerCard.java     # 플레이어 정보 카드
 │   ├── GameModeDialog.java        # 게임 모드 선택 다이얼로그
-│   └── *Dialog.java               # 각종 게임 내 다이얼로그
+│   └── *Dialog.java               # 각종 게임 내 다이얼로그 (20+ 종류)
 └── network/
     ├── NetConstants.java          # 네트워크 상수 (포트, 타임아웃)
     ├── client/
@@ -289,7 +290,68 @@ payload = {
 
 ## 6. UI 시스템
 
-### 6.1 반응형 레이아웃
+### 6.1 중앙 집중식 UI 상수 (UIConstants)
+
+모든 UI 컴포넌트의 일관성을 위해 `UIConstants.java`에서 색상, 폰트, 크기를 중앙 관리합니다.
+
+**색상 팔레트**:
+```java
+// 배경색
+BACKGROUND_DARK = RGB(32, 33, 36)   // 메인 다크 배경
+PANEL_DARK = RGB(44, 47, 51)         // 패널/카드 배경
+INPUT_BG = RGB(33, 47, 61)           // 입력 필드 배경
+
+// 텍스트
+TEXT_PRIMARY = RGB(232, 234, 237)    // 기본 텍스트
+TEXT_SECONDARY = RGB(189, 195, 199)  // 보조 텍스트
+TEXT_DISABLED = RGB(150, 150, 150)   // 비활성화 텍스트
+
+// 버튼 색상
+BUTTON_CONFIRM = RGB(39, 174, 96)    // 확인/긍정 (녹색)
+BUTTON_CANCEL = RGB(127, 140, 141)   // 취소/패스 (회색)
+BUTTON_UPGRADE = RGB(243, 156, 18)   // 업그레이드 (주황색)
+BUTTON_TAKEOVER = RGB(142, 68, 173)  // 인수 (보라색)
+BUTTON_WARNING = RGB(231, 76, 60)    // 경고 (빨간색)
+
+// 상태 색상
+STATUS_SUCCESS = RGB(46, 204, 113)   // 성공 (녹색)
+STATUS_WARNING = RGB(243, 156, 18)   // 경고 (주황색)
+STATUS_ERROR = RGB(231, 76, 60)      // 오류 (빨간색)
+STATUS_INFO = RGB(52, 152, 219)      // 정보 (파란색)
+```
+
+**폰트 시스템**:
+```java
+FONT_NAME = "Malgun Gothic"           // 기본 폰트 (한글 지원)
+FONT_TITLE = Bold 24pt                // 제목
+FONT_SUBTITLE = Bold 20pt             // 부제목
+FONT_HEADER = Bold 18pt               // 헤더
+FONT_BODY = Plain 14pt                // 본문
+FONT_BODY_BOLD = Bold 14pt            // 본문 굵게
+FONT_SMALL = Plain 12pt               // 작은 텍스트
+FONT_CAPTION = Plain 11pt             // 캡션
+```
+
+**유틸리티 메서드**:
+```java
+// 스타일 버튼 생성 (호버 효과 포함)
+JButton btn = UIConstants.createStyledButton("확인", BUTTON_CONFIRM);
+
+// 다크 테마 패널 생성
+JPanel panel = UIConstants.createDarkPanel();
+
+// 테두리 있는 패널 생성
+JPanel borderedPanel = UIConstants.createDarkPanelWithBorder();
+```
+
+**다이얼로그 리팩터링 패턴**:
+모든 다이얼로그(20+ 종류)가 UIConstants를 사용하도록 통합됨:
+- DoubleDialog, TaxPaymentDialog, TollPaymentDialog
+- ChanceDialog, IslandDialog, OlympicDialog
+- CitySelectionDialog, TakeoverConfirmDialog
+- LandmarkMagneticDialog, GameModeDialog 등
+
+### 6.2 반응형 레이아웃
 
 - JLayeredPane을 사용한 레이어 구조
 - 윈도우 리사이즈 시 자동 스케일링
@@ -299,16 +361,6 @@ payload = {
 Layer 구조:
 DEFAULT_LAYER  → BoardPanel (보드 렌더링)
 PALETTE_LAYER  → OverlayPanel (UI 오버레이)
-```
-
-### 6.2 다크 테마
-
-```java
-// 기본 색상 팔레트
-BACKGROUND_DARK = RGB(32, 33, 36)
-PANEL_DARK = RGB(44, 47, 51)
-TEXT_PRIMARY = RGB(232, 234, 237)
-ACCENT_COLOR = RGB(138, 180, 248)
 ```
 
 ### 6.3 애니메이션
@@ -377,9 +429,34 @@ java -cp out com.marblegame.Main
 ### 8.3 새 UI 컴포넌트 추가
 
 1. `ui/` 폴더에 새 패널/다이얼로그 생성
-2. `OverlayPanel` 또는 `GameFrame`에 통합
-3. 필요시 `repositionComponents()`에서 위치 지정
-4. scaleFactor를 고려한 반응형 레이아웃 구현
+2. **반드시 `UIConstants`를 사용하여 일관성 유지**:
+   ```java
+   import com.marblegame.ui.UIConstants;
+
+   public class NewDialog extends JDialog {
+       public NewDialog(JFrame parent) {
+           super(parent, "제목", true);
+           getContentPane().setBackground(UIConstants.BACKGROUND_DARK);
+           // ...
+       }
+
+       private JPanel createPanel() {
+           JPanel panel = new JPanel();
+           panel.setBackground(UIConstants.PANEL_DARK);
+
+           JLabel label = new JLabel("텍스트");
+           label.setFont(UIConstants.FONT_HEADER);
+           label.setForeground(UIConstants.TEXT_PRIMARY);
+
+           JButton btn = UIConstants.createStyledButton("확인", UIConstants.BUTTON_CONFIRM);
+           // ...
+       }
+   }
+   ```
+3. `OverlayPanel` 또는 `GameFrame`에 통합
+4. 필요시 `repositionComponents()`에서 위치 지정
+5. scaleFactor를 고려한 반응형 레이아웃 구현
+6. 고유 색상이 필요한 경우 로컬 상수로 정의 (예: 더블용 금색)
 
 ---
 

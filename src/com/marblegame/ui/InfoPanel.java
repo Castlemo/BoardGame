@@ -12,11 +12,10 @@ import java.util.List;
  * 수정됨: TurnPanel 제거 (중앙 오버레이로 이동), 단순 BoxLayout 사용
  */
 public class InfoPanel extends JPanel {
+    // InfoPanel 전용 색상 (다른 UI와 다른 테마 사용)
     private static final Color BACKGROUND = new Color(44, 62, 80);
     private static final Color CARD_BACKGROUND = new Color(52, 73, 94);
     private static final Color BORDER_COLOR = new Color(41, 128, 185);
-    private static final Color TEXT_PRIMARY = new Color(236, 240, 241);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
 
     private static final Color[] PLAYER_COLORS = {
         new Color(231, 76, 60),   // Red
@@ -141,15 +140,13 @@ public class InfoPanel extends JPanel {
             g2.drawRoundRect(0, 0, width, height, 18, 18);
 
             // 플레이어 이름
-            g2.setColor(TEXT_PRIMARY);
-            Font nameFont = new Font("Malgun Gothic", Font.BOLD, 18);
-            g2.setFont(nameFont);
+            g2.setColor(UIConstants.TEXT_PRIMARY);
+            g2.setFont(UIConstants.FONT_HEADER);
             g2.drawString(player.name, 20, 35);
 
             // 정보 텍스트
-            Font infoFont = new Font("Malgun Gothic", Font.PLAIN, 14);
-            g2.setFont(infoFont);
-            g2.setColor(TEXT_PRIMARY);
+            g2.setFont(UIConstants.FONT_BODY);
+            g2.setColor(UIConstants.TEXT_PRIMARY);
             int infoY = 60;
             int lineHeight = 22;
 
@@ -162,11 +159,11 @@ public class InfoPanel extends JPanel {
                 if (moneyChange > 0) {
                     // 수입: 초록색
                     changeText = String.format("+%,d원", moneyChange);
-                    changeColor = new Color(46, 204, 113);
+                    changeColor = UIConstants.STATUS_SUCCESS;
                 } else {
                     // 지출: 빨간색
                     changeText = String.format("%,d원", moneyChange);
-                    changeColor = new Color(231, 76, 60);
+                    changeColor = UIConstants.STATUS_ERROR;
                 }
 
                 // 페이드 아웃 효과
@@ -176,12 +173,11 @@ public class InfoPanel extends JPanel {
 
                 g2.setColor(new Color(changeColor.getRed(), changeColor.getGreen(), changeColor.getBlue(),
                     (int)(alpha * 255)));
-                Font changeFont = new Font("Malgun Gothic", Font.BOLD, 14);
-                g2.setFont(changeFont);
+                g2.setFont(UIConstants.FONT_BODY_BOLD);
                 g2.drawString(changeText, 160, infoY);
 
-                g2.setFont(infoFont); // 원래 폰트로 복구
-                g2.setColor(TEXT_PRIMARY); // 원래 색상으로 복구
+                g2.setFont(UIConstants.FONT_BODY); // 원래 폰트로 복구
+                g2.setColor(UIConstants.TEXT_PRIMARY); // 원래 색상으로 복구
             }
 
             infoY += lineHeight;
@@ -194,7 +190,7 @@ public class InfoPanel extends JPanel {
             infoY += lineHeight;
 
             String jailInfo = player.jailTurns > 0 ? String.format("🏝 %d턴 남음", player.jailTurns) : "🏝 없음";
-            g2.setColor(TEXT_SECONDARY);
+            g2.setColor(UIConstants.TEXT_SECONDARY);
             g2.drawString(jailInfo, 20, infoY);
 
             g2.dispose();

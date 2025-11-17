@@ -106,11 +106,12 @@ src/com/marblegame/
 │   ├── Dice.java             # 주사위
 │   └── DiceGauge.java        # 게이지 모델
 ├── ui/
+│   ├── UIConstants.java      # 중앙 집중식 UI 상수
 │   ├── GameFrame.java        # 메인 프레임
 │   ├── BoardPanel.java       # 보드 렌더링
 │   ├── OverlayPanel.java     # 플레이어 정보 오버레이
 │   ├── ActionPanel.java      # 액션 버튼 패널
-│   └── dialogs/              # 게임 다이얼로그
+│   └── *Dialog.java          # 게임 다이얼로그 (20+ 종류)
 └── network/                  # LAN 멀티플레이
     ├── server/               # 서버 (호스트)
     ├── client/               # 클라이언트
@@ -124,10 +125,11 @@ src/com/marblegame/
 ## 기술 스택
 
 - **언어**: Java 17
-- **UI**: Swing (커스텀 다크 테마)
+- **UI**: Swing (커스텀 다크 테마, UIConstants 중앙 관리)
 - **네트워크**: TCP Socket (Server-Client)
 - **직렬화**: 커스텀 JSON (외부 라이브러리 미사용)
 - **동기화**: GameStateSnapshot 기반 상태 전파
+- **UI 아키텍처**: 중앙 집중식 상수 관리 (20+ 다이얼로그 통합)
 
 ---
 
@@ -145,6 +147,31 @@ src/com/marblegame/
 - LAN 전용
 - 방화벽이 포트 차단 시 수동 허용 필요
 - 연결 끊김 후 재연결 미지원
+
+---
+
+## UI 시스템
+
+### 다크 테마
+모든 UI가 일관된 다크 테마를 사용합니다.
+- 배경: 어두운 회색 (#202124)
+- 텍스트: 밝은 회색 (#E8EAED)
+- 버튼: 색상별 구분 (녹색=확인, 주황=업그레이드, 보라=인수)
+
+### UIConstants (중앙 집중식 관리)
+모든 색상, 폰트, 크기가 `UIConstants.java`에서 통합 관리됩니다.
+
+**장점**:
+- 일관된 디자인 유지
+- 유지보수 용이
+- 테마 변경 시 한 곳만 수정
+- 중복 코드 제거
+
+**적용된 다이얼로그** (20+ 종류):
+- 게임 정보: DoubleDialog, ChanceDialog, IslandDialog
+- 금융 정보: TaxPaymentDialog, TollPaymentDialog, TakeoverConfirmDialog
+- 선택 UI: CitySelectionDialog, LevelSelectionDialog, GameModeDialog
+- 특수 효과: OlympicDialog, LandmarkMagneticDialog, WorldTourDialog
 
 ---
 

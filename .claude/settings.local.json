@@ -5,7 +5,8 @@
       "Bash(javac:*)",
       "Bash(java:*)",
       "Bash(pkill:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,13 +7,9 @@ import java.awt.*;
  * 무인도 칸 도착 다이얼로그
  */
 public class IslandDialog extends JDialog {
-    // 다크 테마 색상
-    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
-    private static final Color PANEL_DARK = new Color(44, 47, 51);
-    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
-    private static final Color BUTTON_CONFIRM = new Color(127, 140, 141);  // 회색
+    // 특수 색상 (UIConstants에 없는 고유 색상)
     private static final Color HIGHLIGHT_COLOR = new Color(149, 165, 166); // 회색
+    private static final Color GOLD_COLOR = new Color(241, 196, 15); // 금색
 
     public IslandDialog(JFrame parent, int jailTurns) {
         super(parent, "무인도", true);
@@ -26,7 +22,7 @@ public class IslandDialog extends JDialog {
 
     private void initComponents(int jailTurns) {
         setLayout(new BorderLayout(0, 0));
-        getContentPane().setBackground(BACKGROUND_DARK);
+        getContentPane().setBackground(UIConstants.BACKGROUND_DARK);
 
         // 헤더 패널
         JPanel headerPanel = createHeaderPanel();
@@ -44,11 +40,11 @@ public class IslandDialog extends JDialog {
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(PANEL_DARK);
+        panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
         JLabel titleLabel = new JLabel("🏝️ 무인도");
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
+        titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -60,22 +56,22 @@ public class IslandDialog extends JDialog {
     private JPanel createMessagePanel(int jailTurns) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
         JLabel messageLabel1 = new JLabel("무인도에 갇혔습니다!");
-        messageLabel1.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
-        messageLabel1.setForeground(TEXT_PRIMARY);
+        messageLabel1.setFont(UIConstants.FONT_HEADER);
+        messageLabel1.setForeground(UIConstants.TEXT_PRIMARY);
         messageLabel1.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel messageLabel2 = new JLabel(String.format("%d턴 동안 갇혀있습니다.", jailTurns));
-        messageLabel2.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-        messageLabel2.setForeground(TEXT_SECONDARY);
+        messageLabel2.setFont(UIConstants.FONT_BODY);
+        messageLabel2.setForeground(UIConstants.TEXT_SECONDARY);
         messageLabel2.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel hintLabel = new JLabel("보석금 200,000원으로 즉시 탈출 가능");
-        hintLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
-        hintLabel.setForeground(new Color(241, 196, 15)); // 금색
+        hintLabel.setFont(UIConstants.FONT_SMALL);
+        hintLabel.setForeground(GOLD_COLOR);
         hintLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         panel.add(messageLabel1);
@@ -90,39 +86,14 @@ public class IslandDialog extends JDialog {
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new FlowLayout(FlowLayout.CENTER));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
 
-        JButton confirmButton = createButton("확인", BUTTON_CONFIRM);
+        JButton confirmButton = UIConstants.createStyledButton("확인", UIConstants.BUTTON_CANCEL);
         confirmButton.addActionListener(e -> dispose());
 
         panel.add(confirmButton);
 
         return panel;
-    }
-
-    private JButton createButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-        button.setPreferredSize(new Dimension(120, 40));
-        button.setBackground(bgColor);
-        button.setForeground(TEXT_PRIMARY);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setOpaque(true);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // 호버 효과
-        Color hoverColor = bgColor.brighter();
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(hoverColor);
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor);
-            }
-        });
-
-        return button;
     }
 }

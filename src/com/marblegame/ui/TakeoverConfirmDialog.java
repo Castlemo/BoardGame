@@ -9,15 +9,6 @@ import java.awt.*;
 public class TakeoverConfirmDialog extends JDialog {
     private boolean confirmed = false;
 
-    // 다크 테마 색상
-    private static final Color BACKGROUND_DARK = new Color(32, 33, 36);
-    private static final Color PANEL_DARK = new Color(44, 47, 51);
-    private static final Color TEXT_PRIMARY = new Color(232, 234, 237);
-    private static final Color TEXT_SECONDARY = new Color(189, 195, 199);
-    private static final Color BUTTON_CONFIRM = new Color(39, 174, 96);  // 녹색
-    private static final Color BUTTON_CANCEL = new Color(231, 76, 60);   // 빨간색
-    private static final Color INFO_ROW_BG = new Color(44, 47, 51);
-
     public TakeoverConfirmDialog(JFrame parent, String cityName, String currentOwner,
                                  int level, int takeoverCost, int playerCash) {
         super(parent, "도시 인수 확인", true);
@@ -31,7 +22,7 @@ public class TakeoverConfirmDialog extends JDialog {
     private void initComponents(String cityName, String currentOwner, int level,
                                int takeoverCost, int playerCash) {
         setLayout(new BorderLayout(0, 0));
-        getContentPane().setBackground(BACKGROUND_DARK);
+        getContentPane().setBackground(UIConstants.BACKGROUND_DARK);
 
         // 헤더 패널
         JPanel headerPanel = createHeaderPanel(cityName);
@@ -49,17 +40,17 @@ public class TakeoverConfirmDialog extends JDialog {
     private JPanel createHeaderPanel(String cityName) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(PANEL_DARK);
+        panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
         JLabel titleLabel = new JLabel("🏢 도시 인수");
-        titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
-        titleLabel.setForeground(TEXT_PRIMARY);
+        titleLabel.setFont(UIConstants.FONT_SUBTITLE);
+        titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel cityLabel = new JLabel(cityName);
-        cityLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
-        cityLabel.setForeground(new Color(52, 152, 219)); // 파란색
+        cityLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 16));
+        cityLabel.setForeground(UIConstants.STATUS_INFO); // 파란색
         cityLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         panel.add(titleLabel);
@@ -72,7 +63,7 @@ public class TakeoverConfirmDialog extends JDialog {
     private JPanel createInfoPanel(String currentOwner, int level, int takeoverCost, int playerCash) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
 
         // 현재 소유자
@@ -106,8 +97,8 @@ public class TakeoverConfirmDialog extends JDialog {
         // 잔액이 음수면 경고 표시
         if (remainingBalance < 0) {
             JLabel warningLabel = new JLabel("⚠ 잔액 부족!");
-            warningLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-            warningLabel.setForeground(new Color(231, 76, 60)); // 빨간색
+            warningLabel.setFont(UIConstants.FONT_SMALL_BOLD);
+            warningLabel.setForeground(UIConstants.STATUS_ERROR); // 빨간색
             warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             panel.add(Box.createRigidArea(new Dimension(0, 10)));
             panel.add(warningLabel);
@@ -120,17 +111,17 @@ public class TakeoverConfirmDialog extends JDialog {
 
     private JPanel createInfoRow(String label, String value) {
         JPanel row = new JPanel(new BorderLayout());
-        row.setBackground(INFO_ROW_BG);
+        row.setBackground(UIConstants.PANEL_DARK);
         row.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
         row.setMaximumSize(new Dimension(400, 35));
 
         JLabel labelComponent = new JLabel(label);
-        labelComponent.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
-        labelComponent.setForeground(TEXT_SECONDARY);
+        labelComponent.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, 13));
+        labelComponent.setForeground(UIConstants.TEXT_SECONDARY);
 
         JLabel valueComponent = new JLabel(value);
-        valueComponent.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
-        valueComponent.setForeground(TEXT_PRIMARY);
+        valueComponent.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 13));
+        valueComponent.setForeground(UIConstants.TEXT_PRIMARY);
 
         row.add(labelComponent, BorderLayout.WEST);
         row.add(valueComponent, BorderLayout.EAST);
@@ -141,18 +132,18 @@ public class TakeoverConfirmDialog extends JDialog {
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 0));
-        panel.setBackground(BACKGROUND_DARK);
+        panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
 
         // 예 버튼
-        JButton confirmButton = createButton("예", BUTTON_CONFIRM);
+        JButton confirmButton = UIConstants.createStyledButton("예", UIConstants.BUTTON_CONFIRM);
         confirmButton.addActionListener(e -> {
             confirmed = true;
             dispose();
         });
 
         // 아니오 버튼
-        JButton cancelButton = createButton("아니오", BUTTON_CANCEL);
+        JButton cancelButton = UIConstants.createStyledButton("아니오", UIConstants.BUTTON_WARNING);
         cancelButton.addActionListener(e -> {
             confirmed = false;
             dispose();
@@ -162,31 +153,6 @@ public class TakeoverConfirmDialog extends JDialog {
         panel.add(cancelButton);
 
         return panel;
-    }
-
-    private JButton createButton(String text, Color bgColor) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-        button.setPreferredSize(new Dimension(120, 40));
-        button.setBackground(bgColor);
-        button.setForeground(TEXT_PRIMARY);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setOpaque(true);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        // 호버 효과
-        Color hoverColor = bgColor.brighter();
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(hoverColor);
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(bgColor);
-            }
-        });
-
-        return button;
     }
 
     private String getLevelEmoji(int level) {
