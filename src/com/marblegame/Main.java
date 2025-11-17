@@ -13,6 +13,7 @@ import com.marblegame.network.ui.NetworkMenuDialog;
 import com.marblegame.network.NetConstants;
 import com.marblegame.network.sync.GameStateMapper;
 import com.marblegame.network.sync.GameStateSnapshot;
+import com.marblegame.ui.ChatPanel;
 import com.marblegame.ui.GameModeDialog;
 
 import javax.swing.*;
@@ -385,8 +386,10 @@ public class Main {
 
         if (playerIndex != null && playerName != null && content != null) {
             SwingUtilities.invokeLater(() -> {
-                gameUI.getFrame().getOverlayPanel().getChatPanel()
-                    .addPlayerMessage(playerIndex, playerName, content);
+                ChatPanel chatPanel = gameUI.getFrame().getOverlayPanel().getChatPanel();
+                if (chatPanel != null) {
+                    chatPanel.addPlayerMessage(playerIndex, playerName, content);
+                }
             });
         }
     }
@@ -405,8 +408,10 @@ public class Main {
 
         if (playerIndex != null && playerName != null && emoji != null) {
             SwingUtilities.invokeLater(() -> {
-                gameUI.getFrame().getOverlayPanel().getChatPanel()
-                    .addEmojiMessage(playerIndex, playerName, emoji);
+                ChatPanel chatPanel = gameUI.getFrame().getOverlayPanel().getChatPanel();
+                if (chatPanel != null) {
+                    chatPanel.addEmojiMessage(playerIndex, playerName, emoji);
+                }
             });
         }
     }

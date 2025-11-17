@@ -58,6 +58,9 @@ public class OverlayPanel extends JPanel {
     private static final int CHAT_PANEL_WIDTH = 180;
     private static final int CHAT_PANEL_HEIGHT = 250;
 
+    // 네트워크 모드 여부
+    private boolean networkMode;
+
     // 네트워크 채팅 콜백
     private java.util.function.BiConsumer<String, String> networkChatCallback; // type, content
 
@@ -75,8 +78,13 @@ public class OverlayPanel extends JPanel {
     private static final Color BUTTON_ESCAPE = new Color(192, 57, 43);
 
     public OverlayPanel(List<Player> players) {
+        this(players, false); // 기본값: 로컬 모드
+    }
+
+    public OverlayPanel(List<Player> players, boolean networkMode) {
         this.players = players;
         this.playerCards = new ArrayList<>();
+        this.networkMode = networkMode;
 
         setLayout(null); // 절대 위치 사용
         setOpaque(false); // 투명 배경으로 보드가 보이도록
@@ -168,35 +176,23 @@ public class OverlayPanel extends JPanel {
             add(card);
         }
 
-        // 7. 채팅 패널 생성 및 추가
-        chatPanel = new ChatPanel();
-        chatPanel.setMessageSendCallback(message -> {
-            // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
-            if (networkChatCallback != null) {
-                networkChatCallback.accept("message", message);
-            } else {
-                // 로컬 모드: 바로 표시
-                if (players.size() > 0) {
-                    int currentPlayerIndex = getCurrentPlayerIndex();
-                    String playerName = players.get(currentPlayerIndex).name;
-                    chatPanel.addPlayerMessage(currentPlayerIndex, playerName, message);
+        // 7. 채팅 패널 생성 및 추가 (네트워크 모드에서만)
+        if (networkMode) {
+            chatPanel = new ChatPanel();
+            chatPanel.setMessageSendCallback(message -> {
+                // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
+                if (networkChatCallback != null) {
+                    networkChatCallback.accept("message", message);
                 }
-            }
-        });
-        chatPanel.setEmojiSendCallback(emoji -> {
-            // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
-            if (networkChatCallback != null) {
-                networkChatCallback.accept("emoji", emoji);
-            } else {
-                // 로컬 모드: 바로 표시
-                if (players.size() > 0) {
-                    int currentPlayerIndex = getCurrentPlayerIndex();
-                    String playerName = players.get(currentPlayerIndex).name;
-                    chatPanel.addEmojiMessage(currentPlayerIndex, playerName, emoji);
+            });
+            chatPanel.setEmojiSendCallback(emoji -> {
+                // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
+                if (networkChatCallback != null) {
+                    networkChatCallback.accept("emoji", emoji);
                 }
-            }
-        });
-        add(chatPanel);
+            });
+            add(chatPanel);
+        }
     }
 
     /**
@@ -602,16 +598,18 @@ public class OverlayPanel extends JPanel {
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
                                    BUTTON_PANEL_WIDTH, buttonPanelHeight);
 
-        // 6. 채팅 패널 배치 (보드 내부 우측)
-        int scaledChatWidth = (int)(CHAT_PANEL_WIDTH * scaleFactor);
-        int scaledChatHeight = (int)(CHAT_PANEL_HEIGHT * scaleFactor);
-        chatPanel.setBounds(
-            innerRight - scaledChatWidth - scaledCardMargin,
-            innerTop + scaledCardMargin,
-            scaledChatWidth,
-            scaledChatHeight
-        );
-        chatPanel.updateFontSize(scaleFactor);
+        // 6. 채팅 패널 배치 (보드 내부 우측) - 네트워크 모드에서만
+        if (chatPanel != null) {
+            int scaledChatWidth = (int)(CHAT_PANEL_WIDTH * scaleFactor);
+            int scaledChatHeight = (int)(CHAT_PANEL_HEIGHT * scaleFactor);
+            chatPanel.setBounds(
+                innerRight - scaledChatWidth - scaledCardMargin,
+                innerTop + scaledCardMargin,
+                scaledChatWidth,
+                scaledChatHeight
+            );
+            chatPanel.updateFontSize(scaleFactor);
+        }
     }
 
     /**

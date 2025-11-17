@@ -15,8 +15,14 @@ public class GameFrame extends JFrame {
     private InfoPanel infoPanel;           // 수정됨: 플레이어 정보만 (좌측)
     private ControlPanel controlPanel;
     private OverlayPanel overlayPanel;     // 추가됨: 중앙 오버레이 (턴/주사위/버튼)
+    private boolean networkMode;           // 네트워크 모드 여부
 
     public GameFrame(Board board, List<Player> players) {
+        this(board, players, false); // 기본값: 로컬 모드
+    }
+
+    public GameFrame(Board board, List<Player> players, boolean networkMode) {
+        this.networkMode = networkMode;
         setTitle("모두의 마블 2.0 - Board Game");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(true); // 크기 조절 가능
@@ -64,7 +70,7 @@ public class GameFrame extends JFrame {
         layeredPane.add(boardPanel, JLayeredPane.DEFAULT_LAYER);
 
         // 오버레이 패널 (PALETTE_LAYER) - 보드 위에 겹침, 플레이어 정보 포함
-        overlayPanel = new OverlayPanel(players); // 플레이어 리스트 전달
+        overlayPanel = new OverlayPanel(players, networkMode); // 네트워크 모드 전달
         overlayPanel.setBounds(0, 0, 900, 900);
         layeredPane.add(overlayPanel, JLayeredPane.PALETTE_LAYER);
 

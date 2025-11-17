@@ -209,7 +209,7 @@ public class GameUI {
         }
 
         // UI 초기화
-        frame = new GameFrame(board, java.util.Arrays.asList(players));
+        frame = new GameFrame(board, java.util.Arrays.asList(players), networkMode);
         setupEventHandlers();
 
         frame.setVisible(true);
