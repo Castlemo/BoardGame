@@ -42,7 +42,7 @@ public class GameModeDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(30, 20, 25, 20));
 
-        JLabel titleLabel = new JLabel("◈ 모두의 마블 2.0");
+        JLabel titleLabel = new JLabel("모두의 마블 2.0");
         titleLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 32));
         titleLabel.setForeground(UIConstants.STATUS_SUCCESS);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -67,7 +67,7 @@ public class GameModeDialog extends JDialog {
 
         // 로컬 게임 버튼
         JButton localButton = createModeButton(
-            "> 로컬 게임",
+            "로컬 게임",
             "한 컴퓨터에서 2-4명이 번갈아 플레이",
             UIConstants.STATUS_INFO,
             1
@@ -75,7 +75,7 @@ public class GameModeDialog extends JDialog {
 
         // 네트워크 멀티플레이 버튼
         JButton networkButton = createModeButton(
-            "◎ 네트워크 멀티플레이",
+            "네트워크 멀티플레이",
             "LAN 환경에서 친구들과 함께 플레이",
             UIConstants.HIGHLIGHT_PURPLE,
             2
@@ -149,7 +149,7 @@ public class GameModeDialog extends JDialog {
         panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 25, 20));
 
-        JLabel versionLabel = new JLabel("v2.0 Network Edition");
+        JLabel versionLabel = new JLabel("Hansung University");
         versionLabel.setFont(UIConstants.FONT_CAPTION);
         versionLabel.setForeground(UIConstants.TEXT_SECONDARY);
 

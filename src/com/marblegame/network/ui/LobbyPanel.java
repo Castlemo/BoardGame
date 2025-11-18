@@ -73,7 +73,7 @@ public class LobbyPanel extends JFrame {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(25, 20, 20, 20));
 
-        JLabel titleLabel = new JLabel("⏳ 게임 대기실");
+        JLabel titleLabel = new JLabel("게임 대기실");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 28));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
