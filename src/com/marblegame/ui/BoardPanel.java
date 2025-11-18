@@ -1,6 +1,7 @@
 package com.marblegame.ui;
 
 import com.marblegame.model.*;
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -8,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -258,19 +260,20 @@ public class BoardPanel extends JPanel {
                     g.setPaint(bgGradient);
                     g.fillOval(centerX - 18, centerY - 18, 36, 36);
 
-                    // 건물 이모지
-                    String buildingEmoji = city.getBuildingEmoji();
-                    g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
-                    FontMetrics fm = g.getFontMetrics();
-                    int emojiWidth = fm.stringWidth(buildingEmoji);
+                    // 건물 이미지 (PNG)
+                    BufferedImage buildingImage = ImageLoader.getBuildingImage(city.level);
+                    if (buildingImage != null) {
+                        int buildingSize = 32;
+                        BufferedImage scaledBuilding = ImageLoader.scaleImage(buildingImage, buildingSize, buildingSize);
 
-                    // 이모지 그림자
-                    g.setColor(new Color(0, 0, 0, 60));
-                    g.drawString(buildingEmoji, centerX - emojiWidth / 2 + 1, centerY + 8 + 1);
+                        // 이미지 그림자
+                        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+                        g.drawImage(scaledBuilding, centerX - buildingSize / 2 + 2, centerY - buildingSize / 2 + 2, null);
 
-                    // 이모지
-                    g.setColor(Color.BLACK);
-                    g.drawString(buildingEmoji, centerX - emojiWidth / 2, centerY + 8);
+                        // 이미지
+                        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+                        g.drawImage(scaledBuilding, centerX - buildingSize / 2, centerY - buildingSize / 2, null);
+                    }
                 }
 
                 // 올림픽 효과 표시 (개선된 디자인)
@@ -355,21 +358,26 @@ public class BoardPanel extends JPanel {
                 g.setColor(new Color(60, 60, 60, 180)); // 회색 오버레이
                 g.fillRoundRect(x + padding, y + padding, tileWidth, tileHeight, arc, arc);
 
-                // 자물쇠 이모티콘 표시
-                g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 36));
-                String lockIcon = "🔒";
-                FontMetrics lockFm = g.getFontMetrics();
-                int lockWidth = lockFm.stringWidth(lockIcon);
-                int centerX = x + (BASE_TILE_SIZE - lockWidth) / 2;
-                int centerY = y + BASE_TILE_SIZE / 2 + 12;
+                // 자물쇠 PNG 아이콘 표시
+                BufferedImage lockImage = ImageLoader.getTileImage("LOCK");
+                if (lockImage != null) {
+                    int lockSize = (int)(BASE_TILE_SIZE * 0.5);
+                    BufferedImage scaledLock = ImageLoader.scaleImage(lockImage, lockSize, lockSize);
 
-                // 자물쇠 그림자
-                g.setColor(new Color(0, 0, 0, 150));
-                g.drawString(lockIcon, centerX + 2, centerY + 2);
+                    int centerX = x + (BASE_TILE_SIZE - lockSize) / 2;
+                    int centerY = y + (BASE_TILE_SIZE - lockSize) / 2;
 
-                // 자물쇠
-                g.setColor(new Color(255, 255, 255, 230));
-                g.drawString(lockIcon, centerX, centerY);
+                    // 그림자 효과
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+                    g.drawImage(scaledLock, centerX + 3, centerY + 3, null);
+
+                    // 자물쇠 이미지
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.9f));
+                    g.drawImage(scaledLock, centerX, centerY, null);
+
+                    // 컴포지트 복원
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+                }
             }
         }
     }
@@ -453,34 +461,39 @@ public class BoardPanel extends JPanel {
     }
 
     private void drawTileIcon(Graphics2D g, Tile tile, int x, int y) {
-        g.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
-        String icon = "";
+        BufferedImage icon = null;
 
         switch (tile.type) {
             case START:
-                icon = "🏁";
+                icon = ImageLoader.getTileImage("START");
                 break;
             case ISLAND:
-                icon = "🏝";
+                icon = ImageLoader.getTileImage("ISLAND");
                 break;
             case CHANCE:
-                icon = "🃏";
+                icon = ImageLoader.getTileImage("CHANCE");
                 break;
             case OLYMPIC:
-                icon = "🏆";
+                icon = ImageLoader.getTileImage("OLYMPIC");
                 break;
             case WORLD_TOUR:
-                icon = "✈️";
+                icon = ImageLoader.getTileImage("WORLD_TOUR");
                 break;
             case TAX:
-                icon = "💵";
+                icon = ImageLoader.getTileImage("TAX");
                 break;
         }
 
-        if (!icon.isEmpty()) {
-            FontMetrics fm = g.getFontMetrics();
-            int iconWidth = fm.stringWidth(icon);
-            g.drawString(icon, x + (BASE_TILE_SIZE - iconWidth) / 2, y + BASE_TILE_SIZE/2 - 5);
+        if (icon != null) {
+            // 아이콘 크기 조정 (타일의 60% 크기)
+            int iconSize = (int)(BASE_TILE_SIZE * 0.6);
+            BufferedImage scaledIcon = ImageLoader.scaleImage(icon, iconSize, iconSize);
+
+            // 중앙 배치
+            int iconX = x + (BASE_TILE_SIZE - iconSize) / 2;
+            int iconY = y + (BASE_TILE_SIZE - iconSize) / 2;
+
+            g.drawImage(scaledIcon, iconX, iconY, null);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -99,7 +100,7 @@ public class LevelSelectionDialog extends JDialog {
 
         // 레벨 1 버튼
         JButton level1Button = createLevelButton(
-            "🏠 레벨 1 (집)",
+            "레벨 1 (집)",
             cost1,
             BUTTON_LEVEL1,
             1
@@ -108,7 +109,7 @@ public class LevelSelectionDialog extends JDialog {
 
         // 레벨 2 버튼
         JButton level2Button = createLevelButton(
-            "🏢 레벨 2 (아파트)",
+            "레벨 2 (아파트)",
             cost2,
             BUTTON_LEVEL2,
             2
@@ -117,7 +118,7 @@ public class LevelSelectionDialog extends JDialog {
 
         // 레벨 3 버튼
         JButton level3Button = createLevelButton(
-            "🏬 레벨 3 (건물)",
+            "레벨 3 (건물)",
             cost3,
             BUTTON_LEVEL3,
             3
@@ -146,11 +147,13 @@ public class LevelSelectionDialog extends JDialog {
         button.setOpaque(true);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        // 레벨 텍스트 (왼쪽)
-        JLabel levelLabel = new JLabel(levelText);
+        // 레벨 텍스트 + 아이콘 (왼쪽)
+        ImageIcon icon = ImageLoader.loadIcon(getBuildingIconName(level), 28, 28);
+        JLabel levelLabel = new JLabel(levelText, icon, JLabel.LEFT);
         levelLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 16));
         levelLabel.setForeground(UIConstants.TEXT_PRIMARY);
         levelLabel.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0));
+        levelLabel.setIconTextGap(10);
 
         // 비용 텍스트 (오른쪽)
         JLabel costLabel = new JLabel(String.format("%,d", cost) + "원");
@@ -225,5 +228,18 @@ public class LevelSelectionDialog extends JDialog {
      */
     public int getSelectedLevel() {
         return selectedLevel;
+    }
+
+    /**
+     * 건물 아이콘 파일명 반환
+     */
+    private String getBuildingIconName(int level) {
+        switch (level) {
+            case 1: return "house.png";
+            case 2: return "building.png";
+            case 3: return "tower.png";
+            case 4: return "landmark.png";
+            default: return null;
+        }
     }
 }

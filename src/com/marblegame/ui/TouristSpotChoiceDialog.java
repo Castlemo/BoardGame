@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -84,41 +85,74 @@ public class TouristSpotChoiceDialog extends JDialog {
         panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
-        // 선택지 설명
-        JPanel descPanel = new JPanel();
-        descPanel.setLayout(new BoxLayout(descPanel, BoxLayout.Y_AXIS));
-        descPanel.setOpaque(false);
+        // 선택지 설명 (카드 스타일)
+        JPanel lockCard = createChoiceCard(
+            "lock.png",
+            "잠금 모드",
+            "다음 내 턴까지 다른 플레이어가",
+            "이 관광지를 인수할 수 없습니다",
+            BUTTON_LOCK
+        );
 
-        addDescriptionLine(descPanel, "🔒 잠금", "다음 내 턴까지 인수 불가");
-        addDescriptionLine(descPanel, "🎲 주사위 한 번 더", "추가 주사위 기회 획득");
+        JPanel diceCard = createChoiceCard(
+            "dice.png",
+            "추가 주사위",
+            "즉시 주사위를 한 번 더 굴려",
+            "추가로 이동할 수 있습니다",
+            BUTTON_EXTRA
+        );
 
-        panel.add(descPanel);
+        panel.add(lockCard);
+        panel.add(Box.createRigidArea(new Dimension(0, 15)));
+        panel.add(diceCard);
 
         return panel;
     }
 
     /**
-     * 설명 라인 추가
+     * 선택지 카드 생성
      */
-    private void addDescriptionLine(JPanel parent, String title, String desc) {
-        JPanel linePanel = new JPanel();
-        linePanel.setLayout(new BoxLayout(linePanel, BoxLayout.Y_AXIS));
-        linePanel.setOpaque(false);
-        linePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+    private JPanel createChoiceCard(String iconFile, String title, String desc1, String desc2, Color accentColor) {
+        JPanel card = new JPanel();
+        card.setLayout(new BorderLayout(15, 0));
+        card.setBackground(UIConstants.PANEL_DARK);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(accentColor.darker(), 2),
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+        card.setMaximumSize(new Dimension(400, 80));
+
+        // 아이콘
+        ImageIcon icon = ImageLoader.loadIcon(iconFile, 40, 40);
+        JLabel iconLabel = new JLabel(icon);
+        iconLabel.setPreferredSize(new Dimension(40, 40));
+
+        // 텍스트 영역
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setOpaque(false);
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(UIConstants.FONT_SMALL_BOLD);
-        titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
+        titleLabel.setFont(UIConstants.FONT_BODY_BOLD);
+        titleLabel.setForeground(accentColor.brighter());
 
-        JLabel descLabel = new JLabel("  → " + desc);
-        descLabel.setFont(UIConstants.FONT_CAPTION);
-        descLabel.setForeground(UIConstants.TEXT_SECONDARY);
+        JLabel desc1Label = new JLabel(desc1);
+        desc1Label.setFont(UIConstants.FONT_CAPTION);
+        desc1Label.setForeground(UIConstants.TEXT_SECONDARY);
 
-        linePanel.add(titleLabel);
-        linePanel.add(descLabel);
-        linePanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        JLabel desc2Label = new JLabel(desc2);
+        desc2Label.setFont(UIConstants.FONT_CAPTION);
+        desc2Label.setForeground(UIConstants.TEXT_SECONDARY);
 
-        parent.add(linePanel);
+        textPanel.add(titleLabel);
+        textPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+        textPanel.add(desc1Label);
+        textPanel.add(desc2Label);
+
+        card.add(iconLabel, BorderLayout.WEST);
+        card.add(textPanel, BorderLayout.CENTER);
+
+        return card;
     }
 
     /**
@@ -130,17 +164,17 @@ public class TouristSpotChoiceDialog extends JDialog {
         panel.setBackground(UIConstants.BACKGROUND_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
 
-        // 잠금, 주사위 한 번 더
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        // 잠금, 주사위 한 번 더 (아이콘 버튼)
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         row.setOpaque(false);
 
-        JButton lockButton = createButton("🔒 잠금", BUTTON_LOCK, 120);
+        JButton lockButton = createIconButton("lock.png", "잠금", BUTTON_LOCK);
         lockButton.addActionListener(e -> {
             selectedChoice = Choice.LOCK;
             dispose();
         });
 
-        JButton extraButton = createButton("🎲 주사위 한 번 더", BUTTON_EXTRA, 120);
+        JButton extraButton = createIconButton("dice.png", "주사위", BUTTON_EXTRA);
         extraButton.addActionListener(e -> {
             selectedChoice = Choice.EXTRA_ROLL;
             dispose();
@@ -154,12 +188,19 @@ public class TouristSpotChoiceDialog extends JDialog {
     }
 
     /**
-     * 버튼 생성
+     * 아이콘 버튼 생성
      */
-    private JButton createButton(String text, Color bgColor, int width) {
-        JButton button = new JButton(text);
-        button.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 13));
-        button.setPreferredSize(new Dimension(width, 40));
+    private JButton createIconButton(String iconFile, String tooltip, Color bgColor) {
+        JButton button = new JButton();
+
+        // 아이콘 설정
+        ImageIcon icon = ImageLoader.loadIcon(iconFile, 48, 48);
+        if (icon != null) {
+            button.setIcon(icon);
+        }
+
+        button.setToolTipText(tooltip);
+        button.setPreferredSize(new Dimension(100, 80));
         button.setBackground(bgColor);
         button.setForeground(UIConstants.TEXT_PRIMARY);
         button.setFocusPainted(false);

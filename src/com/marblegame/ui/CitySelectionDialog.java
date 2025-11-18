@@ -40,7 +40,7 @@ public class CitySelectionDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("📍 도시 선택");
+        JLabel titleLabel = new JLabel("> 도시 선택");
         titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(UIConstants.STATUS_INFO);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

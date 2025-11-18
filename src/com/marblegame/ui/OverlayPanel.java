@@ -2,12 +2,14 @@ package com.marblegame.ui;
 
 import com.marblegame.model.DiceGauge;
 import com.marblegame.model.Player;
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -142,12 +144,12 @@ public class OverlayPanel extends JPanel {
         add(actionButtonPanel);
 
         // 6. 버튼 생성 (초기에는 숨김)
-        rollDiceButton = createStyledButton("🎲 주사위 굴리기", BUTTON_ROLL);
-        purchaseButton = createStyledButton("🏠 매입하기", BUTTON_PURCHASE);
-        upgradeButton = createStyledButton("⭐ 업그레이드", BUTTON_UPGRADE);
-        takeoverButton = createStyledButton("💰 인수하기", BUTTON_TAKEOVER);
-        skipButton = createStyledButton("⏭ 패스", BUTTON_SKIP);
-        escapeButton = createStyledButton("🔓 탈출하기", BUTTON_ESCAPE);
+        rollDiceButton = createStyledButton("주사위 굴리기", BUTTON_ROLL);
+        purchaseButton = createStyledButton("매입하기", BUTTON_PURCHASE);
+        upgradeButton = createStyledButton("업그레이드", BUTTON_UPGRADE);
+        takeoverButton = createStyledButton("인수하기", BUTTON_TAKEOVER);
+        skipButton = createStyledButton("패스", BUTTON_SKIP);
+        escapeButton = createStyledButton("탈출하기", BUTTON_ESCAPE);
 
         // 모든 버튼을 패널에 추가 (초기 상태는 숨김)
         rollDiceButton.setVisible(false);
@@ -932,8 +934,16 @@ public class OverlayPanel extends JPanel {
             int infoY = (int)(38 * scaleFactor);
             int lineHeight = (int)(16 * scaleFactor);
 
-            // 항상 표시: 보유금액
-            g2.drawString(String.format("💰 %,d원", player.cash), nameX, infoY);
+            // 항상 표시: 보유금액 (아이콘 포함)
+            BufferedImage moneyIcon = ImageLoader.getTileImage("MONEY");
+            int iconX = nameX;
+            if (moneyIcon != null) {
+                int iconSize = (int)(14 * scaleFactor);
+                BufferedImage scaledMoney = ImageLoader.scaleImage(moneyIcon, iconSize, iconSize);
+                g2.drawImage(scaledMoney, iconX, infoY - iconSize + 2, null);
+                iconX += iconSize + (int)(3 * scaleFactor);
+            }
+            g2.drawString(String.format("%,d원", player.cash), iconX, infoY);
 
             // 자산 변동 표시 (보유금액 옆)
             if (moneyChange != 0 && System.currentTimeMillis() - moneyChangeStartTime < MONEY_CHANGE_DURATION) {
@@ -962,9 +972,10 @@ public class OverlayPanel extends JPanel {
 
                 // 보유금액 텍스트 오른쪽에 표시
                 FontMetrics fm = g2.getFontMetrics();
-                String cashText = String.format("💰 %,d원", player.cash);
+                String cashText = String.format("%,d원", player.cash);
+                int iconOffset = moneyIcon != null ? (int)(17 * scaleFactor) : 0;
                 int cashTextWidth = fm.stringWidth(cashText);
-                g2.drawString(changeText, nameX + cashTextWidth + (int)(5 * scaleFactor), infoY);
+                g2.drawString(changeText, nameX + iconOffset + cashTextWidth + (int)(5 * scaleFactor), infoY);
 
                 g2.setFont(infoFont); // 원래 폰트로 복구
                 g2.setColor(TEXT_PRIMARY); // 원래 색상으로 복구
@@ -974,7 +985,7 @@ public class OverlayPanel extends JPanel {
 
             // 조건부 표시: 무인도에 있을 때만 남은 턴 수 표시
             if (player.isInJail()) {
-                g2.drawString(String.format("🏝 %d턴", player.jailTurns), nameX, infoY);
+                g2.drawString(String.format("~ %d턴", player.jailTurns), nameX, infoY);
             }
 
             g2.dispose();

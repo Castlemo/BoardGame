@@ -59,7 +59,7 @@ public class CreateRoomDialog extends JDialog {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🏠 방 만들기");
+        JLabel titleLabel = new JLabel("> 방 만들기");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

@@ -3,7 +3,7 @@ package com.marblegame.model;
 /**
  * 도시(매입 가능한 땅) 클래스
  * Tile을 상속받아 가격, 통행료, 소유자, 레벨 관리
- * 레벨: 0=미소유, 1=집🏠, 2=아파트🏢, 3=건물🏬, 4=랜드마크🏛️(금테두리)
+ * 레벨: 0=미소유, 1=집(L1), 2=아파트(L2), 3=건물(L3), 4=랜드마크(L4)(금테두리)
  */
 public class City extends Tile {
     public final int price;
@@ -72,14 +72,14 @@ public class City extends Tile {
     }
 
     /**
-     * 건물 이모지 반환
+     * 건물 레벨 아이콘 반환
      */
     public String getBuildingEmoji() {
         switch (level) {
-            case 1: return "🏠"; // 집
-            case 2: return "🏢"; // 아파트
-            case 3: return "🏬"; // 건물
-            case 4: return "🏛️"; // 랜드마크
+            case 1: return "L1"; // 집
+            case 2: return "L2"; // 아파트
+            case 3: return "L3"; // 건물
+            case 4: return "L4"; // 랜드마크
             default: return "";
         }
     }

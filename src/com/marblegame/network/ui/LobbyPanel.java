@@ -220,7 +220,7 @@ public class LobbyPanel extends JFrame {
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
 
         // 플레이어 아이콘
-        JLabel iconLabel = new JLabel(isHostPlayer ? "👑" : "👤");
+        JLabel iconLabel = new JLabel(isHostPlayer ? "★" : "○");
         iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
 
         // 플레이어 이름

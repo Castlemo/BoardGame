@@ -56,7 +56,7 @@ public class JoinRoomDialog extends JDialog {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🚪 방 참가하기");
+        JLabel titleLabel = new JLabel("> 방 참가하기");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -107,7 +107,7 @@ public class JoinRoomDialog extends JDialog {
 
         // 안내 문구
         panel.add(Box.createVerticalStrut(15));
-        JLabel hintLabel = new JLabel("💡 호스트에게 IP 주소와 포트 번호를 확인하세요");
+        JLabel hintLabel = new JLabel("* 호스트에게 IP 주소와 포트 번호를 확인하세요");
         hintLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
         hintLabel.setForeground(TEXT_SECONDARY);
         hintLabel.setAlignmentX(Component.LEFT_ALIGNMENT);

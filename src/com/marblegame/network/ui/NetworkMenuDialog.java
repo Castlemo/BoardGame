@@ -52,7 +52,7 @@ public class NetworkMenuDialog extends JDialog {
         panel.setBackground(PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(25, 20, 20, 20));
 
-        JLabel titleLabel = new JLabel("🌐 네트워크 멀티플레이");
+        JLabel titleLabel = new JLabel("◎ 네트워크 멀티플레이");
         titleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 24));
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -77,7 +77,7 @@ public class NetworkMenuDialog extends JDialog {
 
         // 방 만들기 버튼
         JButton createButton = createMenuButton(
-            "🏠 방 만들기",
+            "> 방 만들기",
             "새로운 게임 방을 만들고 호스트가 됩니다",
             BUTTON_CREATE,
             1
@@ -85,7 +85,7 @@ public class NetworkMenuDialog extends JDialog {
 
         // 방 참가하기 버튼
         JButton joinButton = createMenuButton(
-            "🚪 방 참가하기",
+            "> 방 참가하기",
             "호스트의 IP 주소로 게임 방에 참가합니다",
             BUTTON_JOIN,
             2

@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -86,24 +87,23 @@ public class TollPaymentDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         // 소유자
-        JPanel ownerPanel = createInfoRow("🏠 소유자", ownerName);
+        JPanel ownerPanel = createInfoRow("▶ 소유자", ownerName);
         panel.add(ownerPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // 레벨
-        String levelText = "레벨 " + level + " " + getLevelEmoji(level);
-        JPanel levelPanel = createInfoRow("📊 레벨", levelText);
+        // 레벨 (아이콘 포함)
+        JPanel levelPanel = createInfoRowWithIcon("▶ 레벨", "레벨 " + level, level);
         panel.add(levelPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 통행료
-        JPanel tollPanel = createInfoRow("💸 통행료", String.format("%,d원", toll));
+        JPanel tollPanel = createInfoRowWithMoneyIcon("통행료", String.format("%,d원", toll));
         panel.add(tollPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 올림픽 효과
         if (hasOlympicBoost) {
-            JPanel olympicPanel = createInfoRow("⚡ 올림픽 효과", "통행료 2배!");
+            JPanel olympicPanel = createInfoRow("★ 올림픽 효과", "통행료 2배!");
             panel.add(olympicPanel);
             panel.add(Box.createRigidArea(new Dimension(0, 10)));
         }
@@ -116,20 +116,20 @@ public class TollPaymentDialog extends JDialog {
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 보유 자금
-        JPanel cashPanel = createInfoRow("💵 보유 자금", String.format("%,d원", playerCash));
+        JPanel cashPanel = createInfoRowWithMoneyIcon("보유 자금", String.format("%,d원", playerCash));
         panel.add(cashPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 지불 후 잔액
         int remainingCash = playerCash - toll;
-        JPanel remainingPanel = createInfoRow("💳 지불 후 잔액",
+        JPanel remainingPanel = createInfoRowWithMoneyIcon("지불 후 잔액",
             String.format("%,d원", remainingCash), remainingCash < 0);
         panel.add(remainingPanel);
 
         // 파산 경고
         if (remainingCash < 0) {
             panel.add(Box.createRigidArea(new Dimension(0, 15)));
-            JLabel warningLabel = new JLabel("⚠️ 잔액이 부족합니다! 파산 처리됩니다.");
+            JLabel warningLabel = new JLabel("⚠ 잔액이 부족합니다! 파산 처리됩니다.");
             warningLabel.setFont(UIConstants.FONT_SMALL_BOLD);
             warningLabel.setForeground(UIConstants.STATUS_ERROR);
             warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -185,15 +185,90 @@ public class TollPaymentDialog extends JDialog {
     }
 
     /**
-     * 레벨 이모지 반환
+     * 아이콘 포함 정보 행 생성
      */
-    private String getLevelEmoji(int level) {
-        switch (level) {
-            case 1: return "🏠";
-            case 2: return "🏢";
-            case 3: return "🏬";
-            case 4: return "🏛️";
-            default: return "";
+    private JPanel createInfoRowWithIcon(String label, String value, int buildingLevel) {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(400, 30));
+
+        JLabel labelComp = new JLabel(label);
+        labelComp.setFont(UIConstants.FONT_BODY);
+        labelComp.setForeground(UIConstants.TEXT_SECONDARY);
+
+        // 값과 아이콘을 담을 패널
+        JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        valuePanel.setOpaque(false);
+
+        JLabel valueComp = new JLabel(value);
+        valueComp.setFont(UIConstants.FONT_BODY_BOLD);
+        valueComp.setForeground(UIConstants.TEXT_PRIMARY);
+
+        // 건물 아이콘 추가
+        ImageIcon icon = ImageLoader.loadIcon(getBuildingIconName(buildingLevel), 20, 20);
+        if (icon != null) {
+            JLabel iconLabel = new JLabel(icon);
+            valuePanel.add(valueComp);
+            valuePanel.add(iconLabel);
+        } else {
+            valuePanel.add(valueComp);
         }
+
+        panel.add(labelComp, BorderLayout.WEST);
+        panel.add(valuePanel, BorderLayout.EAST);
+
+        return panel;
+    }
+
+    /**
+     * 건물 아이콘 파일명 반환
+     */
+    private String getBuildingIconName(int level) {
+        switch (level) {
+            case 1: return "house.png";
+            case 2: return "building.png";
+            case 3: return "tower.png";
+            case 4: return "landmark.png";
+            default: return null;
+        }
+    }
+
+    /**
+     * 돈 아이콘 포함 정보 행 생성
+     */
+    private JPanel createInfoRowWithMoneyIcon(String label, String value) {
+        return createInfoRowWithMoneyIcon(label, value, false);
+    }
+
+    private JPanel createInfoRowWithMoneyIcon(String label, String value, boolean isWarning) {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(400, 30));
+
+        // 라벨과 돈 아이콘을 담을 패널
+        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        labelPanel.setOpaque(false);
+
+        // 돈 아이콘 추가
+        ImageIcon moneyIcon = ImageLoader.loadIcon("money.png", 16, 16);
+        if (moneyIcon != null) {
+            JLabel iconLabel = new JLabel(moneyIcon);
+            labelPanel.add(iconLabel);
+        }
+
+        JLabel labelComp = new JLabel(label);
+        labelComp.setFont(UIConstants.FONT_BODY);
+        labelComp.setForeground(UIConstants.TEXT_SECONDARY);
+        labelPanel.add(labelComp);
+
+        JLabel valueComp = new JLabel(value);
+        valueComp.setFont(UIConstants.FONT_BODY_BOLD);
+        valueComp.setForeground(isWarning ? UIConstants.STATUS_ERROR : UIConstants.TEXT_PRIMARY);
+        valueComp.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        panel.add(labelPanel, BorderLayout.WEST);
+        panel.add(valueComp, BorderLayout.EAST);
+
+        return panel;
     }
 }

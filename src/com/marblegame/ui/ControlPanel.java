@@ -35,7 +35,7 @@ public class ControlPanel extends JPanel {
         ));
 
         // 제목
-        logTitleLabel = new JLabel("📋 게임 로그");
+        logTitleLabel = new JLabel("> 게임 로그");
         logTitleLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
         logTitleLabel.setForeground(new Color(236, 240, 241));
         logTitleLabel.setBorder(new EmptyBorder(0, 0, 8, 0));

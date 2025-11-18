@@ -330,7 +330,7 @@ public class Game {
         System.out.println("\n\n=== 게임 종료 ===");
         for (Player player : players) {
             if (!player.bankrupt) {
-                System.out.println("🎉 승자: " + player.name + " 🎉");
+                System.out.println("* 승자: " + player.name + " *");
                 System.out.println("최종 자산: " + String.format("%,d", player.cash) + "원");
                 return;
             }

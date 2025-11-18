@@ -40,7 +40,7 @@ public class CityUpgradeNoticeDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("⬆️ 도시 업그레이드");
+        JLabel titleLabel = new JLabel("^ 도시 업그레이드");
         titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(UIConstants.BUTTON_UPGRADE); // 주황색
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

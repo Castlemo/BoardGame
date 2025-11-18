@@ -77,7 +77,7 @@ public class ActionPanel extends JPanel {
         container.setBorder(new EmptyBorder(12, 12, 12, 12));
 
         // 제목 - 더 큰 폰트와 아이콘
-        titleLabel = new JLabel("🎲 주사위 컨트롤");
+        titleLabel = new JLabel("* 주사위 컨트롤");
         titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
         titleLabel.setForeground(new Color(236, 240, 241));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

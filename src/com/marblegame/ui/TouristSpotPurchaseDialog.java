@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -79,18 +80,18 @@ public class TouristSpotPurchaseDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         // 매입 가격
-        JPanel pricePanel = createInfoRow("💰 매입 가격", String.format("%,d원", price));
+        JPanel pricePanel = createInfoRowWithMoneyIcon("매입 가격", String.format("%,d원", price));
         panel.add(pricePanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 보유 자금
-        JPanel cashPanel = createInfoRow("💵 보유 자금", String.format("%,d원", playerCash));
+        JPanel cashPanel = createInfoRowWithMoneyIcon("보유 자금", String.format("%,d원", playerCash));
         panel.add(cashPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 매입 후 잔액
         int remainingCash = playerCash - price;
-        JPanel remainingPanel = createInfoRow("💳 매입 후 잔액", String.format("%,d원", remainingCash));
+        JPanel remainingPanel = createInfoRowWithMoneyIcon("매입 후 잔액", String.format("%,d원", remainingCash));
         panel.add(remainingPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 15)));
 
@@ -122,6 +123,42 @@ public class TouristSpotPurchaseDialog extends JDialog {
         valueComp.setHorizontalAlignment(SwingConstants.RIGHT);
 
         panel.add(labelComp, BorderLayout.WEST);
+        panel.add(valueComp, BorderLayout.EAST);
+
+        return panel;
+    }
+
+    /**
+     * 돈 아이콘이 포함된 정보 행 생성
+     */
+    private JPanel createInfoRowWithMoneyIcon(String label, String value) {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(350, 30));
+
+        // 돈 아이콘 + 라벨 패널
+        JPanel labelPanel = new JPanel();
+        labelPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        labelPanel.setOpaque(false);
+
+        // 돈 아이콘 (16x16)
+        ImageIcon moneyIcon = ImageLoader.loadIcon("money.png", 16, 16);
+        JLabel iconLabel = new JLabel(moneyIcon);
+        labelPanel.add(iconLabel);
+
+        // 라벨 텍스트
+        JLabel labelComp = new JLabel(label);
+        labelComp.setFont(UIConstants.FONT_BODY);
+        labelComp.setForeground(UIConstants.TEXT_SECONDARY);
+        labelPanel.add(labelComp);
+
+        // 값 라벨
+        JLabel valueComp = new JLabel(value);
+        valueComp.setFont(UIConstants.FONT_BODY_BOLD);
+        valueComp.setForeground(UIConstants.TEXT_PRIMARY);
+        valueComp.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        panel.add(labelPanel, BorderLayout.WEST);
         panel.add(valueComp, BorderLayout.EAST);
 
         return panel;

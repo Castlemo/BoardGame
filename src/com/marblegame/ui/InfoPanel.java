@@ -1,9 +1,11 @@
 package com.marblegame.ui;
 
 import com.marblegame.model.Player;
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -150,7 +152,15 @@ public class InfoPanel extends JPanel {
             int infoY = 60;
             int lineHeight = 22;
 
-            g2.drawString(String.format("💰 %,d원", player.cash), 20, infoY);
+            // 돈 아이콘과 금액 표시
+            BufferedImage moneyIcon = ImageLoader.getTileImage("MONEY");
+            int iconX = 20;
+            if (moneyIcon != null) {
+                BufferedImage scaledMoney = ImageLoader.scaleImage(moneyIcon, 18, 18);
+                g2.drawImage(scaledMoney, iconX, infoY - 14, null);
+                iconX += 22;
+            }
+            g2.drawString(String.format("%,d원", player.cash), iconX, infoY);
 
             // 자산 변동 표시 (보유금액 바로 아래)
             if (moneyChange != 0 && System.currentTimeMillis() - moneyChangeStartTime < MONEY_CHANGE_DURATION) {
@@ -182,14 +192,14 @@ public class InfoPanel extends JPanel {
 
             infoY += lineHeight;
 
-            g2.drawString(String.format("📍 %d번 칸", player.pos), 20, infoY);
+            g2.drawString(String.format("> %d번 칸", player.pos), 20, infoY);
             infoY += lineHeight;
 
-            String status = player.bankrupt ? "💀 파산" : "✅ 플레이 중";
+            String status = player.bankrupt ? "X 파산" : "O 플레이 중";
             g2.drawString(status, 20, infoY);
             infoY += lineHeight;
 
-            String jailInfo = player.jailTurns > 0 ? String.format("🏝 %d턴 남음", player.jailTurns) : "🏝 없음";
+            String jailInfo = player.jailTurns > 0 ? String.format("~ %d턴 남음", player.jailTurns) : "~ 없음";
             g2.setColor(UIConstants.TEXT_SECONDARY);
             g2.drawString(jailInfo, 20, infoY);
 

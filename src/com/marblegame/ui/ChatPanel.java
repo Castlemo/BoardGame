@@ -53,7 +53,7 @@ public class ChatPanel extends JPanel {
 
     private void initComponents() {
         // 헤더
-        JLabel headerLabel = new JLabel("💬 채팅", SwingConstants.CENTER);
+        JLabel headerLabel = new JLabel("> 채팅", SwingConstants.CENTER);
         headerLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 14));
         headerLabel.setForeground(TEXT_PRIMARY);
         headerLabel.setBorder(new EmptyBorder(0, 0, 5, 0));
@@ -101,7 +101,7 @@ public class ChatPanel extends JPanel {
         JPanel panel = new JPanel(new GridLayout(1, 5, 3, 0));
         panel.setOpaque(false);
 
-        String[] emojis = {"👍", "😊", "😂", "👏", "🎉"};
+        String[] emojis = {"[OK]", ":)", ":D", "[!]", "[*]"};
 
         for (String emoji : emojis) {
             JButton emojiButton = createEmojiButton(emoji);
@@ -159,7 +159,7 @@ public class ChatPanel extends JPanel {
     }
 
     private JButton createChatButton() {
-        JButton button = new JButton("💬 채팅하기");
+        JButton button = new JButton("> 채팅하기");
         button.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 12));
         button.setBackground(BUTTON_COLOR);
         button.setForeground(TEXT_PRIMARY);
@@ -229,7 +229,7 @@ public class ChatPanel extends JPanel {
         mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
         // 제목
-        JLabel titleLabel = new JLabel("💬 메시지 입력");
+        JLabel titleLabel = new JLabel("> 메시지 입력");
         titleLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 16));
         titleLabel.setForeground(TEXT_PRIMARY);
         mainPanel.add(titleLabel, BorderLayout.NORTH);

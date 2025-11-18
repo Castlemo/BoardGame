@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -43,7 +44,7 @@ public class TakeoverConfirmDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🏢 도시 인수");
+        JLabel titleLabel = new JLabel("▶ 도시 인수");
         titleLabel.setFont(UIConstants.FONT_SUBTITLE);
         titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -70,9 +71,9 @@ public class TakeoverConfirmDialog extends JDialog {
         panel.add(createInfoRow("현재 소유자:", currentOwner));
         panel.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        // 건물 레벨
-        String levelEmoji = getLevelEmoji(level);
-        panel.add(createInfoRow("건물 레벨:", levelEmoji + " 레벨 " + level));
+        // 건물 레벨 (아이콘 포함)
+        JPanel levelPanel = createInfoRowWithIcon("건물 레벨:", "레벨 " + level, level);
+        panel.add(levelPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 8)));
 
         // 인수 비용
@@ -96,7 +97,7 @@ public class TakeoverConfirmDialog extends JDialog {
 
         // 잔액이 음수면 경고 표시
         if (remainingBalance < 0) {
-            JLabel warningLabel = new JLabel("⚠ 잔액 부족!");
+            JLabel warningLabel = new JLabel("! 잔액 부족!");
             warningLabel.setFont(UIConstants.FONT_SMALL_BOLD);
             warningLabel.setForeground(UIConstants.STATUS_ERROR); // 빨간색
             warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -155,13 +156,52 @@ public class TakeoverConfirmDialog extends JDialog {
         return panel;
     }
 
-    private String getLevelEmoji(int level) {
+    /**
+     * 아이콘 포함 정보 행 생성
+     */
+    private JPanel createInfoRowWithIcon(String label, String value, int buildingLevel) {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(400, 30));
+
+        JLabel labelComp = new JLabel(label);
+        labelComp.setFont(new Font(UIConstants.FONT_NAME, Font.PLAIN, 13));
+        labelComp.setForeground(UIConstants.TEXT_SECONDARY);
+
+        // 값과 아이콘을 담을 패널
+        JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        valuePanel.setOpaque(false);
+
+        JLabel valueComp = new JLabel(value);
+        valueComp.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 13));
+        valueComp.setForeground(UIConstants.TEXT_PRIMARY);
+
+        // 건물 아이콘 추가
+        ImageIcon icon = ImageLoader.loadIcon(getBuildingIconName(buildingLevel), 20, 20);
+        if (icon != null) {
+            JLabel iconLabel = new JLabel(icon);
+            valuePanel.add(valueComp);
+            valuePanel.add(iconLabel);
+        } else {
+            valuePanel.add(valueComp);
+        }
+
+        panel.add(labelComp, BorderLayout.WEST);
+        panel.add(valuePanel, BorderLayout.EAST);
+
+        return panel;
+    }
+
+    /**
+     * 건물 아이콘 파일명 반환
+     */
+    private String getBuildingIconName(int level) {
         switch (level) {
-            case 1: return "🏠";
-            case 2: return "🏢";
-            case 3: return "🏬";
-            case 4: return "🏛️";
-            default: return "";
+            case 1: return "house.png";
+            case 2: return "building.png";
+            case 3: return "tower.png";
+            case 4: return "landmark.png";
+            default: return null;
         }
     }
 

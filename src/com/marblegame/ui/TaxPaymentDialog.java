@@ -1,5 +1,6 @@
 package com.marblegame.ui;
 
+import com.marblegame.util.ImageLoader;
 import javax.swing.*;
 import java.awt.*;
 
@@ -49,7 +50,7 @@ public class TaxPaymentDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
         // 제목
-        JLabel titleLabel = new JLabel("🏛️ 국세청");
+        JLabel titleLabel = new JLabel("▶ 국세청");
         titleLabel.setFont(UIConstants.FONT_SUBTITLE);
         titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -77,17 +78,17 @@ public class TaxPaymentDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         // 보유 자금
-        JPanel cashPanel = createInfoRow("💵 보유 자금", String.format("%,d원", playerCash));
+        JPanel cashPanel = createInfoRowWithMoneyIcon("보유 자금", String.format("%,d원", playerCash));
         panel.add(cashPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 세율
-        JPanel ratePanel = createInfoRow("📊 세율", "10%");
+        JPanel ratePanel = createInfoRow("▶ 세율", "10%");
         panel.add(ratePanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 납부 세금
-        JPanel taxPanel = createInfoRow("💸 납부 세금", String.format("%,d원", taxAmount));
+        JPanel taxPanel = createInfoRowWithMoneyIcon("납부 세금", String.format("%,d원", taxAmount));
         panel.add(taxPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -100,14 +101,14 @@ public class TaxPaymentDialog extends JDialog {
 
         // 납부 후 잔액
         int remainingCash = playerCash - taxAmount;
-        JPanel remainingPanel = createInfoRow("💳 납부 후 잔액",
+        JPanel remainingPanel = createInfoRowWithMoneyIcon("납부 후 잔액",
             String.format("%,d원", remainingCash), remainingCash < 0);
         panel.add(remainingPanel);
 
         // 파산 경고
         if (remainingCash < 0) {
             panel.add(Box.createRigidArea(new Dimension(0, 15)));
-            JLabel warningLabel = new JLabel("⚠️ 잔액이 부족합니다! 파산 처리됩니다.");
+            JLabel warningLabel = new JLabel("⚠ 잔액이 부족합니다! 파산 처리됩니다.");
             warningLabel.setFont(UIConstants.FONT_SMALL_BOLD);
             warningLabel.setForeground(UIConstants.STATUS_ERROR);
             warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -139,6 +140,45 @@ public class TaxPaymentDialog extends JDialog {
         valueComp.setHorizontalAlignment(SwingConstants.RIGHT);
 
         panel.add(labelComp, BorderLayout.WEST);
+        panel.add(valueComp, BorderLayout.EAST);
+
+        return panel;
+    }
+
+    /**
+     * 돈 아이콘 포함 정보 행 생성
+     */
+    private JPanel createInfoRowWithMoneyIcon(String label, String value) {
+        return createInfoRowWithMoneyIcon(label, value, false);
+    }
+
+    private JPanel createInfoRowWithMoneyIcon(String label, String value, boolean isWarning) {
+        JPanel panel = new JPanel(new BorderLayout(10, 0));
+        panel.setOpaque(false);
+        panel.setMaximumSize(new Dimension(350, 30));
+
+        // 레이블과 아이콘을 담을 패널
+        JPanel labelPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        labelPanel.setOpaque(false);
+
+        // 돈 아이콘 추가
+        ImageIcon moneyIcon = ImageLoader.loadIcon("money.png", 16, 16);
+        if (moneyIcon != null) {
+            JLabel iconLabel = new JLabel(moneyIcon);
+            labelPanel.add(iconLabel);
+        }
+
+        JLabel labelComp = new JLabel(label);
+        labelComp.setFont(UIConstants.FONT_BODY);
+        labelComp.setForeground(UIConstants.TEXT_SECONDARY);
+        labelPanel.add(labelComp);
+
+        JLabel valueComp = new JLabel(value);
+        valueComp.setFont(UIConstants.FONT_BODY_BOLD);
+        valueComp.setForeground(isWarning ? UIConstants.STATUS_ERROR : UIConstants.TEXT_PRIMARY);
+        valueComp.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        panel.add(labelPanel, BorderLayout.WEST);
         panel.add(valueComp, BorderLayout.EAST);
 
         return panel;

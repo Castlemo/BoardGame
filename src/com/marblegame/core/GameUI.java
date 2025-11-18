@@ -257,7 +257,7 @@ public class GameUI {
                 log("일반 주사위 모드");
             } else {
                 diceMode = DiceMode.ODD;
-                log("🔢 홀수 주사위 모드 선택 (1, 3, 5만 나옴)");
+                log("# 홀수 주사위 모드 선택 (1, 3, 5만 나옴)");
             }
             updateOddEvenButtons();
         });
@@ -269,7 +269,7 @@ public class GameUI {
                 log("일반 주사위 모드");
             } else {
                 diceMode = DiceMode.EVEN;
-                log("🔢 짝수 주사위 모드 선택 (2, 4, 6만 나옴)");
+                log("# 짝수 주사위 모드 선택 (2, 4, 6만 나옴)");
             }
             updateOddEvenButtons();
         });
@@ -381,7 +381,7 @@ public class GameUI {
                     // 게이지 시작
                     frame.getActionPanel().getDiceGauge().start();
                     frame.getActionPanel().startGaugeAnimation();
-                    log("🎯 게이지 타이밍을 잡으세요!");
+                    log("> 게이지 타이밍을 잡으세요!");
                 }
             }
 
@@ -429,12 +429,12 @@ public class GameUI {
             setActionButtons(false, false, false, false, true, true);
             frame.getBoardPanel().setTileClickEnabled(false);
             log("무인도에 갇혀있습니다. (남은 턴: " + player.jailTurns + ")");
-            log("💰 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
+            log("$ 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
         } else if (player.hasRailroadTicket) {
             state = GameState.WAITING_FOR_RAILROAD_SELECTION;
             setActionButtons(false, false, false, false, false, false);
             frame.getBoardPanel().setTileClickEnabled(true);
-            log("🚆 전국철도/세계여행 티켓이 있습니다!");
+            log("> 전국철도/세계여행 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
 
             // 도시 선택 안내 다이얼로그 표시
@@ -468,7 +468,7 @@ public class GameUI {
         DiceMode activeMode = overrideMode != null ? overrideMode : diceMode;
         String sectionName = getSectionName(section);
         if (logSection) {
-            log("🎯 구간: " + sectionName);
+            log("> 구간: " + sectionName);
         }
 
         int originalResult = result;
@@ -546,7 +546,7 @@ public class GameUI {
 
         frame.getActionPanel().getDiceAnimationPanel().startAnimation(finalD1, finalD2, () -> {
             if (finalIsDouble) {
-                log("🎲 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
+                log("* 주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult + " - 더블!");
             } else {
                 log("주사위: [" + finalD1 + ", " + finalD2 + "] = " + finalResult);
             }
@@ -630,9 +630,9 @@ public class GameUI {
         }
 
         if (originalSum > 0 && newSum > 0) {
-            log("🎲 더블 억제 발동! (" + probabilityText + ") - 합계 " + originalSum + " → " + newSum);
+            log("* 더블 억제 발동! (" + probabilityText + ") - 합계 " + originalSum + " → " + newSum);
         } else {
-            log("🎲 더블 억제 발동! (" + probabilityText + ")");
+            log("* 더블 억제 발동! (" + probabilityText + ")");
         }
     }
 
@@ -679,7 +679,7 @@ public class GameUI {
 
         switch (currentTile.type) {
             case START:
-                clearDoubleState("🎲 더블이었지만 START 칸에서 무효가 되었습니다.");
+                clearDoubleState("* 더블이었지만 START 칸에서 무효가 되었습니다.");
                 handleStartTile();
                 break;
 
@@ -700,7 +700,7 @@ public class GameUI {
                 }
 
                 log("무인도에 도착했습니다!");
-                clearDoubleState("🎲 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
+                clearDoubleState("* 더블이었지만 무인도에 갇혀 무효가 되었습니다.");
                 log("무인도에 " + player.jailTurns + "턴 동안 갇힙니다.");
                 notifyIslandEvent(player.name, player.jailTurns);
                 endTurn();
@@ -741,7 +741,7 @@ public class GameUI {
                 break;
 
             case OLYMPIC:
-                clearDoubleState("🎲 더블이었지만 올림픽 칸에서 무효가 되었습니다.");
+                clearDoubleState("* 더블이었지만 올림픽 칸에서 무효가 되었습니다.");
                 handleOlympicTile();
                 break;
 
@@ -753,7 +753,7 @@ public class GameUI {
                 }
 
                 log("세계여행에 도착했습니다!");
-                clearDoubleState("🎲 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
+                clearDoubleState("* 더블이었지만 세계여행 칸에서 무효가 되었습니다.");
                 log("다음 턴에 원하는 칸을 선택할 수 있습니다!");
                 player.hasRailroadTicket = true; // 전국철도와 동일한 효과
                 notifyWorldTourEvent(player.name);
@@ -786,12 +786,12 @@ public class GameUI {
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
-                    log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                    log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                     // 끌려온 플레이어들에게 통행료 징수
                     handleMagneticTollCollection(city);
                 } else {
-                    log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
+                    log("◆ 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
                 }
 
                 notifyMagneticEvent(city.name, pulledCount);
@@ -818,7 +818,7 @@ public class GameUI {
 
             // 올림픽 효과 표시
             if (city.hasOlympicBoost) {
-                log("⚡ 올림픽 효과로 통행료 2배!");
+                log("★ 올림픽 효과로 통행료 2배!");
             }
 
             // 통행료 지불 확인 다이얼로그 (자신의 턴일 때만)
@@ -836,7 +836,7 @@ public class GameUI {
                 tollDialog.setVisible(true);
             }
 
-            log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+            log("$ 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
 
             // 자산 변동 표시
@@ -857,12 +857,12 @@ public class GameUI {
             } else {
                 // 랜드마크는 인수 불가
                 if (city.isLandmark()) {
-                    log("🏛️ 랜드마크는 인수할 수 없습니다.");
+                    log("L4 랜드마크는 인수할 수 없습니다.");
                     endTurn();
                 } else {
                     // 통행료 지불 후 인수 선택지 제공
                     int takeoverCost = city.getTakeoverPrice();
-                    log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
+                    log("$ 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 땅을 인수하거나 패스하세요.");
                     state = GameState.WAITING_FOR_ACTION;
                     setActionButtons(false, false, false, true, true, false);
@@ -903,10 +903,10 @@ public class GameUI {
             // 매입 처리
             if (purchaseDialog.isConfirmed()) {
                 if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
-                    log("✅ " + touristSpot.name + "을(를) 매입했습니다!");
+                    log("O " + touristSpot.name + "을(를) 매입했습니다!");
                     frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
                 } else {
-                    log("❌ 매입 실패!");
+                    log("X 매입 실패!");
                 }
             } else {
                 log("매입을 취소했습니다.");
@@ -943,7 +943,7 @@ public class GameUI {
 
             // 잠금 여부 체크
             if (touristSpot.isLocked()) {
-                log("🔒 이 관광지는 잠금 상태입니다! (인수 불가)");
+                log("■ 이 관광지는 잠금 상태입니다! (인수 불가)");
             }
 
             // 통행료 지불 확인 다이얼로그 (자신의 턴일 때만, 관광지는 레벨 1로 표시)
@@ -961,7 +961,7 @@ public class GameUI {
                 tollDialog.setVisible(true);
             }
 
-            log("💸 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+            log("$ 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
             ruleEngine.payToll(player, owner, toll);
 
             // 자산 변동 표시
@@ -973,7 +973,7 @@ public class GameUI {
             // 잠금된 관광지는 통행료 지불 후 잠금 해제
             if (touristSpot.isLocked()) {
                 ruleEngine.unlockTouristSpot(touristSpot);
-                log("🔓 관광지 잠금이 해제되었습니다.");
+                log("□ 관광지 잠금이 해제되었습니다.");
 
                 if (player.bankrupt) {
                     announceBankruptcy(currentPlayerIndex);
@@ -987,7 +987,7 @@ public class GameUI {
                 } else {
                     // 통행료 지불 후 인수 선택지 제공
                     int takeoverCost = touristSpot.price;
-                    log("💰 인수 비용: " + String.format("%,d", takeoverCost) + "원");
+                    log("$ 인수 비용: " + String.format("%,d", takeoverCost) + "원");
                     log("이 관광지를 인수하거나 패스하세요.");
                     state = GameState.WAITING_FOR_ACTION;
                     setActionButtons(false, false, false, true, true, false);
@@ -1072,7 +1072,7 @@ public class GameUI {
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
             return true;
         } else if (city.isLandmark()) {
-            log("🏛️ 랜드마크는 인수할 수 없습니다.");
+            log("L4 랜드마크는 인수할 수 없습니다.");
         } else {
             log("자금이 부족하여 인수할 수 없습니다.");
         }
@@ -1103,7 +1103,7 @@ public class GameUI {
             log(seller.name + "이(가) " + String.format("%,d", takeoverCost) + "원을 받았습니다.");
             return true;
         } else if (spot.isLocked()) {
-            log("🔒 잠금된 관광지는 인수할 수 없습니다.");
+            log("■ 잠금된 관광지는 인수할 수 없습니다.");
         } else {
             log("자금이 부족하여 인수할 수 없습니다.");
         }
@@ -1119,13 +1119,13 @@ public class GameUI {
         switch (choice) {
             case LOCK:
                 ruleEngine.lockTouristSpot(touristSpot, currentPlayerIndex);
-                log("🔒 " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
+                log("■ " + touristSpot.name + "을(를) 잠금 설정했습니다! (다음 내 턴까지 인수 불가)");
                 notifyTouristChoiceEvent(touristSpot.name, choice);
                 return true;
 
             case EXTRA_ROLL:
                 player.hasExtraChance = true;
-                log("🎲 추가 주사위 기회를 획득했습니다!");
+                log("* 추가 주사위 기회를 획득했습니다!");
                 notifyTouristChoiceEvent(touristSpot.name, choice);
                 return true;
 
@@ -1239,7 +1239,7 @@ public class GameUI {
             log(city.name + "을(를) 레벨 " + city.level + "(" + levelName + " " + levelEmoji + ")로 업그레이드했습니다!");
 
             if (city.isLandmark()) {
-                log("🏛️ 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
+                log("L4 랜드마크가 건설되었습니다! 다른 플레이어는 이 땅을 인수할 수 없습니다.");
 
                 int landmarkPos = city.id;
                 int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
@@ -1248,10 +1248,10 @@ public class GameUI {
                 magneticDialog.setVisible(true);
 
                 if (pulledCount > 0) {
-                    log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                    log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
                     handleMagneticTollCollection(city);
                 } else {
-                    log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
+                    log("◆ 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
                 }
             }
         } else {
@@ -1488,7 +1488,7 @@ public class GameUI {
             taxDialog.setVisible(true);
         }
 
-        log("💸 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
+        log("$ 보유 금액의 10%를 세금으로 납부합니다: " + String.format("%,d", tax) + "원");
         ruleEngine.payTax(player);
 
         // 자산 변동 표시
@@ -1527,7 +1527,7 @@ public class GameUI {
         }
 
         // 간단한 안내 메시지 다이얼로그 표시
-        log("⬆️ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
+        log("^ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
         // 다크 테마 다이얼로그 표시
         CityUpgradeNoticeDialog upgradeDialog = new CityUpgradeNoticeDialog(frame);
@@ -1536,7 +1536,7 @@ public class GameUI {
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;
         frame.getBoardPanel().setTileClickEnabled(true);
-        log("📍 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
+        log("> 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
     }
 
     private void handleLandmarkConstruction() {
@@ -1572,8 +1572,8 @@ public class GameUI {
         frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -upgradeCost);
 
         // 업그레이드 메시지
-        String[] levelNames = {"", "🏠 집", "🏢 아파트", "🏬 건물", "🏛️ 랜드마크"};
-        log("⬆️ " + selectedLandmarkCity.name + "을(를) 업그레이드했습니다!");
+        String[] levelNames = {"", "L1 집", "L2 아파트", "L3 건물", "L4 랜드마크"};
+        log("^ " + selectedLandmarkCity.name + "을(를) 업그레이드했습니다!");
         log(levelNames[previousLevel] + " → " + levelNames[selectedLandmarkCity.level]);
         log("업그레이드 비용: " + String.format("%,d", upgradeCost) + "원");
         log("남은 잔액: " + String.format("%,d", player.cash) + "원");
@@ -1588,12 +1588,12 @@ public class GameUI {
             magneticDialog.setVisible(true);
 
             if (pulledCount > 0) {
-                log("🧲 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
+                log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
 
                 // 끌려온 플레이어들에게 통행료 징수
                 handleMagneticTollCollection(selectedLandmarkCity);
             } else {
-                log("🧲 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
+                log("◆ 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
             }
         }
 
@@ -1648,7 +1648,7 @@ public class GameUI {
         if (!ownedCities.isEmpty()) {
             City selectedCity = ownedCities.get(0);
             ruleEngine.applyOlympicBoost(selectedCity);
-            log("⚡ " + selectedCity.name + "에 올림픽 효과가 적용되었습니다! (통행료 2배)");
+            log("★ " + selectedCity.name + "에 올림픽 효과가 적용되었습니다! (통행료 2배)");
         }
 
         endTurn();
@@ -1669,7 +1669,7 @@ public class GameUI {
 
             // 랜드마크 위치에 있는 플레이어만 통행료 징수
             if (player.pos == landmark.id && !player.bankrupt) {
-                log("💸 " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
+                log("$ " + player.name + "이(가) " + landmark.name + "에 끌려와 통행료 " + String.format("%,d", toll) + "원을 지불합니다.");
                 ruleEngine.payToll(player, owner, toll);
 
                 // 자산 변동 표시
@@ -1701,7 +1701,7 @@ public class GameUI {
 
         // 빈 도시가 없으면 발동 안 함
         if (emptyCities.isEmpty()) {
-            log("⚠️ 페이즈 딜리트: 삭제할 수 있는 빈 도시가 없습니다.");
+            log("! 페이즈 딜리트: 삭제할 수 있는 빈 도시가 없습니다.");
             return;
         }
 
@@ -1710,7 +1710,7 @@ public class GameUI {
         City deletedCity = emptyCities.get(randomIndex);
         deletedCity.isDeleted = true;
 
-        log("⚠️ 페이즈 딜리트 발동! " + deletedCity.name + "가 삭제됩니다!");
+        log("! 페이즈 딜리트 발동! " + deletedCity.name + "가 삭제됩니다!");
 
         // 삭제 다이얼로그 표시
         PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, deletedCity.name);
@@ -1728,7 +1728,7 @@ public class GameUI {
         // 파산 시 더블 및 Extra Chance 무효화
         if (player.bankrupt) {
             announceBankruptcy(currentPlayerIndex);
-            log("💀 파산으로 인해 더블과 Extra Chance가 무효가 되었습니다.");
+            log("X 파산으로 인해 더블과 Extra Chance가 무효가 되었습니다.");
             consecutiveDoubles = 0;
             lastD1 = 0;
             lastD2 = 0;
@@ -1737,7 +1737,7 @@ public class GameUI {
         } else {
             // Extra Chance 체크 (더블보다 우선)
             if (player.hasExtraChance) {
-                log("🎲 Extra Chance! 추가 주사위를 굴릴 수 있습니다!");
+                log("* Extra Chance! 추가 주사위를 굴릴 수 있습니다!");
                 player.hasExtraChance = false; // Extra Chance 소진
 
                 // 정규 주사위 상태로 전환
@@ -1751,7 +1751,7 @@ public class GameUI {
 
             // 더블 체크: 행동 완료 후 더블이면 추가 주사위 기회
             if (checkAndHandleDouble()) {
-                log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
+                log("* 더블! 한 번 더 굴릴 수 있습니다!");
 
                 // 더블 다이얼로그 표시 (자신의 턴일 때만)
                 if (shouldShowLocalDialog()) {
@@ -1852,7 +1852,7 @@ public class GameUI {
 
         if (winner != null && winnerIndex >= 0) {
             String victoryType = ruleEngine.getVictoryType(players, winnerIndex);
-            log("🎉 승자: " + winner.name + " 🎉");
+            log("* 승자: " + winner.name + " *");
             log("승리 조건: " + victoryType);
             log("최종 자산: " + String.format("%,d", winner.cash) + "원");
             notifyGameOverEvent(winner, victoryType);
@@ -2245,10 +2245,10 @@ public class GameUI {
             // 매입 처리 (매입 요청이 있었다면)
             if (purchased != null && purchased && !touristSpot.isOwned()) {
                 if (ruleEngine.purchaseTouristSpot(player, touristSpot, currentPlayerIndex)) {
-                    log("✅ " + touristSpot.name + "을(를) 매입했습니다!");
+                    log("O " + touristSpot.name + "을(를) 매입했습니다!");
                     frame.getOverlayPanel().showMoneyChange(currentPlayerIndex, -touristSpot.price);
                 } else {
-                    log("❌ 매입 실패!");
+                    log("X 매입 실패!");
                 }
             }
 
@@ -2288,7 +2288,7 @@ public class GameUI {
             }
 
             // 연결 끊김으로 인한 파산 처리
-            log("⚠️ " + disconnectedPlayer.name + " 연결 끊김! 자동 파산 처리됩니다.");
+            log("! " + disconnectedPlayer.name + " 연결 끊김! 자동 파산 처리됩니다.");
             disconnectedPlayer.bankrupt = true;
             announceBankruptcy(disconnectedIndex);
 
@@ -2506,7 +2506,7 @@ public class GameUI {
         int section = gauge.getCurrentSection();
         double position = gauge.getCurrentPosition();
         String sectionName = getSectionName(section);
-        log("🎯 구간: " + sectionName);
+        log("> 구간: " + sectionName);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("section", section);
@@ -2554,7 +2554,7 @@ public class GameUI {
             : "??";
         PhaseDeleteDialog deleteDialog = new PhaseDeleteDialog(frame, cityName);
         deleteDialog.setVisible(true);
-        log("⚠️ 페이즈 딜리트: " + cityName + "이(가) 삭제되었습니다.");
+        log("! 페이즈 딜리트: " + cityName + "이(가) 삭제되었습니다.");
     }
 
     private void handleRemoteDiceAnimation(Map<String, Object> data) {
@@ -2569,7 +2569,7 @@ public class GameUI {
         frame.getActionPanel().getDiceAnimationPanel().startAnimation(dice1, dice2, () -> {
             int sum = dice1 + dice2;
             if (isDouble) {
-                log("🎲 주사위: [" + dice1 + ", " + dice2 + "] = " + sum + " - 더블!");
+                log("* 주사위: [" + dice1 + ", " + dice2 + "] = " + sum + " - 더블!");
             } else {
                 log("주사위: [" + dice1 + ", " + dice2 + "] = " + sum);
             }
@@ -2587,9 +2587,9 @@ public class GameUI {
         TouristSpotChoiceDialog.Choice choice = parseTouristChoice(choiceValue);
         String message;
         if (choice == TouristSpotChoiceDialog.Choice.LOCK) {
-            message = "🔒 " + spot + " 잠금 선택";
+            message = "■ " + spot + " 잠금 선택";
         } else {
-            message = "🎲 " + spot + "에서 추가 주사위 선택";
+            message = "* " + spot + "에서 추가 주사위 선택";
         }
         log(message);
     }
@@ -2610,7 +2610,7 @@ public class GameUI {
         String winnerName = safeMapString(data, "winner", "플레이어");
         String victoryType = safeMapString(data, "victoryType", "승리");
         int cash = safeMapInt(data, "cash", 0);
-        log("🎉 승자: " + winnerName + " 🎉");
+        log("* 승자: " + winnerName + " *");
         log("승리 조건: " + victoryType);
         showInfoDialog(
             "게임 종료",
@@ -2700,7 +2700,7 @@ public class GameUI {
         int doubleCount = safeMapInt(data, "doubleCount", consecutiveDoubles);
         DoubleDialog doubleDialog = new DoubleDialog(frame, diceValue, doubleCount);
         doubleDialog.setVisible(true);
-        log("🎲 더블! 한 번 더 굴릴 수 있습니다!");
+        log("* 더블! 한 번 더 굴릴 수 있습니다!");
     }
 
     private void handleRemoteOlympicEvent(Map<String, Object> data) {

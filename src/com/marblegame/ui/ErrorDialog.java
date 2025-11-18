@@ -40,7 +40,7 @@ public class ErrorDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("⚠️ 오류");
+        JLabel titleLabel = new JLabel("⚠ 오류");
         titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(UIConstants.STATUS_ERROR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
