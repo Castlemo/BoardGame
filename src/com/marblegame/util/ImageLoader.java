@@ -98,6 +98,12 @@ public class ImageLoader {
             case "LOCK": return loadImage("lock.png");
             case "MONEY": return loadImage("money.png");
             case "DICE": return loadImage("dice.png");
+            // 관광지 아이콘
+            case "DOKDO": return loadImage("dokdo.png");
+            case "BALI": return loadImage("bali.png");
+            case "HAWAII": return loadImage("hawaii.png");
+            case "PUKET": return loadImage("puket.png");
+            case "TAHITI": return loadImage("tahiti.png");
             default: return null;
         }
     }

@@ -294,12 +294,29 @@ public class BoardPanel extends JPanel {
                 }
             }
         } else if (tile instanceof TouristSpot) {
-            // 관광지인 경우 소유자 표시
+            // 관광지인 경우 아이콘과 소유자 표시
             TouristSpot touristSpot = (TouristSpot) tile;
 
+            // 관광지 아이콘 표시 (중앙)
+            BufferedImage spotIcon = getTouristSpotIcon(touristSpot.name);
+            if (spotIcon != null) {
+                int iconSize = (int)(BASE_TILE_SIZE * 0.55);
+                BufferedImage scaledIcon = ImageLoader.scaleImage(spotIcon, iconSize, iconSize);
+
+                int centerX = x + (BASE_TILE_SIZE - iconSize) / 2;
+                int centerY = y + (BASE_TILE_SIZE - iconSize) / 2;
+
+                // 아이콘 배경 (밝은 원)
+                g.setColor(new Color(255, 255, 255, 120));
+                g.fillOval(centerX - 3, centerY - 3, iconSize + 6, iconSize + 6);
+
+                // 아이콘 표시
+                g.drawImage(scaledIcon, centerX, centerY, null);
+            }
+
             if (touristSpot.isOwned()) {
-                // 개선된 소유자 배지
-                drawOwnerBadge(g, x + 6, y + 10, touristSpot.owner);
+                // 개선된 소유자 배지 (우상단)
+                drawOwnerBadge(g, x + BASE_TILE_SIZE - 26, y + 6, touristSpot.owner);
             }
         }
 
@@ -645,6 +662,20 @@ public class BoardPanel extends JPanel {
         else {
             int y = (tileIndex - 24) * BASE_TILE_SIZE;
             return new Point(8 * BASE_TILE_SIZE, y);
+        }
+    }
+
+    /**
+     * 관광지 이름에 따른 아이콘 이미지 반환
+     */
+    private BufferedImage getTouristSpotIcon(String spotName) {
+        switch (spotName) {
+            case "독도": return ImageLoader.getTileImage("DOKDO");
+            case "발리": return ImageLoader.getTileImage("BALI");
+            case "하와이": return ImageLoader.getTileImage("HAWAII");
+            case "푸켓": return ImageLoader.getTileImage("PUKET");
+            case "타히티": return ImageLoader.getTileImage("TAHITI");
+            default: return null;
         }
     }
 

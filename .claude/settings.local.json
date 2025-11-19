@@ -6,7 +6,8 @@
       "Bash(java:*)",
       "Bash(pkill:*)",
       "Bash(find:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
