@@ -50,7 +50,7 @@ public class TaxPaymentDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
         // 제목
-        JLabel titleLabel = new JLabel("▶ 국세청");
+        JLabel titleLabel = new JLabel("국세청");
         titleLabel.setFont(UIConstants.FONT_SUBTITLE);
         titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -83,7 +83,7 @@ public class TaxPaymentDialog extends JDialog {
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 세율
-        JPanel ratePanel = createInfoRow("▶ 세율", "10%");
+        JPanel ratePanel = createInfoRow("세율", "10%");
         panel.add(ratePanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 

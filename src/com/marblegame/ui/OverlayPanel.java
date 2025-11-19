@@ -125,8 +125,8 @@ public class OverlayPanel extends JPanel {
         oddEvenPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
         oddEvenPanel.setOpaque(false);
 
-        oddButton = createCircularToggleButton("홀수");
-        evenButton = createCircularToggleButton("짝수");
+        oddButton = createCircularToggleButton("홀수", new Color(52, 152, 219)); // 파란색
+        evenButton = createCircularToggleButton("짝수", new Color(231, 76, 60)); // 빨간색
 
         oddEvenPanel.add(oddButton);
         oddEvenPanel.add(evenButton);
@@ -420,54 +420,271 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
-     * 원형 토글 버튼 생성 (홀수/짝수 선택용)
+     * 원형 토글 버튼 생성 (홀수/짝수 선택용) - 개선된 인터랙티브 UI
+     * @param text 버튼 텍스트
+     * @param buttonColor 버튼 기본 색상
      */
-    private JButton createCircularToggleButton(String text) {
+    private JButton createCircularToggleButton(String text, Color buttonColor) {
         JButton button = new JButton(text) {
+            private boolean hovered = false;
+            private boolean pressed = false;
+            private float glowIntensity = 0f;
+            private float scaleAnimation = 1.0f;
+            private Timer animationTimer;
+            private final int BASE_SIZE = 54; // 기본 렌더링 크기 (60에서 54로 축소하여 여유 공간 확보)
+
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-                int size = Math.min(getWidth(), getHeight());
-                int x = (getWidth() - size) / 2;
-                int y = (getHeight() - size) / 2;
+                // 실제 렌더링 크기 (스케일 적용)
+                int renderSize = (int)(BASE_SIZE * scaleAnimation);
+                int x = (getWidth() - renderSize) / 2;
+                int y = (getHeight() - renderSize) / 2;
 
                 // 선택 상태 확인
                 Boolean selected = (Boolean) getClientProperty("selected");
                 if (selected == null) selected = false;
 
-                // 배경 원
-                if (selected) {
-                    g2.setColor(new Color(52, 152, 219)); // 파란색 (선택)
-                } else {
-                    g2.setColor(new Color(127, 140, 141)); // 회색 (미선택)
+                // 외부 발광 효과 (선택되었을 때)
+                if (selected && glowIntensity > 0) {
+                    int glowSize = renderSize + (int)(10 * glowIntensity);
+                    int glowX = (getWidth() - glowSize) / 2;
+                    int glowY = (getHeight() - glowSize) / 2;
+
+                    for (int i = 4; i >= 0; i--) {
+                        int alpha = (int)(30 * glowIntensity * (1 - i / 5.0));
+                        // 발광 색상도 버튼 색상에 맞춤
+                        Color glowColor = new Color(
+                            buttonColor.getRed(),
+                            buttonColor.getGreen(),
+                            buttonColor.getBlue(),
+                            alpha
+                        );
+                        g2.setColor(glowColor);
+                        int offset = i * 2;
+                        g2.fillOval(glowX - offset, glowY - offset,
+                                   glowSize + offset * 2, glowSize + offset * 2);
+                    }
                 }
-                g2.fillOval(x, y, size, size);
+
+                // 그림자 (눌렸을 때 감소)
+                int shadowOffset = pressed ? 1 : 3;
+                int shadowSize = pressed ? 2 : 5;
+                g2.setColor(new Color(0, 0, 0, 80));
+                g2.fillOval(x + shadowOffset, y + shadowOffset,
+                           renderSize - shadowSize, renderSize - shadowSize);
+
+                // 배경 그라데이션
+                Color baseColor;
+                if (selected) {
+                    baseColor = buttonColor; // 전달받은 색상 사용
+                } else {
+                    baseColor = new Color(127, 140, 141); // 회색 (미선택)
+                }
+
+                Color color1 = hovered ? baseColor.brighter() : baseColor;
+                Color color2 = hovered ? baseColor : baseColor.darker();
+
+                GradientPaint gradient = new GradientPaint(
+                    x, y, color1,
+                    x, y + renderSize, color2
+                );
+                g2.setPaint(gradient);
+                g2.fillOval(x, y, renderSize, renderSize);
+
+                // 상단 하이라이트 (광택 효과)
+                int highlightSize = (int)(renderSize * 0.6);
+                GradientPaint highlight = new GradientPaint(
+                    x + renderSize / 4, y + renderSize / 6, new Color(255, 255, 255, 80),
+                    x + renderSize / 4, y + renderSize / 2, new Color(255, 255, 255, 0)
+                );
+                g2.setPaint(highlight);
+                g2.fillOval(x + renderSize / 6, y + renderSize / 8,
+                           highlightSize, highlightSize / 2);
 
                 // 테두리
-                g2.setColor(new Color(236, 240, 241));
-                g2.setStroke(new BasicStroke(2f));
-                g2.drawOval(x, y, size, size);
+                if (selected) {
+                    // 선택됨: 금색 테두리
+                    g2.setColor(new Color(241, 196, 15));
+                    g2.setStroke(new BasicStroke(3f));
+                } else {
+                    // 미선택: 흰색 테두리
+                    g2.setColor(new Color(236, 240, 241));
+                    g2.setStroke(new BasicStroke(2f));
+                }
+                g2.drawOval(x + 1, y + 1, renderSize - 2, renderSize - 2);
 
-                // 텍스트
-                g2.setColor(Color.WHITE);
+                // 내부 테두리 (깊이감)
+                g2.setColor(new Color(0, 0, 0, 30));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawOval(x + 3, y + 3, renderSize - 6, renderSize - 6);
+
+                // 호버 효과 (반짝임)
+                if (hovered) {
+                    int pulseAlpha = (int)(50 + 30 * Math.sin(System.currentTimeMillis() / 200.0));
+                    g2.setColor(new Color(255, 255, 255, pulseAlpha));
+                    g2.fillOval(x + 2, y + 2, renderSize - 4, renderSize - 4);
+                }
+
+                // 텍스트 (그림자 포함)
                 g2.setFont(getFont());
                 FontMetrics fm = g2.getFontMetrics();
                 int textX = (getWidth() - fm.stringWidth(text)) / 2;
                 int textY = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+
+                // 텍스트 그림자
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.drawString(text, textX + 1, textY + 1);
+
+                // 텍스트
+                g2.setColor(Color.WHITE);
                 g2.drawString(text, textX, textY);
 
                 g2.dispose();
             }
         };
 
-        button.setPreferredSize(new Dimension(60, 60));
+        // 버튼 크기를 70x70으로 확대하여 1.1배 스케일 시 여유 공간 확보
+        button.setPreferredSize(new Dimension(70, 70));
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
         button.setFocusPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.putClientProperty("selected", false);
+
+        // 마우스 이벤트로 인터랙티브 효과
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            private Timer hoverTimer;
+            private Timer clickAnimationTimer;
+
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                try {
+                    java.lang.reflect.Field hoveredField = button.getClass().getDeclaredField("hovered");
+                    hoveredField.setAccessible(true);
+                    hoveredField.set(button, true);
+                } catch (Exception ignored) {}
+
+                // 호버 애니메이션 (발광 효과)
+                if (hoverTimer != null) hoverTimer.stop();
+                hoverTimer = new Timer(20, new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            java.lang.reflect.Field glowField = button.getClass().getDeclaredField("glowIntensity");
+                            glowField.setAccessible(true);
+                            float intensity = glowField.getFloat(button);
+                            intensity = Math.min(1f, intensity + 0.1f);
+                            glowField.set(button, intensity);
+
+                            java.lang.reflect.Field scaleField = button.getClass().getDeclaredField("scaleAnimation");
+                            scaleField.setAccessible(true);
+                            float scale = scaleField.getFloat(button);
+                            scale = Math.min(1.1f, scale + 0.02f);
+                            scaleField.set(button, scale);
+
+                            button.repaint();
+                            if (intensity >= 1f && scale >= 1.1f) {
+                                hoverTimer.stop();
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                });
+                hoverTimer.start();
+            }
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                try {
+                    java.lang.reflect.Field hoveredField = button.getClass().getDeclaredField("hovered");
+                    hoveredField.setAccessible(true);
+                    hoveredField.set(button, false);
+                } catch (Exception ignored) {}
+
+                // 호버 애니메이션 종료
+                if (hoverTimer != null) hoverTimer.stop();
+                hoverTimer = new Timer(20, new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            java.lang.reflect.Field glowField = button.getClass().getDeclaredField("glowIntensity");
+                            glowField.setAccessible(true);
+                            float intensity = glowField.getFloat(button);
+                            intensity = Math.max(0f, intensity - 0.15f);
+                            glowField.set(button, intensity);
+
+                            java.lang.reflect.Field scaleField = button.getClass().getDeclaredField("scaleAnimation");
+                            scaleField.setAccessible(true);
+                            float scale = scaleField.getFloat(button);
+                            scale = Math.max(1.0f, scale - 0.03f);
+                            scaleField.set(button, scale);
+
+                            button.repaint();
+                            if (intensity <= 0f && scale <= 1.0f) {
+                                hoverTimer.stop();
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                });
+                hoverTimer.start();
+            }
+
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                try {
+                    java.lang.reflect.Field pressedField = button.getClass().getDeclaredField("pressed");
+                    pressedField.setAccessible(true);
+                    pressedField.set(button, true);
+
+                    // 클릭 시 스케일 감소
+                    java.lang.reflect.Field scaleField = button.getClass().getDeclaredField("scaleAnimation");
+                    scaleField.setAccessible(true);
+                    scaleField.set(button, 0.95f);
+
+                    button.repaint();
+                } catch (Exception ignored) {}
+            }
+
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                try {
+                    java.lang.reflect.Field pressedField = button.getClass().getDeclaredField("pressed");
+                    pressedField.setAccessible(true);
+                    pressedField.set(button, false);
+
+                    // 릴리즈 시 바운스 애니메이션
+                    if (clickAnimationTimer != null) clickAnimationTimer.stop();
+                    clickAnimationTimer = new Timer(15, new ActionListener() {
+                        private int step = 0;
+                        public void actionPerformed(ActionEvent e) {
+                            try {
+                                java.lang.reflect.Field scaleField = button.getClass().getDeclaredField("scaleAnimation");
+                                scaleField.setAccessible(true);
+
+                                float targetScale = 1.1f;
+                                float currentScale = scaleField.getFloat(button);
+
+                                if (step < 10) {
+                                    // 바운스 업
+                                    currentScale = Math.min(targetScale, currentScale + 0.03f);
+                                } else {
+                                    // 원래 크기로
+                                    currentScale = Math.max(targetScale, currentScale - 0.02f);
+                                }
+
+                                scaleField.set(button, currentScale);
+                                button.repaint();
+
+                                step++;
+                                if (step > 15 || (step > 10 && Math.abs(currentScale - targetScale) < 0.01f)) {
+                                    clickAnimationTimer.stop();
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    });
+                    clickAnimationTimer.start();
+
+                    button.repaint();
+                } catch (Exception ignored) {}
+            }
+        });
 
         return button;
     }
@@ -585,8 +802,8 @@ public class OverlayPanel extends JPanel {
         // 3. 홀수/짝수 선택 패널 배치
         oddEvenPanel.setBounds(cx - ODDEVEN_PANEL_WIDTH / 2, currentY,
                               ODDEVEN_PANEL_WIDTH, ODDEVEN_PANEL_HEIGHT);
-        // 버튼 크기도 스케일 적용 (30% 축소)
-        int buttonSize = (int)(42 * scaleFactor); // 60 * 0.7
+        // 버튼 크기도 스케일 적용 (기본 70px, 스케일 적용 시 49px = 70 * 0.7)
+        int buttonSize = (int)(49 * scaleFactor); // 70 * 0.7
         oddButton.setPreferredSize(new Dimension(buttonSize, buttonSize));
         evenButton.setPreferredSize(new Dimension(buttonSize, buttonSize));
         currentY += ODDEVEN_PANEL_HEIGHT + (int)(10 * scaleFactor);

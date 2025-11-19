@@ -40,7 +40,7 @@ public class LandmarkMagneticDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("◆ 랜드마크 마그네틱");
+        JLabel titleLabel = new JLabel("랜드마크 마그네틱");
         titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(UIConstants.HIGHLIGHT_PURPLE);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

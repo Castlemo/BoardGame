@@ -43,7 +43,7 @@ public class DoubleDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("* 더블! (" + diceValue + ", " + diceValue + ")");
+        JLabel titleLabel = new JLabel("더블! (" + diceValue + ", " + diceValue + ")");
         titleLabel.setFont(new Font(UIConstants.FONT_NAME, Font.BOLD, 26));
         titleLabel.setForeground(HIGHLIGHT_GOLD);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

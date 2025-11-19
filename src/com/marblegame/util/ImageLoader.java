@@ -73,13 +73,75 @@ public class ImageLoader {
 
     /**
      * 건물 레벨 이미지 로드
+     * @param level 건물 레벨 (1-4)
+     * @param cityName 도시 이름 (랜드마크용)
      */
-    public static BufferedImage getBuildingImage(int level) {
+    public static BufferedImage getBuildingImage(int level, String cityName) {
         switch (level) {
             case 1: return loadImage("house.png");
             case 2: return loadImage("building.png");
             case 3: return loadImage("tower.png");
-            case 4: return loadImage("landmark.png");
+            case 4: return getLandmarkImage(cityName);
+            default: return null;
+        }
+    }
+
+    /**
+     * 도시별 랜드마크 이미지 로드
+     */
+    private static BufferedImage getLandmarkImage(String cityName) {
+        String filename = getLandmarkFilename(cityName);
+        if (filename != null) {
+            // landmarks 서브디렉토리에서 로드
+            try {
+                InputStream stream = ImageLoader.class.getResourceAsStream(ASSET_PATH + "landmarks/" + filename);
+                if (stream == null) {
+                    System.err.println("랜드마크 이미지를 찾을 수 없습니다: " + ASSET_PATH + "landmarks/" + filename);
+                    return loadImage("landmark.png"); // 기본 이미지 폴백
+                }
+
+                String cacheKey = "landmarks/" + filename;
+                if (imageCache.containsKey(cacheKey)) {
+                    return imageCache.get(cacheKey);
+                }
+
+                BufferedImage image = ImageIO.read(stream);
+                imageCache.put(cacheKey, image);
+                return image;
+            } catch (IOException e) {
+                System.err.println("랜드마크 이미지 로드 실패: " + filename);
+                e.printStackTrace();
+                return loadImage("landmark.png"); // 기본 이미지 폴백
+            }
+        }
+        return loadImage("landmark.png"); // 기본 이미지 폴백
+    }
+
+    /**
+     * 한글 도시 이름을 영문 파일명으로 매핑
+     */
+    private static String getLandmarkFilename(String cityName) {
+        if (cityName == null) return null;
+
+        switch (cityName) {
+            case "방콕": return "bangkok.png";
+            case "베이징": return "beijing.png";
+            case "타이페이": return "taipei.png";
+            case "두바이": return "dubai.png";
+            case "카이로": return "cairo.png";
+            case "도쿄": return "tokyo.png";
+            case "시드니": return "sydney.png";
+            case "퀘벡": return "quebec.png";
+            case "상파울로": return "saopaulo.png";
+            case "프라하": return "praha.png";
+            case "베를린": return "berlin.png";
+            case "모스크바": return "moscow.png";
+            case "제네바": return "geneva.png";
+            case "로마": return "rome.png";
+            case "런던": return "london.png";
+            case "파리": return "paris.png";
+            case "뉴욕": return "newyork.png";
+            case "서울": return "seoul.png";
             default: return null;
         }
     }

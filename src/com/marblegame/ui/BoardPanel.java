@@ -248,20 +248,9 @@ public class BoardPanel extends JPanel {
                     int centerX = x + BASE_TILE_SIZE / 2;
                     int centerY = y + BASE_TILE_SIZE / 2;
 
-                    // 반투명 원형 배경
-                    g.setColor(new Color(255, 255, 255, 80));
-                    g.fillOval(centerX - 20, centerY - 20, 40, 40);
 
-                    // 배경 그라데이션
-                    GradientPaint bgGradient = new GradientPaint(
-                        centerX, centerY - 20, new Color(255, 255, 255, 100),
-                        centerX, centerY + 20, new Color(255, 255, 255, 20)
-                    );
-                    g.setPaint(bgGradient);
-                    g.fillOval(centerX - 18, centerY - 18, 36, 36);
-
-                    // 건물 이미지 (PNG)
-                    BufferedImage buildingImage = ImageLoader.getBuildingImage(city.level);
+                    // 건물 이미지 (PNG) - 도시 이름 전달하여 랜드마크 구분
+                    BufferedImage buildingImage = ImageLoader.getBuildingImage(city.level, city.name);
                     if (buildingImage != null) {
                         int buildingSize = 32;
                         BufferedImage scaledBuilding = ImageLoader.scaleImage(buildingImage, buildingSize, buildingSize);
@@ -305,10 +294,6 @@ public class BoardPanel extends JPanel {
 
                 int centerX = x + (BASE_TILE_SIZE - iconSize) / 2;
                 int centerY = y + (BASE_TILE_SIZE - iconSize) / 2;
-
-                // 아이콘 배경 (밝은 원)
-                g.setColor(new Color(255, 255, 255, 120));
-                g.fillOval(centerX - 3, centerY - 3, iconSize + 6, iconSize + 6);
 
                 // 아이콘 표시
                 g.drawImage(scaledIcon, centerX, centerY, null);

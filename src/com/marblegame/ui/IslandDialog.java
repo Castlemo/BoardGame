@@ -43,7 +43,7 @@ public class IslandDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("~ 무인도");
+        JLabel titleLabel = new JLabel("무인도");
         titleLabel.setFont(UIConstants.FONT_TITLE);
         titleLabel.setForeground(HIGHLIGHT_COLOR);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

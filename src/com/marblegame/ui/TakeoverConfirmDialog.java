@@ -44,7 +44,7 @@ public class TakeoverConfirmDialog extends JDialog {
         panel.setBackground(UIConstants.PANEL_DARK);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("▶ 도시 인수");
+        JLabel titleLabel = new JLabel("도시 인수");
         titleLabel.setFont(UIConstants.FONT_SUBTITLE);
         titleLabel.setForeground(UIConstants.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

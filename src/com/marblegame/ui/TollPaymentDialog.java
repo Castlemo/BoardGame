@@ -87,12 +87,12 @@ public class TollPaymentDialog extends JDialog {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         // 소유자
-        JPanel ownerPanel = createInfoRow("▶ 소유자", ownerName);
+        JPanel ownerPanel = createInfoRow("소유자", ownerName);
         panel.add(ownerPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // 레벨 (아이콘 포함)
-        JPanel levelPanel = createInfoRowWithIcon("▶ 레벨", "레벨 " + level, level);
+        JPanel levelPanel = createInfoRowWithIcon("레벨", "레벨 " + level, level);
         panel.add(levelPanel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -103,7 +103,7 @@ public class TollPaymentDialog extends JDialog {
 
         // 올림픽 효과
         if (hasOlympicBoost) {
-            JPanel olympicPanel = createInfoRow("★ 올림픽 효과", "통행료 2배!");
+            JPanel olympicPanel = createInfoRow("올림픽 효과", "통행료 2배!");
             panel.add(olympicPanel);
             panel.add(Box.createRigidArea(new Dimension(0, 10)));
         }
