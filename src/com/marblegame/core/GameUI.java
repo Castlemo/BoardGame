@@ -153,6 +153,7 @@ public class GameUI {
     private GameStateSnapshot.EventState lastEventState;
     private int lastHandledEventId = 0;
     private final boolean[] bankruptcyAnnounced;
+    private boolean citySelectionDialogShown = false;
     private static final String ACTION_ROLL = "ROLL";
     private static final String ACTION_PURCHASE = "PURCHASE";
     private static final String ACTION_UPGRADE = "UPGRADE";
@@ -343,7 +344,7 @@ public class GameUI {
         if (isHost) {
             return localPlayerIndex >= 0 && localPlayerIndex == currentPlayerIndex;
         }
-        return false;
+        return isLocalPlayersTurn();
     }
 
     private boolean tileMatches(Integer tileId) {
@@ -405,6 +406,8 @@ public class GameUI {
             return;
         }
 
+        citySelectionDialogShown = false;
+
         Player player = players[currentPlayerIndex];
         frame.getActionPanel().clearPriceLabels();
 
@@ -437,9 +440,8 @@ public class GameUI {
             log("> 전국철도/세계여행 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
 
-            // 도시 선택 안내 다이얼로그 표시
-            CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
-            selectionDialog.setVisible(true);
+            // 도시 선택 안내 다이얼로그 표시 (로컬 턴일 때만)
+            showCitySelectionDialogIfLocal();
         } else {
             state = GameState.WAITING_FOR_ROLL;
             setActionButtons(true, false, false, false, false, false);
@@ -2342,6 +2344,22 @@ public class GameUI {
         frame.getBoardPanel().setTileClickEnabled(enabled);
     }
 
+    private void showCitySelectionDialogIfLocal() {
+        boolean waitingForSelection = state == GameState.WAITING_FOR_RAILROAD_SELECTION
+            || state == GameState.WAITING_FOR_LANDMARK_SELECTION;
+        if (!waitingForSelection) {
+            citySelectionDialogShown = false;
+            return;
+        }
+        if (citySelectionDialogShown || !shouldShowLocalDialog()) {
+            return;
+        }
+
+        CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
+        selectionDialog.setVisible(true);
+        citySelectionDialogShown = true;
+    }
+
     /**
      * 홀수/짝수 버튼 상태 업데이트
      */
@@ -2415,6 +2433,7 @@ public class GameUI {
         } else {
             setBoardClickEnabled(false);
         }
+        showCitySelectionDialogIfLocal();
         awaitingNetworkResolution = false;
     }
 
