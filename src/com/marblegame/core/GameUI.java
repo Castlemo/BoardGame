@@ -311,7 +311,7 @@ public class GameUI {
 
     private void enterPassiveNetworkMode() {
         setActionButtons(false, false, false, false, false, false);
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setBoardClickEnabled(false);
         log("네트워크 게임 동기화를 기다리는 중입니다...");
         updateDisplay();
     }
@@ -427,13 +427,13 @@ public class GameUI {
         if (player.isInJail()) {
             state = GameState.WAITING_FOR_JAIL_CHOICE;
             setActionButtons(false, false, false, false, true, true);
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setBoardClickEnabled(false);
             log("무인도에 갇혀있습니다. (남은 턴: " + player.jailTurns + ")");
             log("$ 보석금 200,000원으로 즉시 탈출하거나, ⏭ 패스하여 대기하세요.");
         } else if (player.hasRailroadTicket) {
             state = GameState.WAITING_FOR_RAILROAD_SELECTION;
             setActionButtons(false, false, false, false, false, false);
-            frame.getBoardPanel().setTileClickEnabled(true);
+            setBoardClickEnabled(true);
             log("> 전국철도/세계여행 티켓이 있습니다!");
             log("보드에서 원하는 칸을 클릭하세요.");
 
@@ -443,7 +443,7 @@ public class GameUI {
         } else {
             state = GameState.WAITING_FOR_ROLL;
             setActionButtons(true, false, false, false, false, false);
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setBoardClickEnabled(false);
             log("주사위를 굴려주세요.");
         }
 
@@ -1437,7 +1437,7 @@ public class GameUI {
         player.pos = tileIndex;
         player.hasRailroadTicket = false;
         currentTile = selectedTile;
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setBoardClickEnabled(false);
         log("선택한 칸에서 이벤트를 처리합니다.");
         notifyRailroadSelectionEvent(player.name, selectedTile.name);
         handleTileLanding();
@@ -1535,7 +1535,7 @@ public class GameUI {
 
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;
-        frame.getBoardPanel().setTileClickEnabled(true);
+        setBoardClickEnabled(true);
         log("> 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
     }
 
@@ -1556,7 +1556,7 @@ public class GameUI {
             ErrorDialog errorDialog = new ErrorDialog(frame, "잔액 부족", "업그레이드 비용이 부족합니다.");
             errorDialog.setVisible(true);
             selectedLandmarkCity = null;
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setBoardClickEnabled(false);
             endTurn();
             return;
         }
@@ -1600,7 +1600,7 @@ public class GameUI {
         // 상태 초기화
         selectedLandmarkCity = null;
         state = GameState.WAITING_FOR_ROLL;
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setBoardClickEnabled(false);
 
         endTurn();
     }
@@ -1743,7 +1743,7 @@ public class GameUI {
                 // 정규 주사위 상태로 전환
                 state = GameState.WAITING_FOR_ROLL;
                 setActionButtons(true, false, false, false, false, false);
-                frame.getBoardPanel().setTileClickEnabled(false);
+                setBoardClickEnabled(false);
 
                 updateDisplay();
                 return; // 턴 종료하지 않음
@@ -1765,7 +1765,7 @@ public class GameUI {
                 // 더블 상태로 전환 (다시 주사위 굴리기 가능)
                 state = GameState.WAITING_FOR_DOUBLE_ROLL;
                 setActionButtons(true, false, false, false, false, false);
-                frame.getBoardPanel().setTileClickEnabled(false);
+                setBoardClickEnabled(false);
 
                 updateDisplay();
                 return; // 턴 종료하지 않음
@@ -1961,7 +1961,7 @@ public class GameUI {
 
         state = GameState.ANIMATING_MOVEMENT;
         setActionButtons(false, false, false, false, false, false);
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setBoardClickEnabled(false);
         frame.getActionPanel().clearPriceLabels();
 
         prepareNextMovementStep();
@@ -2330,6 +2330,18 @@ public class GameUI {
         }
     }
 
+    private boolean isHostRemoteTurn() {
+        return networkMode && isHost && localPlayerIndex >= 0 && currentPlayerIndex != localPlayerIndex;
+    }
+
+    private void setBoardClickEnabled(boolean enabled) {
+        if (isHostRemoteTurn()) {
+            frame.getBoardPanel().setTileClickEnabled(false);
+            return;
+        }
+        frame.getBoardPanel().setTileClickEnabled(enabled);
+    }
+
     /**
      * 홀수/짝수 버튼 상태 업데이트
      */
@@ -2342,8 +2354,24 @@ public class GameUI {
 
     private void setActionButtons(boolean roll, boolean purchase, boolean upgrade,
                                   boolean takeover, boolean skip, boolean escape) {
-        frame.getActionPanel().setButtonsEnabled(roll, purchase, upgrade, takeover, skip, escape);
         updateAvailableActions(roll, purchase, upgrade, takeover, skip, escape);
+
+        boolean hostLocked = isHostRemoteTurn();
+        boolean effectiveRoll = hostLocked ? false : roll;
+        boolean effectivePurchase = hostLocked ? false : purchase;
+        boolean effectiveUpgrade = hostLocked ? false : upgrade;
+        boolean effectiveTakeover = hostLocked ? false : takeover;
+        boolean effectiveSkip = hostLocked ? false : skip;
+        boolean effectiveEscape = hostLocked ? false : escape;
+
+        frame.getActionPanel().setButtonsEnabled(
+            effectiveRoll, effectivePurchase, effectiveUpgrade,
+            effectiveTakeover, effectiveSkip, effectiveEscape
+        );
+
+        if (hostLocked) {
+            setBoardClickEnabled(false);
+        }
 
         if (networkMode && isHost) {
             notifyStateSync();
@@ -2368,7 +2396,7 @@ public class GameUI {
 
         if (!isLocalPlayersTurn()) {
             frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
-            frame.getBoardPanel().setTileClickEnabled(false);
+            setBoardClickEnabled(false);
             return;
         }
 
@@ -2380,7 +2408,13 @@ public class GameUI {
         boolean escape = actions != null && actions.contains(ACTION_ESCAPE);
 
         frame.getActionPanel().setButtonsEnabled(roll, purchase, upgrade, takeover, skip, escape);
-        frame.getBoardPanel().setTileClickEnabled(false);
+        boolean waitingForSelection = state == GameState.WAITING_FOR_RAILROAD_SELECTION
+            || state == GameState.WAITING_FOR_LANDMARK_SELECTION;
+        if (!awaitingNetworkResolution && waitingForSelection) {
+            setBoardClickEnabled(true);
+        } else {
+            setBoardClickEnabled(false);
+        }
         awaitingNetworkResolution = false;
     }
 
@@ -2464,7 +2498,7 @@ public class GameUI {
 
     private void awaitNetworkResponse(String logMessage) {
         frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
-        frame.getBoardPanel().setTileClickEnabled(false);
+        setBoardClickEnabled(false);
         if (logMessage != null) {
             log(logMessage);
         }

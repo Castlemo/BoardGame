@@ -20,7 +20,7 @@ public class NetConstants {
     public static final int MAX_PLAYERS = 4;
 
     // 기본 게임 설정
-    public static final int DEFAULT_INITIAL_CASH = 1_500_000;
+    public static final int DEFAULT_INITIAL_CASH = 3_000_000;
 
     // 메시지 크기 제한
     public static final int MAX_MESSAGE_SIZE = 1048576;  // 1MB
