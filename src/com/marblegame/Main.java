@@ -67,7 +67,7 @@ public class Main {
     private static void startLocalGame() {
         // 기존 로컬 게임 로직
         int numPlayers = 2;
-        int initialCash = 1500000;
+        int initialCash = 3000000;
 
         SwingUtilities.invokeLater(() -> {
             new GameUI(numPlayers, initialCash);

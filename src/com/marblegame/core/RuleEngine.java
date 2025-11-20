@@ -9,12 +9,12 @@ import java.util.List;
  */
 public class RuleEngine {
     // rules.json 값들
-    private final int salary = 200000;
+    private final int salary = 500000;
     private final int bail = 200000;
     private final int islandMaxTurns = 2; // 2턴 대기
     private final double[] tollMultiplierByLevel = {0.0, 1.5, 2.2, 3.0, 4.0}; // 레벨 0~4
     private final double colorMonopolyMultiplier = 1.5;
-    private final int chanceReward = 100000;
+    private final int chanceReward = 300000;
     private final double taxRate = 0.1; // 국세청 세율 10%
 
     private final Board board;
