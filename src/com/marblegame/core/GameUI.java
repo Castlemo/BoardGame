@@ -154,6 +154,7 @@ public class GameUI {
     private int lastHandledEventId = 0;
     private final boolean[] bankruptcyAnnounced;
     private boolean citySelectionDialogShown = false;
+    private boolean cityUpgradeNoticeShown = false;
     private static final String ACTION_ROLL = "ROLL";
     private static final String ACTION_PURCHASE = "PURCHASE";
     private static final String ACTION_UPGRADE = "UPGRADE";
@@ -416,6 +417,7 @@ public class GameUI {
             return;
         }
 
+        cityUpgradeNoticeShown = false;
         // 페이즈 딜리트: 3의 배수 턴마다 발동
         if (turnCount % 3 == 0 && currentPlayerIndex == 0) {
             executePhaseDelete();
@@ -784,8 +786,10 @@ public class GameUI {
                 int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
                 // 다이얼로그 표시
-                LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
-                magneticDialog.setVisible(true);
+                if (shouldShowLocalDialog()) {
+                    LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
+                    magneticDialog.setVisible(true);
+                }
 
                 if (pulledCount > 0) {
                     log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1246,8 +1250,10 @@ public class GameUI {
                 int landmarkPos = city.id;
                 int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
-                LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
-                magneticDialog.setVisible(true);
+                if (shouldShowLocalDialog()) {
+                    LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, city.name, pulledCount);
+                    magneticDialog.setVisible(true);
+                }
 
                 if (pulledCount > 0) {
                     log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1255,6 +1261,8 @@ public class GameUI {
                 } else {
                     log("◆ 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
                 }
+
+                notifyMagneticEvent(city.name, pulledCount);
             }
         } else {
             log("자금이 부족하여 업그레이드할 수 없습니다.");
@@ -1510,19 +1518,7 @@ public class GameUI {
         Player player = players[currentPlayerIndex];
         log("START 지점에 도착했습니다!");
 
-        // 업그레이드 가능한 도시가 있는지 확인 (레벨 1~3인 본인 소유 도시)
-        boolean hasUpgradeableCity = false;
-        for (Tile tile : board.getAllTiles()) {
-            if (tile instanceof City) {
-                City city = (City) tile;
-                if (city.isOwned() && city.owner == currentPlayerIndex && city.level >= 1 && city.level < 4) {
-                    hasUpgradeableCity = true;
-                    break;
-                }
-            }
-        }
-
-        if (!hasUpgradeableCity) {
+        if (!hasUpgradeableCityForCurrentPlayer()) {
             log("업그레이드할 수 있는 도시가 없습니다. (레벨 1~3 도시 필요)");
             endTurn();
             return;
@@ -1531,14 +1527,18 @@ public class GameUI {
         // 간단한 안내 메시지 다이얼로그 표시
         log("^ 본인 소유 도시를 1단계 업그레이드할 수 있습니다!");
 
-        // 다크 테마 다이얼로그 표시
-        CityUpgradeNoticeDialog upgradeDialog = new CityUpgradeNoticeDialog(frame);
-        upgradeDialog.setVisible(true);
+        // 다크 테마 다이얼로그 표시 (자신의 턴일 때만)
+        cityUpgradeNoticeShown = false;
+        showCityUpgradeNoticeIfLocal();
 
         // 보드 클릭 대기 상태로 전환
         state = GameState.WAITING_FOR_LANDMARK_SELECTION;
         setBoardClickEnabled(true);
         log("> 업그레이드할 도시를 클릭하세요. (레벨 1→2, 2→3, 3→4)");
+
+        if (networkMode && isHost) {
+            notifyStateSync();
+        }
     }
 
     private void handleLandmarkConstruction() {
@@ -1586,8 +1586,10 @@ public class GameUI {
             int pulledCount = ruleEngine.applyLandmarkMagnetic(landmarkPos, players, currentPlayerIndex);
 
             // 다이얼로그 표시
-            LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
-            magneticDialog.setVisible(true);
+            if (shouldShowLocalDialog()) {
+                LandmarkMagneticDialog magneticDialog = new LandmarkMagneticDialog(frame, selectedLandmarkCity.name, pulledCount);
+                magneticDialog.setVisible(true);
+            }
 
             if (pulledCount > 0) {
                 log("◆ 랜드마크 마그네틱 발동! " + pulledCount + "명의 플레이어를 끌어당깁니다!");
@@ -1597,6 +1599,8 @@ public class GameUI {
             } else {
                 log("◆ 랜드마크 마그네틱 발동! 범위 내 플레이어가 없습니다.");
             }
+
+            notifyMagneticEvent(selectedLandmarkCity.name, pulledCount);
         }
 
         // 상태 초기화
@@ -2349,7 +2353,11 @@ public class GameUI {
             || state == GameState.WAITING_FOR_LANDMARK_SELECTION;
         if (!waitingForSelection) {
             citySelectionDialogShown = false;
+            cityUpgradeNoticeShown = false;
             return;
+        }
+        if (state == GameState.WAITING_FOR_LANDMARK_SELECTION) {
+            showCityUpgradeNoticeIfLocal();
         }
         if (citySelectionDialogShown || !shouldShowLocalDialog()) {
             return;
@@ -2358,6 +2366,37 @@ public class GameUI {
         CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
         selectionDialog.setVisible(true);
         citySelectionDialogShown = true;
+    }
+
+    private void showCityUpgradeNoticeIfLocal() {
+        if (cityUpgradeNoticeShown) {
+            return;
+        }
+        if (!shouldShowLocalDialog()) {
+            return;
+        }
+        if (currentTile == null || currentTile.type != Tile.Type.START) {
+            return;
+        }
+        if (!hasUpgradeableCityForCurrentPlayer()) {
+            return;
+        }
+
+        CityUpgradeNoticeDialog upgradeDialog = new CityUpgradeNoticeDialog(frame);
+        upgradeDialog.setVisible(true);
+        cityUpgradeNoticeShown = true;
+    }
+
+    private boolean hasUpgradeableCityForCurrentPlayer() {
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof City) {
+                City city = (City) tile;
+                if (city.isOwned() && city.owner == currentPlayerIndex && city.level >= 1 && city.level < 4) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
