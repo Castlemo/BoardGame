@@ -893,6 +893,7 @@ public class GameUI {
             // 호스트가 아닌 다른 플레이어의 턴이면 클라이언트에게 알림
             if (!shouldShowLocalDialog()) {
                 log("클라이언트의 관광지 매입 결정을 기다립니다...");
+                pauseHostForRemoteTouristChoice(null);
                 notifyTouristLandingEvent(touristSpot);
                 return;
             }
@@ -934,6 +935,7 @@ public class GameUI {
             // 호스트가 아닌 다른 플레이어의 턴이면 클라이언트에게 알림
             if (!shouldShowLocalDialog()) {
                 log("클라이언트의 관광지 선택을 기다립니다...");
+                pauseHostForRemoteTouristChoice(null);
                 notifyTouristLandingEvent(touristSpot);
                 return;
             }
@@ -2142,7 +2144,7 @@ public class GameUI {
 
             if ("TOURIST".equalsIgnoreCase(target) && currentTile instanceof TouristSpot) {
                 finalizeTouristPurchase(players[currentPlayerIndex], (TouristSpot) currentTile);
-                endTurn();
+                pauseHostForRemoteTouristChoice("클라이언트의 관광지 선택을 기다립니다...");
                 return;
             }
 
@@ -2263,6 +2265,9 @@ public class GameUI {
             if (applyTouristSpotChoice(touristSpot, player, choice)) {
                 notifyTouristChoiceEvent(touristSpot.name, choice);
             }
+            // 클라이언트 처리 완료 → 호스트 UI 잠금 해제
+            frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
+            setBoardClickEnabled(false);
             endTurn();
         });
     }
@@ -2366,6 +2371,17 @@ public class GameUI {
         CitySelectionDialog selectionDialog = new CitySelectionDialog(frame);
         selectionDialog.setVisible(true);
         citySelectionDialogShown = true;
+    }
+
+    private void pauseHostForRemoteTouristChoice(String waitMessage) {
+        if (!isHostRemoteTurn()) {
+            return;
+        }
+        frame.getActionPanel().setButtonsEnabled(false, false, false, false, false, false);
+        setBoardClickEnabled(false);
+        if (waitMessage != null && !waitMessage.isEmpty()) {
+            log(waitMessage);
+        }
     }
 
     private void showCityUpgradeNoticeIfLocal() {
