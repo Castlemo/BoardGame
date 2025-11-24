@@ -125,7 +125,7 @@ public class ChatPanel extends JPanel {
         add(bodyPanel, BorderLayout.CENTER);
 
         // 초기 시스템 메시지
-        addSystemMessage("채팅이 시작되었습니다.");
+        addSystemMessage("채팅이 시작 되었습니다.");
     }
 
     private void toggleBody() {
@@ -138,10 +138,11 @@ public class ChatPanel extends JPanel {
     private String getInitialHTML() {
         return "<html><head><style>" +
             "body { font-family:'" + UIConstants.FONT_NAME + "'; font-size:12px; margin:0; background:#2c3e50; color:#ecf0f1; }" +
-            ".msg { margin:6px 0; }" +
-            ".bubble { display:inline-block; padding:8px 10px; border-radius:10px; max-width:96%; line-height:1.4; }" +
-            ".meta { color:#95a5a6; font-size:10px; margin-bottom:2px; }" +
-            ".system { text-align:center; color:#95a5a6; font-style:italic; margin:8px 0; }" +
+            ".msg { margin:6px 0; line-height:1.4; }" +
+            ".time { color:#ecf0f1; font-size:11px; }" +
+            ".name { font-weight:bold; }" +
+            ".text { color:#ecf0f1; }" +
+            ".system { text-align:center; color:#95a5a6; font-style:italic; margin:8px 0; white-space:nowrap; }" +
             "</style></head><body></body></html>";
     }
 
@@ -189,18 +190,16 @@ public class ChatPanel extends JPanel {
         String time = timeFormat.format(new Date());
         Color playerColor = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
         String colorHex = String.format("#%02x%02x%02x", playerColor.getRed(), playerColor.getGreen(), playerColor.getBlue());
-        String bubbleColor = lighten(colorHex, 0.12);
 
         String htmlMessage = String.format(
             "<div class='msg'>" +
-            "<div class='meta'><span style='color:%s; font-weight:bold'>%s</span> <span>[%s]</span></div>" +
-            "<div class='bubble' style='background:%s; border-left:4px solid %s;'>%s</div>" +
+            "<span class='time'>%s</span> " +
+            "<span class='name' style='color:%s'>%s</span> " +
+            "<span class='text'>%s</span>" +
             "</div>",
+            time,
             colorHex,
             escapeHTML(playerName),
-            time,
-            bubbleColor,
-            colorHex,
             escapeHTML(message)
         );
 
@@ -212,7 +211,7 @@ public class ChatPanel extends JPanel {
      */
     public void addSystemMessage(String message) {
         String htmlMessage = String.format(
-            "<div class='system'>--- %s ---</div>",
+            "<div class='system'>-- %s --</div>",
             escapeHTML(message)
         );
         appendToChat(htmlMessage);
@@ -237,14 +236,6 @@ public class ChatPanel extends JPanel {
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
             .replace("'", "&#39;");
-    }
-
-    private String lighten(String hex, double factor) {
-        Color base = Color.decode(hex);
-        int r = (int)(base.getRed() + (255 - base.getRed()) * factor);
-        int g = (int)(base.getGreen() + (255 - base.getGreen()) * factor);
-        int b = (int)(base.getBlue() + (255 - base.getBlue()) * factor);
-        return String.format("#%02x%02x%02x", r, g, b);
     }
 
     /**

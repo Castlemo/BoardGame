@@ -2332,7 +2332,7 @@ public class GameUI {
     }
 
     private void updateDisplay() {
-        frame.updateDisplay(turnCount);
+        frame.updateDisplay(turnCount, currentPlayerIndex);
         frame.getOverlayPanel().setTurnBlocked(shouldBlockForNetworkTurn());
         if (networkMode && isHost) {
             notifyStateSync();

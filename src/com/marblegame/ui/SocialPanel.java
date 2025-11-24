@@ -17,6 +17,7 @@ public class SocialPanel extends JPanel {
     private final List<Player> players;
     private final PlayerSummaryPanel summaryPanel;
     private final ChatPanel chatPanel;
+    private int currentPlayerIndex = -1;
 
     public SocialPanel(List<Player> players) {
         this.players = players;
@@ -32,6 +33,11 @@ public class SocialPanel extends JPanel {
         // 채팅 영역
         chatPanel = new ChatPanel();
         add(chatPanel, BorderLayout.CENTER);
+    }
+
+    public void setCurrentPlayerIndex(int index) {
+        this.currentPlayerIndex = index;
+        summaryPanel.setCurrentPlayerIndex(index);
     }
 
     public ChatPanel getChatPanel() {
@@ -52,6 +58,8 @@ public class SocialPanel extends JPanel {
 
         private final List<Player> players;
         private final List<Card> cards = new ArrayList<>();
+        private final JLabel turnLabel;
+        private int currentPlayerIndex = -1;
 
         PlayerSummaryPanel(List<Player> players) {
             this.players = players;
@@ -66,6 +74,13 @@ public class SocialPanel extends JPanel {
             add(title);
             add(Box.createRigidArea(new Dimension(0, 8)));
 
+            turnLabel = new JLabel("턴: -");
+            turnLabel.setFont(UIConstants.FONT_BODY);
+            turnLabel.setForeground(UIConstants.TEXT_SECONDARY);
+            turnLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            add(turnLabel);
+            add(Box.createRigidArea(new Dimension(0, 10)));
+
             for (int i = 0; i < players.size(); i++) {
                 Card card = new Card(players.get(i), i);
                 card.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -75,11 +90,25 @@ public class SocialPanel extends JPanel {
             }
         }
 
+        void setCurrentPlayerIndex(int index) {
+            this.currentPlayerIndex = index;
+            updateTurnLabel();
+        }
+
         void refresh() {
             for (int i = 0; i < cards.size(); i++) {
                 cards.get(i).setPlayer(players.get(i));
             }
+            updateTurnLabel();
             repaint();
+        }
+
+        private void updateTurnLabel() {
+            String name = "-";
+            if (currentPlayerIndex >= 0 && currentPlayerIndex < players.size()) {
+                name = players.get(currentPlayerIndex).name;
+            }
+            turnLabel.setText("턴: " + name);
         }
 
         private class Card extends JPanel {
@@ -134,11 +163,6 @@ public class SocialPanel extends JPanel {
                 g2.setColor(UIConstants.TEXT_PRIMARY);
                 String cash = String.format("%,d원", player.cash);
                 g2.drawString(cash, 14, 60);
-
-                // 위치
-                g2.setFont(UIConstants.FONT_SMALL);
-                g2.setColor(UIConstants.TEXT_SECONDARY);
-                g2.drawString("위치: " + player.pos, 14, 74);
 
                 g2.dispose();
             }

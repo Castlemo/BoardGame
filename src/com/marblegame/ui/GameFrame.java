@@ -132,12 +132,13 @@ public class GameFrame extends JFrame {
         return overlayPanel; // 하위 호환성을 위해 overlayPanel 반환
     }
 
-    public void updateDisplay(int currentTurn) {
+    public void updateDisplay(int currentTurn, int currentPlayerIndex) {
         boardPanel.updateBoard();
         overlayPanel.updatePlayerInfo();             // 수정됨: 플레이어 정보는 오버레이에서 업데이트
         overlayPanel.setTurnNumber(currentTurn);     // 추가됨: 오버레이 턴 업데이트
         if (socialPanel != null) {
             socialPanel.updatePlayerInfo();
+            socialPanel.setCurrentPlayerIndex(currentPlayerIndex);
         }
     }
 }
