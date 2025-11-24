@@ -281,9 +281,10 @@ public class GameUI {
 
         // 네트워크 채팅 콜백 설정
         if (networkMode) {
-            frame.getOverlayPanel().setNetworkChatCallback((type, content) -> {
-                sendChatMessage(type, content);
-            });
+            ChatPanel chatPanel = frame.getSocialPanel().getChatPanel();
+            if (chatPanel != null) {
+                chatPanel.setMessageSendCallback(message -> sendChatMessage("message", message));
+            }
         }
     }
 
@@ -304,11 +305,7 @@ public class GameUI {
         payload.put("playerName", senderName);
         payload.put("content", content);
 
-        if ("emoji".equals(type)) {
-            networkActionSender.sendAction(MessageType.CHAT_EMOJI, payload);
-        } else {
-            networkActionSender.sendAction(MessageType.CHAT_MESSAGE, payload);
-        }
+        networkActionSender.sendAction(MessageType.CHAT_MESSAGE, payload);
     }
 
     private void enterPassiveNetworkMode() {

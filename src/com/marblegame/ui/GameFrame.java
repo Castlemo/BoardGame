@@ -15,6 +15,7 @@ public class GameFrame extends JFrame {
     private InfoPanel infoPanel;           // 수정됨: 플레이어 정보만 (좌측)
     private ControlPanel controlPanel;
     private OverlayPanel overlayPanel;     // 추가됨: 중앙 오버레이 (턴/주사위/버튼)
+    private SocialPanel socialPanel;       // 추가됨: 우측 소셜 패널 (플레이어 요약 + 채팅)
     private boolean networkMode;           // 네트워크 모드 여부
 
     public GameFrame(Board board, List<Player> players) {
@@ -90,11 +91,15 @@ public class GameFrame extends JFrame {
             }
         });
 
+        // 우측 소셜 패널 (플레이어 요약 + 채팅)
+        socialPanel = new SocialPanel(players);
+
         // 수정됨: ControlPanel 제거 - 로그 UI 없음
         controlPanel = new ControlPanel(); // 하위 호환성을 위해 생성은 유지
 
         // 레이아웃 배치 (WEST, SOUTH 제거)
         add(layeredPane, BorderLayout.CENTER);        // 중앙: 보드 + 오버레이만 (플레이어 카드 포함)
+        add(socialPanel, BorderLayout.EAST);          // 우측: 소셜 패널
 
         // 여백 추가
         ((JPanel) getContentPane()).setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -117,6 +122,10 @@ public class GameFrame extends JFrame {
         return overlayPanel;
     }
 
+    public SocialPanel getSocialPanel() {
+        return socialPanel;
+    }
+
     // 수정됨: ActionPanel은 제거되었으므로 deprecated
     @Deprecated
     public OverlayPanel getActionPanel() {
@@ -127,5 +136,8 @@ public class GameFrame extends JFrame {
         boardPanel.updateBoard();
         overlayPanel.updatePlayerInfo();             // 수정됨: 플레이어 정보는 오버레이에서 업데이트
         overlayPanel.setTurnNumber(currentTurn);     // 추가됨: 오버레이 턴 업데이트
+        if (socialPanel != null) {
+            socialPanel.updatePlayerInfo();
+        }
     }
 }

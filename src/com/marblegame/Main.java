@@ -386,7 +386,7 @@ public class Main {
 
         if (playerIndex != null && playerName != null && content != null) {
             SwingUtilities.invokeLater(() -> {
-                ChatPanel chatPanel = gameUI.getFrame().getOverlayPanel().getChatPanel();
+                ChatPanel chatPanel = gameUI.getFrame().getSocialPanel().getChatPanel();
                 if (chatPanel != null) {
                     chatPanel.addPlayerMessage(playerIndex, playerName, content);
                 }
@@ -408,10 +408,8 @@ public class Main {
 
         if (playerIndex != null && playerName != null && emoji != null) {
             SwingUtilities.invokeLater(() -> {
-                ChatPanel chatPanel = gameUI.getFrame().getOverlayPanel().getChatPanel();
-                if (chatPanel != null) {
-                    chatPanel.addEmojiMessage(playerIndex, playerName, emoji);
-                }
+                ChatPanel chatPanel = gameUI.getFrame().getSocialPanel().getChatPanel();
+                // 이모지는 더 이상 지원하지 않으므로 무시
             });
         }
     }

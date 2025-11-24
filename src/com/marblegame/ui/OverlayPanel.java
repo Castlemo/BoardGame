@@ -57,17 +57,6 @@ public class OverlayPanel extends JPanel {
     private JButton oddButton;
     private JButton evenButton;
 
-    // 추가됨: 채팅 패널
-    private ChatPanel chatPanel;
-    private static final int CHAT_PANEL_WIDTH = 180;
-    private static final int CHAT_PANEL_HEIGHT = 250;
-
-    // 네트워크 모드 여부
-    private boolean networkMode;
-
-    // 네트워크 채팅 콜백
-    private java.util.function.BiConsumer<String, String> networkChatCallback; // type, content
-
     // 네트워크 턴 차단용 오버레이
     private TurnBlockLayer turnBlockLayer;
     private Rectangle turnBlockVisualArea;
@@ -92,7 +81,6 @@ public class OverlayPanel extends JPanel {
     public OverlayPanel(List<Player> players, boolean networkMode) {
         this.players = players;
         this.playerCards = new ArrayList<>();
-        this.networkMode = networkMode;
 
         setLayout(null); // 절대 위치 사용
         setOpaque(false); // 투명 배경으로 보드가 보이도록
@@ -184,36 +172,10 @@ public class OverlayPanel extends JPanel {
             add(card);
         }
 
-        // 7. 채팅 패널 생성 및 추가 (네트워크 모드에서만)
-        if (networkMode) {
-            chatPanel = new ChatPanel();
-            chatPanel.setMessageSendCallback(message -> {
-                // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
-                if (networkChatCallback != null) {
-                    networkChatCallback.accept("message", message);
-                }
-            });
-            chatPanel.setEmojiSendCallback(emoji -> {
-                // 네트워크 콜백이 설정되어 있으면 네트워크로 전송
-                if (networkChatCallback != null) {
-                    networkChatCallback.accept("emoji", emoji);
-                }
-            });
-            add(chatPanel);
-        }
-
-        // 8. 턴 차단 오버레이 (마지막에 추가하여 최상단에 위치)
+        // 7. 턴 차단 오버레이 (마지막에 추가하여 최상단에 위치)
         turnBlockLayer = new TurnBlockLayer();
         turnBlockLayer.setVisible(false);
         add(turnBlockLayer);
-    }
-
-    /**
-     * 네트워크 채팅 콜백 설정
-     * @param callback BiConsumer<type, content> - type: "message" or "emoji", content: 메시지 내용
-     */
-    public void setNetworkChatCallback(java.util.function.BiConsumer<String, String> callback) {
-        this.networkChatCallback = callback;
     }
 
     // 현재 플레이어 인덱스 (턴 라벨에서 추출)
@@ -828,25 +790,9 @@ public class OverlayPanel extends JPanel {
         actionButtonPanel.setBounds(cx - BUTTON_PANEL_WIDTH / 2, currentY,
                                    BUTTON_PANEL_WIDTH, buttonPanelHeight);
 
-        // 6. 채팅 패널 배치 (보드 내부 우측) - 네트워크 모드에서만
-        if (chatPanel != null) {
-            int scaledChatWidth = (int)(CHAT_PANEL_WIDTH * scaleFactor);
-            int scaledChatHeight = (int)(CHAT_PANEL_HEIGHT * scaleFactor);
-            chatPanel.setBounds(
-                innerRight - scaledChatWidth - scaledCardMargin,
-                innerTop + scaledCardMargin,
-                scaledChatWidth,
-                scaledChatHeight
-            );
-            chatPanel.updateFontSize(scaleFactor);
-        }
-
-        // 7. 턴 차단 오버레이는 패널 전체를 덮도록 설정
+        // 6. 턴 차단 오버레이는 패널 전체를 덮도록 설정
         if (turnBlockLayer != null) {
             turnBlockLayer.setBounds(0, 0, width, height);
-            // 채팅 영역은 통과하도록 영역을 전달 (채팅 허용)
-            Rectangle chatBounds = chatPanel != null ? chatPanel.getBounds() : null;
-            turnBlockLayer.setChatPassThroughArea(chatBounds);
 
             // 시각적으로 표현할 영역: 주사위 굴리기 버튼 아래쪽(나머지 액션 영역)을 감싸도록 설정
             int overlayWidth = Math.max(Math.max(DICE_PANEL_WIDTH, GAUGE_PANEL_WIDTH), BUTTON_PANEL_WIDTH)
@@ -886,13 +832,6 @@ public class OverlayPanel extends JPanel {
      */
     public GaugePanel getGaugePanel() {
         return gaugePanel;
-    }
-
-    /**
-     * 채팅 패널 반환 (외부에서 제어용)
-     */
-    public ChatPanel getChatPanel() {
-        return chatPanel;
     }
 
     /**
