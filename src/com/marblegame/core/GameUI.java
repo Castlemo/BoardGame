@@ -2104,7 +2104,7 @@ public class GameUI {
 
         frame.getBoardPanel().updateBoard();
         frame.getOverlayPanel().updatePlayerInfo();
-        frame.updateDisplay(turnCount);
+        updateDisplay();
 
         if (isNetworkClient()) {
             applyClientAvailableActions(snapshot.getAvailableActions());
@@ -2336,6 +2336,7 @@ public class GameUI {
 
     private void updateDisplay() {
         frame.updateDisplay(turnCount);
+        frame.getOverlayPanel().setTurnBlocked(shouldBlockForNetworkTurn());
         if (networkMode && isHost) {
             notifyStateSync();
         }
@@ -2343,6 +2344,17 @@ public class GameUI {
 
     private boolean isHostRemoteTurn() {
         return networkMode && isHost && localPlayerIndex >= 0 && currentPlayerIndex != localPlayerIndex;
+    }
+
+    private boolean shouldBlockForNetworkTurn() {
+        if (!networkMode) {
+            return false;
+        }
+        // 로컬 플레이어 인덱스를 알고 있을 때만 차단한다 (없으면 기본적으로 허용)
+        if (localPlayerIndex < 0) {
+            return false;
+        }
+        return currentPlayerIndex != localPlayerIndex;
     }
 
     private void setBoardClickEnabled(boolean enabled) {

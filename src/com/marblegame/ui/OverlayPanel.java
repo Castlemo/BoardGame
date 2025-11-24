@@ -9,6 +9,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.geom.Area;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +67,10 @@ public class OverlayPanel extends JPanel {
 
     // 네트워크 채팅 콜백
     private java.util.function.BiConsumer<String, String> networkChatCallback; // type, content
+
+    // 네트워크 턴 차단용 오버레이
+    private TurnBlockLayer turnBlockLayer;
+    private Rectangle turnBlockVisualArea;
 
     // UIConstants에서 가져온 다크 테마 색상 (로컬 별칭)
     private static final Color BACKGROUND_DARK = UIConstants.BACKGROUND_DARK;
@@ -195,6 +201,11 @@ public class OverlayPanel extends JPanel {
             });
             add(chatPanel);
         }
+
+        // 8. 턴 차단 오버레이 (마지막에 추가하여 최상단에 위치)
+        turnBlockLayer = new TurnBlockLayer();
+        turnBlockLayer.setVisible(false);
+        add(turnBlockLayer);
     }
 
     /**
@@ -829,6 +840,31 @@ public class OverlayPanel extends JPanel {
             );
             chatPanel.updateFontSize(scaleFactor);
         }
+
+        // 7. 턴 차단 오버레이는 패널 전체를 덮도록 설정
+        if (turnBlockLayer != null) {
+            turnBlockLayer.setBounds(0, 0, width, height);
+            // 채팅 영역은 통과하도록 영역을 전달 (채팅 허용)
+            Rectangle chatBounds = chatPanel != null ? chatPanel.getBounds() : null;
+            turnBlockLayer.setChatPassThroughArea(chatBounds);
+
+            // 시각적으로 표현할 영역: 주사위 굴리기 버튼 아래쪽(나머지 액션 영역)을 감싸도록 설정
+            int overlayWidth = Math.max(Math.max(DICE_PANEL_WIDTH, GAUGE_PANEL_WIDTH), BUTTON_PANEL_WIDTH)
+                + (int)(30 * scaleFactor);
+            int overlayX = cx - overlayWidth / 2;
+            int rollBtnY = rollDiceButton != null ? rollDiceButton.getY() : 0;
+            int rollBtnH = rollDiceButton != null
+                ? (rollDiceButton.getHeight() > 0 ? rollDiceButton.getHeight() : rollDiceButton.getPreferredSize().height)
+                : 0;
+            int overlayY = actionButtonPanel.getY() + rollBtnY + rollBtnH + (int)(6 * scaleFactor);
+            int buttonBottom = actionButtonPanel.getY() + actionButtonPanel.getHeight();
+            int overlayHeight = buttonBottom - overlayY + (int)(12 * scaleFactor);
+            if (overlayHeight < 0) {
+                overlayHeight = (int)(200 * scaleFactor);
+            }
+            turnBlockVisualArea = new Rectangle(overlayX, overlayY, overlayWidth, overlayHeight);
+            turnBlockLayer.setVisualArea(turnBlockVisualArea);
+        }
     }
 
     /**
@@ -1046,6 +1082,17 @@ public class OverlayPanel extends JPanel {
     }
 
     /**
+     * 네트워크에서 다른 플레이어 턴일 때 화면을 덮는 오버레이 토글
+     * @param blocked true면 차단 오버레이 표시
+     */
+    public void setTurnBlocked(boolean blocked) {
+        if (turnBlockLayer != null) {
+            turnBlockLayer.setVisible(blocked);
+            turnBlockLayer.repaint();
+        }
+    }
+
+    /**
      * 특정 플레이어의 자산 변동 표시
      * @param playerIndex 플레이어 인덱스
      * @param change 변동 금액 (양수: 수입, 음수: 지출)
@@ -1204,6 +1251,113 @@ public class OverlayPanel extends JPanel {
             if (player.isInJail()) {
                 g2.drawString(String.format("~ %d턴", player.jailTurns), nameX, infoY);
             }
+
+            g2.dispose();
+        }
+    }
+
+    /**
+     * 다른 플레이어 턴일 때 표시되는 반투명 차단 레이어
+     * - 검은 반투명 배경
+     * - 중앙 텍스트 "다른 플레이어가 플레이중"
+     * - 채팅 영역은 투명하게 뚫어 입력 가능
+     */
+    private class TurnBlockLayer extends JComponent {
+        private Rectangle chatPassThroughArea;
+        private Rectangle visualArea;
+
+        private TurnBlockLayer() {
+            setOpaque(false);
+            // 입력 차단용 기본 리스너 (이 레이어가 상단에서 이벤트를 받아 아래로 내려가지 않도록 함)
+            addMouseListener(new java.awt.event.MouseAdapter() { });
+            addMouseMotionListener(new java.awt.event.MouseMotionAdapter() { });
+            addMouseWheelListener(e -> e.consume());
+        }
+
+        public void setChatPassThroughArea(Rectangle rect) {
+            this.chatPassThroughArea = rect != null ? new Rectangle(rect) : null;
+        }
+
+        public void setVisualArea(Rectangle area) {
+            this.visualArea = area != null ? new Rectangle(area) : null;
+        }
+
+        @Override
+        public boolean contains(int x, int y) {
+            // 채팅 영역은 오버레이가 없는 것처럼 취급하여 입력이 통과하도록 함
+            if (chatPassThroughArea != null && chatPassThroughArea.contains(x, y)) {
+                return false;
+            }
+            return super.contains(x, y);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            if (!isVisible()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            // 중앙 텍스트
+            String message = "상대방 플레이어가 플레이 중..";
+            int fontSize = Math.max(14, (int)(22 * scaleFactor));
+            Font font = new Font(UIConstants.FONT_NAME, Font.BOLD, fontSize);
+            g2.setFont(font);
+            FontMetrics fm = g2.getFontMetrics();
+            int textWidth = fm.stringWidth(message);
+            int textHeight = fm.getHeight();
+
+            // 시각적으로 오버레이를 표시할 영역 (없으면 전체)
+            Rectangle paintArea = visualArea != null ? new Rectangle(visualArea) : new Rectangle(0, 0, getWidth(), getHeight());
+
+            // 텍스트 크기에 맞춰 영역을 보정 (너무 작거나 크지 않게 중앙 기준으로 맞춤)
+            int minWidth = textWidth + (int)(60 * scaleFactor);  // 패딩 소폭 축소
+            int minHeight = textHeight + (int)(24 * scaleFactor);
+            int centerX = paintArea.x + paintArea.width / 2;
+            int centerY = paintArea.y + paintArea.height / 2;
+            int newWidth = Math.max(paintArea.width, minWidth);
+            int newHeight = Math.max(paintArea.height, minHeight);
+            paintArea.x = centerX - newWidth / 2;
+            paintArea.y = centerY - newHeight / 2;
+            paintArea.width = newWidth;
+            paintArea.height = newHeight;
+            // 컴포넌트 경계 내로 보정
+            if (paintArea.x < 0) {
+                paintArea.width = paintArea.width + paintArea.x;
+                paintArea.x = 0;
+            }
+            if (paintArea.y < 0) {
+                paintArea.height = paintArea.height + paintArea.y;
+                paintArea.y = 0;
+            }
+            paintArea.width = Math.min(paintArea.width, getWidth() - paintArea.x);
+            paintArea.height = Math.min(paintArea.height, getHeight() - paintArea.y);
+
+            // 오버레이 영역에서 채팅 영역을 제외
+            float arc = (float)(18 * scaleFactor);
+            Area overlayArea = new Area(new RoundRectangle2D.Float(
+                paintArea.x, paintArea.y,
+                paintArea.width, paintArea.height,
+                arc, arc
+            ));
+            if (chatPassThroughArea != null) {
+                overlayArea.subtract(new Area(chatPassThroughArea));
+            }
+
+            // 반투명 검은 배경
+            g2.setColor(new Color(0, 0, 0, 160));
+            g2.fill(overlayArea);
+
+            int textX = paintArea.x + (paintArea.width - textWidth) / 2;
+            int textY = paintArea.y + (paintArea.height + fm.getAscent()) / 2;
+
+            // 텍스트 외곽선 효과
+            g2.setColor(new Color(0, 0, 0, 200));
+            g2.drawString(message, textX + 2, textY + 2);
+            g2.setColor(Color.WHITE);
+            g2.drawString(message, textX, textY);
 
             g2.dispose();
         }
