@@ -402,6 +402,10 @@ public class RuleEngine {
                 // 도시나 관광지만 소유 확인 (특수 타일은 제외)
                 if (tile instanceof City) {
                     City city = (City) tile;
+                    // 페이즈 딜리트로 삭제된 도시는 소유 여부를 건너뛰어 라인 체크에서 제외
+                    if (city.isDeleted) {
+                        continue;
+                    }
                     if (!city.isOwned() || city.owner != playerIndex) {
                         hasMonopoly = false;
                         break;
